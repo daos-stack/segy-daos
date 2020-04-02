@@ -1,0 +1,15 @@
+Import('env')
+libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
+libraries = libraries + ['dfs','su','par','cwp','m']
+print("Calling Program('main')")
+env.Program('segyread.c', LIBS=libraries, LIBPATH=['../../build/su_build','../../build/par_build','../../build/cwp_build'])
+#env.Program('build/main_build/suaddhead.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+#env.Program('build/main_build/sugethw.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+#env.Program('build/main_build/sushw.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+#env.Program('build/main_build/sutrcount.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+#env.Program('build/main_build/suchw.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+#env.Program('build/main_build/surange.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+#env.Program('build/main_build/suwind.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+#env.Program('build/main_build/susort.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+
+

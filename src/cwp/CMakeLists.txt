@@ -1,0 +1,82 @@
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+project(seismic-unix LANGUAGES C)
+
+include_directories(./include)
+
+add_library(
+	cwp
+	STATIC
+	abel.c
+	airy.c
+	alloc.c
+	antialias.c
+	axb.c
+	bigmatrix.c
+	butterworth.c
+	complex.c
+	complexd.c
+	complexf.c
+	complexfd.c
+	conjugate_gradient.c
+	convolution.c
+	cubicspline.c
+	dblas.c
+	dge.c
+	differentiate.c
+	dpfafft.c
+	exit.c
+	frannor.c
+	franuni.c
+	hankel.c
+	hartley.c
+	hilbert.c
+	holbergd1.c
+	intcub.c
+	intl2b.c
+	intlin.c
+	intlinc.c
+	intlirr2b.c
+	intsinc8.c
+	inttable8.c
+	linfit.c
+	linregress.c
+	maxmin.c
+	mkdiff.c
+	mkhdiff.c
+	mksinc.c
+	mnewt.c
+	orthpolynomials.c
+	pfafft.c
+	polar.c
+	printerplot.c
+	quest.c
+	ressinc8.c
+	rfwtva.c
+	rfwtvaint.c
+	sblas.c
+	scaxis.c
+	sge.c
+	shfs8r.c
+	sinc.c
+	sort.c
+	sqr.c
+	stoep.c
+	strstuff.c
+	svd.c
+	swapbyte.c
+	symmeigen.c
+	tempname.c
+	tridiagonal.c
+	unwrapphase.c
+	vandermonde.c
+	waveforms.c
+	windows.c
+	wrap.c
+	xcor.c
+	xindex.c
+	yclip.c
+	yxtoxy.c
+	zasc.c
+	zebc.c
+)
+target_link_libraries(cwp -lm)

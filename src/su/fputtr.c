@@ -1,0 +1,663 @@
+/* Copyright (c) Colorado School of Mines, 2011.*/
+/* All rights reserved.                       */
+
+/* FPUTTR: $Revision: 1.36 $; $Date: 2012/10/22 17:53:57 $	*/
+
+
+/*********************** self documentation **********************/
+/****************************************************************************
+FPUTTR - Routines to put an SU trace to a file 
+
+fputtr		put a segy trace to a file by file pointer
+fvputtr		put a segy trace to a file by file pointer (variable ns)
+puttr		macro using fputtr to put a trace to stdin
+vputtr		macro using fputtr to put a trace to stdin (variable ns)
+ 
+*****************************************************************************
+Function Prototype:
+void fputtr(FILE *fp, segy *tp);
+void fvputtr(FILE *fp, segy *tp);
+
+*****************************************************************************
+Returns:
+
+	void
+ 
+*****************************************************************************
+Notes:
+
+The functions puttr(x) vputtr(x) are macros defined in segy.h
+#define puttr(x)	fputtr(stdin, (x))
+#define vputtr(x)	fvputtr(stdin, (x))
+
+Usage example:
+ 	segy tr;
+ 	...
+ 	while (gettr(&tr)) {
+ 		tr.offset = abs(tr.offset);
+ 		puttr(&tr);
+ 	}
+ 	...
+
+*****************************************************************************
+Authors: SEP: Einar Kjartansson, Stew Levin CWP: Shuki Ronen, Jack Cohen
+****************************************************************************/
+/**************** end self doc ********************************/
+
+#include "su.h"
+#include "segy.h"
+#include "header.h"
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include "daos.h"
+#include "daos_fs.h"
+
+#ifndef TEST
+
+extern int in_line_hdr;
+extern int out_line_hdr;
+extern char  su_text_hdr[3200];
+extern bhed  su_binary_hdr;
+
+
+#ifdef SUXDR
+
+/*
+ * Revised:  7/3/95  Stewart A. Levin  (Mobil)
+ *	  Major rewrite:  Use xdr library for portable su file format.
+ *	  Make multiple output streams work (at long last!).
+ * Revised:  28 Mar, 2006  Stewart A. Levin (Landmark Graphics)
+ *      XDR support for >2GB file size and big endian SHORTPACK
+ *      output.
+ */
+
+#include "su_xdr.h"
+#include "header.h"
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include "daos.h"
+#include "daos_fs.h"
+
+inline void check_error_code(int error, int verbose, const char *message) {
+    if (error == 0 && verbose) {
+        warn("%s : Finished Successfully...\n", message);
+    } else {
+        warn("%s : Error in call with value %d...\n", message, error);
+        exit(0);
+    }
+}
+void initialize_daos_dfs_puttr(const char *pool_uid, const char *pool_svc_list, const char *container_uuid,
+                         int allow_creation, int verbose_output,
+                         daos_handle_t *poh, daos_handle_t *coh, dfs_t **dfs) {
+    // Pool UUID
+    uuid_t po_uuid;
+    // Container UUID
+    uuid_t co_uuid;
+    // Pool service replica ranks
+    d_rank_list_t *svc = NULL;
+    // Initialize DAOS API.
+   // check_error_code(daos_init(), verbose_output, "Initializing DAOS API Library");
+    // Parse Pool UUID.
+    int error = uuid_parse(pool_uid, po_uuid);
+    if(po_uuid == NULL){
+        warn("Error parsing pool uuid : %d\n", error);
+        exit(0);
+    }
+    if (verbose_output) {
+        warn("Pool UUID : %s \n", pool_uid);
+    }
+    // Parse Pool service replica ranks.
+    svc = daos_rank_list_parse(pool_svc_list, ":");
+    if(svc == NULL){
+        warn("Error parsing rank list : %d\n ", error);
+        exit(0);
+    }
+    check_error_code(daos_pool_connect(po_uuid, 0, svc, DAOS_PC_RW, poh, NULL, NULL), verbose_output, "Connecting To Pool");
+    // Parse Container UUID.
+    error = uuid_parse(container_uuid, co_uuid);
+    if(co_uuid == NULL){
+        warn("Error parsing container uuid : %d \n", error);
+        exit(0);
+    }
+    if (verbose_output) {
+        warn("Container UUID : %s \n", container_uuid);
+    }
+    // Open Container
+    error = daos_cont_open(*poh, co_uuid, DAOS_COO_RW, coh, NULL, NULL);
+    if (error == 0 && verbose_output) {
+        warn("Container opened successfully...\n");
+    } else if (error == -DER_NONEXIST){
+        if (allow_creation) {
+            // Create container if it doesn't exist and you are allowed to do that.
+            check_error_code(dfs_cont_create(*poh, co_uuid, NULL, coh, NULL), verbose_output, "Creating Container");
+        } else {
+            warn("Container doesn't exist...\n");
+            exit(0);
+        }
+    } else {
+        check_error_code(error, verbose_output, "Opening Container");
+    }
+    // Mounting DFS system.
+    check_error_code(dfs_mount(*poh, *coh, O_RDWR, dfs), verbose_output, "Mounting DFS to DAOS");
+}
+
+
+static struct outsegyinfo {
+	FILE *outfp;		      /* FILE * ptr for search		*/
+	struct outsegyinfo *nextinfo; /* linked list pointer     	*/
+	off_t itr;		      /* number of traces written	*/
+	unsigned int nsfirst;	 /* nsamp from first trace		*/
+	unsigned short bytesper;   /* bytes per datum		*/
+	FileType ftype;		      /* file type of output *fp	*/
+	XDR *segy_xdr;		      /* allocated XDR structure 	*/
+	char *buf;		  /* buffer for trace I/O	*/
+	unsigned int bufstart;  /* "offset" of start of buf	*/
+	dfs_obj_t *obj_out;
+    dfs_t *dfs;
+    daos_size_t size;
+    daos_handle_t poh;
+    daos_handle_t coh;
+    daos_oclass_id_t cid;
+    int bytes_written;
+    int is_dfs;
+    char fname[1024];
+} *outsegylist = (struct outsegyinfo *) NULL;
+
+static FILE *lastfp = (FILE *) NULL;
+static struct outsegyinfo *infoptr, **oldinfoptr;
+
+static
+void searchlist(FILE *fp)
+{
+	oldinfoptr = &outsegylist;
+	for (infoptr = outsegylist; infoptr != ((struct outsegyinfo *) NULL);
+	    infoptr = infoptr->nextinfo) {
+		if (fp == infoptr->outfp) break;
+		oldinfoptr = &infoptr->nextinfo;
+	}
+}
+void get_file_name(){
+        char path[1024];
+        char result[1024];
+        int fd = fileno(infoptr->outfp);
+
+        sprintf(path, "/proc/self/fd/%d", fd);
+        memset(result, 0, sizeof(result));
+        int error= readlink(path, result, sizeof(result)-1);
+        char* token = strtok(result, "/");
+        char* temp = token;
+        while (token != NULL) {
+            temp = token;
+            token = strtok(NULL, "/");
+        }
+        if(error!=0)
+//			err("%s: token is", temp);
+        strcpy(infoptr->fname, temp);
+        return;
+}
+
+static
+int datawrite(struct outsegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
+{
+	int nwritten;
+	unsigned int nstobewritten = fixed_length?iptr->nsfirst:tp->ns;
+	unsigned int databytes = iptr->bytesper*nstobewritten;
+	int itest = 1;
+	int error;
+	char *ctest = (char *) (&itest);
+	
+	/* write trace data */
+	switch(tp->trid) {
+	case CHARPACK:
+	    if(infoptr->is_dfs){
+	        d_iov_t iov;
+        d_sg_list_t sgl;
+
+        /** set memory location */
+        sgl.sg_nr = 1;
+        sgl.sg_nr_out = 0;
+        char * tpbuf = (char *) &((tp->data)[0]);
+        d_iov_set(&iov, (void *)tpbuf, databytes);
+        sgl.sg_iovs = &iov;
+        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
+        if(error ==0){
+            warn("Charpack dfs write passed");
+        }else{
+            warn("Charpack dfs write failed");
+        }
+        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
+        if(error ==0){
+            warn("Charpack dfs get size passed");
+        }else{
+            warn("Charpack dfs get size failed");
+        }
+        nwritten = (int)infoptr->size;
+        infoptr->bytes_written += nwritten;
+	    }else{
+		nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
+				  iptr->outfp);
+		}
+	case SHORTPACK:
+		if(ctest[0]) swab((char *) (&((tp->data)[0])),
+				 (char *) (&((tp->data)[0])),
+				  databytes);
+		if(infoptr->is_dfs){
+	        d_iov_t iov;
+        d_sg_list_t sgl;
+
+        /** set memory location */
+        sgl.sg_nr = 1;
+        sgl.sg_nr_out = 0;
+        char * tpbuf = (char *) &((tp->data)[0]);
+        d_iov_set(&iov, (void *)tpbuf, databytes);
+        sgl.sg_iovs = &iov;
+        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
+        if(error ==0){
+            warn("shortpack dfs write passed");
+        }else{
+            warn("shortpack dfs write failed");
+        }
+        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
+        if(error ==0){
+            warn("shortpack dfs get size passed");
+        }else{
+            warn("shortpack dfs get size failed");
+        }
+        nwritten = (int)infoptr->size;
+        infoptr->bytes_written += nwritten;
+	    }else{
+		nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
+				  iptr->outfp);
+		}
+
+	break;
+	default:
+		if(FALSE == xdr_vector(iptr->segy_xdr,
+					(char *) (&((tp->data)[0])),
+					nstobewritten,sizeof(float),(xdrproc_t) xdr_float))
+			nwritten = 0;
+		else
+			nwritten = databytes;
+		if(nwritten > 0) {
+		   if(infoptr->is_dfs){
+	        d_iov_t iov;
+        d_sg_list_t sgl;
+
+        /** set memory location */
+        sgl.sg_nr = 1;
+        sgl.sg_nr_out = 0;
+        char * tpbuf = ((char *) (iptr->buf))+HDRBYTES;
+     //   iptr->buf = tpbuf;
+        d_iov_set(&iov, (void *)tpbuf, databytes);
+        sgl.sg_iovs = &iov;
+        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
+        if(error ==0){
+            warn("default dfs write passed");
+        }else{
+            warn("default dfs write failed");
+        }
+        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
+        if(error ==0){
+            warn("default dfs get size passed");
+        }else{
+            warn("default dfs get size failed");
+        }
+        nwritten = (int)infoptr->size - infoptr->bytes_written;
+        infoptr->bytes_written += nwritten;
+         warn("trace bytes written=  %d",nwritten);
+        warn("total bytes written=  %d",infoptr->bytes_written);
+		   }else{
+	    nwritten =efwrite(((char *) (iptr->buf))+HDRBYTES,1,databytes,iptr->outfp);
+		   }
+		}
+		if(nwritten != databytes) nwritten = 0;
+
+	}
+	return(nwritten);
+}
+
+
+
+void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
+{
+	unsigned int databytes;	 /* bytes from nsfirst	   */
+	int nwritten;		   /* bytes seen by fwrite calls   */
+	int error;
+	
+	/* search linked list for possible alternative */
+	if(fp != lastfp)  searchlist(fp);
+	
+	if (infoptr == ((struct outsegyinfo *) NULL)) {
+		/* initialize new segy output stream */
+		
+		/* allocate new segy output information table */
+		*oldinfoptr = (struct outsegyinfo *)
+			malloc(sizeof(struct outsegyinfo));
+		infoptr = *oldinfoptr;
+		infoptr->nextinfo = (struct outsegyinfo *) NULL;
+		/* save FILE * ptr */
+		infoptr->outfp = fp;
+		infoptr->itr = 0;
+		infoptr->is_dfs = 0;
+		infoptr->bytes_written =0;
+		infoptr->obj_out =NULL;
+		infoptr->cid = OC_S1;
+		/* allocate XDR struct and associate FILE * ptr */
+		infoptr->segy_xdr = (XDR *) malloc(sizeof(XDR));
+		
+		switch (infoptr->ftype = filestat(fileno(fp))) {
+		case DIRECTORY:
+			err("%s: segy output can't be a directory", __FILE__);
+		case TTY:
+			err("%s: segy output can't be tty", __FILE__);
+		break;
+		case DISK:
+		          //       err("%s: segy output is file ", infoptr->fname);
+		    infoptr->is_dfs = 1;
+           //  err("%s: segy output is file ", infoptr->fname);
+            get_file_name();
+         //    err("%s: segy output is file ", infoptr->fname);
+         //   infoptr->cid = OC_S1;
+            //infoptr->obj_out =NULL;
+            initialize_daos_dfs_puttr("cb78ebbe-7d42-4e5e-9ac5-50d8498c5e1d","0","cb78ebbe-7d42-4e5e-9ac5-50d8498c5e13",1,1,&(infoptr->poh),&(infoptr->coh),&(infoptr->dfs));
+            error = dfs_open(infoptr->dfs, NULL, infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, infoptr->cid, 0, NULL, &(infoptr->obj_out));
+            if(error ==0){
+                warn("dfs_open passed successfully \n");
+            }else{
+                warn("dfs_open failed \n");
+            }
+        break;
+		default:  /* the rest are ok */
+		break;
+		}
+		/* xdrstdio_create(infoptr->segy_xdr,fp,XDR_ENCODE);*/
+		infoptr->buf = ealloc1(sizeof(segy),sizeof(char));
+		xdrmem_create(infoptr->segy_xdr, infoptr->buf, sizeof(segy), XDR_ENCODE);
+		infoptr->bufstart = xdr_getpos(infoptr->segy_xdr);
+
+		
+		/* Sanity check the segy header */
+		infoptr->nsfirst = tp->ns;
+		if (infoptr->nsfirst > SU_NFLTS)
+			err("%s: unable to handle %d > %d samples per trace",
+			    __FILE__, infoptr->nsfirst, SU_NFLTS);
+
+		switch(tp->trid) {
+		case CHARPACK:
+		   infoptr->bytesper = sizeof(char); break;
+		case SHORTPACK:
+		   infoptr->bytesper = 2*sizeof(char); break;
+		default:
+		   infoptr->bytesper = BYTES_PER_XDR_UNIT; break;
+		}
+
+	}
+
+	xdr_setpos(infoptr->segy_xdr, infoptr->bufstart);
+	if(FALSE == xdrhdrsub(infoptr->segy_xdr,tp))
+		err("%s: unable to write header on trace #%ld",
+		    __FILE__, (infoptr->itr)+1);
+	if(infoptr->is_dfs){
+	    d_iov_t iov;
+        d_sg_list_t sgl;
+
+        /** set memory location */
+        sgl.sg_nr = 1;
+        sgl.sg_nr_out = 0;
+        //char * binbuf = (char *) &bh;
+        d_iov_set(&iov, (void *)infoptr->buf, HDRBYTES);
+        sgl.sg_iovs = &iov;
+        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
+         if(error ==0){
+            warn("header dfs write passed");
+        }else{
+            warn("header dfs write failed");
+        }
+        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
+         if(error ==0){
+            warn("header dfs size passed");
+        }else{
+            warn("headr dfs size failed");
+        }
+        nwritten = (int)infoptr->size - infoptr->bytes_written;
+        infoptr->bytes_written += nwritten;
+        warn("header bytes written=  %d",nwritten);
+        warn("total bytes written=  %d",infoptr->bytes_written);
+        if(nwritten != HDRBYTES)
+               err("%s: unable to write header on trace #%ld",__FILE__, (infoptr->itr)+1);
+	}else{
+	nwritten = efwrite(infoptr->buf,1,HDRBYTES,infoptr->outfp);
+	if(nwritten != HDRBYTES)
+		err("%s: unable to write header on trace #%ld",
+		    __FILE__, (infoptr->itr)+1);
+	}
+
+
+	databytes = infoptr->bytesper * (fixed_length?infoptr->nsfirst:tp->ns);
+	nwritten = datawrite(infoptr, tp, fixed_length);
+
+	if (nwritten != databytes)
+		err("%s: on trace #%ld, tried to write %d bytes, "
+		    "wrote %d bytes",
+		    __FILE__, (infoptr->itr)+1, databytes, nwritten);
+	
+	++infoptr->itr;
+	lastfp = infoptr->outfp;
+}
+void fputtr(FILE *fp, segy *tp)
+{
+ fputtr_internal(fp,tp,cwp_true);
+}
+
+void fvputtr(FILE *fp, segy *tp)
+{
+ fputtr_internal(fp,tp,cwp_false);
+}
+
+
+
+
+
+#else
+/**********************************************************************
+code without XDR
+**********************************************************************/
+
+#include "su.h"
+#include "segy.h"
+#include "header.h"
+
+static char hdr_str[88];
+static int i=0;
+
+
+static struct outsegyinfo {
+	FILE *outfp;		      /* FILE * ptr for search		*/
+	struct outsegyinfo *nextinfo; /* linked list pointer    	*/
+	off_t itr;	      /* number of traces written	*/
+	unsigned int nsfirst;	 /* nsamp from first trace		*/
+	unsigned short bytesper;      /* bytes per datum	 	*/
+	FileType ftype;		      /* file type of output *fp	*/
+    char fname[1024];
+} *outsegylist = (struct outsegyinfo *) NULL;
+
+static FILE *lastfp = (FILE *) NULL;
+static struct outsegyinfo *infoptr, **oldinfoptr;
+
+
+
+static
+void searchlist(FILE *fp)
+{
+	oldinfoptr = &outsegylist;
+	for(infoptr = outsegylist; infoptr != ((struct outsegyinfo *) NULL);
+	    infoptr = infoptr->nextinfo) {
+		if(fp == infoptr->outfp) break;
+		oldinfoptr = &infoptr->nextinfo;
+	}
+}
+
+
+static
+void datawrite(segy *tp, struct outsegyinfo *iptr, cwp_Bool fixed_length)
+{
+	unsigned int nstobewritten = fixed_length?iptr->nsfirst:tp->ns;
+	unsigned int databytes = iptr->bytesper * nstobewritten;
+	int nwritten = (int) efwrite((char *) (&((tp->data)[0])), 1, databytes,
+				iptr->outfp);
+
+	if (nwritten != databytes)
+		err("%s: on trace #%ld, tried to write %d bytes, "
+		    "wrote %d bytes",
+		    __FILE__, (infoptr->itr)+1, databytes, nwritten);
+
+	return;
+}
+
+
+void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
+{
+
+    /* search linked list for possible alternative */
+	if(fp != lastfp)  searchlist(fp);
+
+	if (infoptr == ((struct outsegyinfo *) NULL)) {
+		/* initialize new segy output stream */
+
+		/* allocate new segy output information table */
+		*oldinfoptr = (struct outsegyinfo *)
+			malloc(sizeof(struct outsegyinfo));
+		infoptr = *oldinfoptr;
+		infoptr->nextinfo = (struct outsegyinfo *) NULL;
+		/* save FILE * ptr */
+		infoptr->outfp = fp;
+		infoptr->itr = 0;
+
+		switch (infoptr->ftype = filestat(fileno(fp))) {
+		case DIRECTORY:
+			err("%s: segy output can't be a directory", __FILE__);
+		case TTY:
+			err("%s: segy output can't be tty", __FILE__);
+        default:
+            /* the rest are ok */
+		break;
+		}
+
+		/* Sanity check the segy header */
+		infoptr->nsfirst = tp->ns;
+		if (infoptr->nsfirst > SU_NFLTS)
+			err("%s: unable to handle %d > %d samples per trace",
+			    __FILE__, infoptr->nsfirst, SU_NFLTS);
+		switch(tp->trid) {
+		case CHARPACK:
+			infoptr->bytesper = sizeof(char); break;
+		case SHORTPACK:
+			infoptr->bytesper = 2*sizeof(char); break;
+		default:
+			infoptr->bytesper = sizeof(float); break;
+		}
+
+/*--------------------------------------------------------------------*\
+   Write out a line header if it has been set as the default or has 
+   requested on the caommandline.  Commandline takes precedence over
+   the default in all cases.
+
+   Reginald H. Beardsley			    rhb@acm.org
+\*--------------------------------------------------------------------*/
+
+        if (!getparint( "lheader" ,&out_line_hdr )) out_line_hdr=0;
+
+		if( out_line_hdr ){
+
+		   if( in_line_hdr ){
+		     (void) efwrite(&(su_text_hdr[0]), 1 ,3200 
+				    ,infoptr->outfp);
+		   }else{
+		     memset( su_text_hdr ,0 ,sizeof(su_text_hdr) );
+		     sprintf( hdr_str ,"%-80s" 
+			    ,"C 1 CLIENT CWP/SU default text header " );
+		     strncat( su_text_hdr ,hdr_str ,80 );
+		     for( i=1; i<40; i++ ){
+			sprintf( hdr_str ,"%-80s" ,"C" );
+			strncat( su_text_hdr ,hdr_str ,80 );
+		     }
+                   (void) efwrite(&(su_text_hdr[0]), 1 ,3200
+                           ,infoptr->outfp);
+		   }
+
+		   memset( &su_binary_hdr ,0 ,sizeof(su_binary_hdr) );
+		   su_binary_hdr.format = 5;
+		   su_binary_hdr.hns = tp->ns;
+		   su_binary_hdr.hdt = tp->dt;
+ 
+ 
+		  (void) efwrite(&su_binary_hdr,1,
+			sizeof(su_binary_hdr), infoptr->outfp);
+		}
+		
+	}
+
+	if (tp->ns != infoptr->nsfirst && fixed_length)
+		err("%s: on trace #%ld, number of samples in header (%d) "
+		    "differs from number for first trace (%d)", 
+		    __FILE__, (infoptr->itr)+1, tp->ns, infoptr->nsfirst);
+	
+
+	(void) efwrite(tp, 1,HDRBYTES, infoptr->outfp);
+	datawrite(tp, infoptr, fixed_length);
+	
+	++infoptr->itr;
+	lastfp = infoptr->outfp;
+}
+
+void fputtr(FILE *fp, segy *tp)
+{
+ fputtr_internal(fp,tp,cwp_true);
+}
+
+void fvputtr(FILE *fp, segy *tp)
+{
+ fputtr_internal(fp,tp,cwp_false);
+}
+
+
+#endif
+
+#else
+
+char *sdoc[] = {
+"								",
+" tputtr <stdin >stdout						",
+"								",
+" 	Test harness for puttr.c				",
+"	Changes cdp to abs(cdp)					",
+"	Contrast the following results:	 			",
+"	suplane offset=-100 | sugethw offset 			",
+"	suplane offset=-100 | tputtr | sugethw offset		",
+"								",
+NULL};
+
+segy tr;
+void initialize_daos_dfs(const char *pool_uid, const char *pool_svc_list, const char *container_uuid,
+                         int allow_creation, int verbose_output,
+                         daos_handle_t *poh, daos_handle_t *coh, dfs_t **dfs);
+
+main(int argc, char **argv)
+{
+	initargs(argc, argv);
+	requestdoc(1);
+
+ 	while (gettr(&tr)) {
+ 		tr.offset = abs(tr.offset);
+ 		puttr(&tr);
+ 	}
+
+	return EXIT_SUCCESS;
+}
+#endif
+
+

@@ -1,0 +1,27 @@
+Import('env')
+#env = env.Clone()
+env.AppendUnique(CPPPATH=['include'])
+print("Calling Program('PAR')")
+#libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
+#libraries = libraries + ['dfs','cwp','m']
+env.StaticLibrary('par',['atopkge.c',
+	'docpkge.c',
+	'ealloc.c',
+	'errpkge.c',
+	'filestat.c',
+	'fractal.c',
+	'getpars.c',
+#	'include',
+	'lincoeff.c',
+	'minfunc.c',
+	'modeling.c',
+	'refaniso.c',
+	'rke.c',
+	'smooth.c',
+	'subcalls.c',
+	'syscalls.c',
+	'taup.c',
+	'upweik.c',
+	'VND.c',
+	'wtlib.c'],LIBS=['cwp','m'])
+
