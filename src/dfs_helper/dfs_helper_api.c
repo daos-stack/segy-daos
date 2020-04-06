@@ -116,6 +116,7 @@ int dfs_file_exists(const char *file_directory){
 dfs_obj_t * get_parent_of_file(const char *file_directory, int allow_creation,
                                char *file_name) {
     dfs_obj_t *parent = NULL;
+    daos_oclass_id_t cid= OC_SX;
     char temp[2048];
     int array_len = 0;
     strcpy(temp, file_directory);
@@ -144,7 +145,7 @@ dfs_obj_t * get_parent_of_file(const char *file_directory, int allow_creation,
             }
         } else if (allow_creation) {
             mode_t mode = 0666;
-            err = dfs_mkdir(dfs, parent, array[i], mode);
+            err = dfs_mkdir(dfs, parent, array[i], mode,cid);
             if (err == 0) {
                 if(verbose_output) {
                     warn("Created directory '%s'\n", array[i]);
