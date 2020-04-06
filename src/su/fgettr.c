@@ -73,6 +73,7 @@ int out_line_hdr=0;
 
 #include "su.h"
 #include "segy.h"
+#include "dfs_helper_api.h"
 
 int isebcdic_txt( unsigned char* ,int len);
 int isascii_txt( unsigned char* ,int len);
@@ -102,6 +103,16 @@ static struct insegyinfo {
 	XDR *segy_xdr;		     /* allocated XDR structure  */
 	char *buf;		     /* buffer for trace I/O     */
 	size_t bufstart;	     /* "offset" of start of buf */
+	//	dfs_obj_t *obj_out;
+    //dfs_t *dfs;
+    daos_size_t size;
+    DAOS_FILE *daos_out;
+   // daos_handle_t poh;
+    //daos_handle_t coh;
+    //daos_oclass_id_t cid;
+    int bytes_read;
+    int is_dfs;
+    char fname[1024];
 } *insegylist = (struct insegyinfo *) NULL;
 
 static FILE *lastfp = (FILE *) NULL;
@@ -120,6 +131,26 @@ void searchlist(FILE *fp)
 	}
 }
 
+void get_file_name(){
+        char path[1024];
+        char result[1024];
+        int fd = fileno(infoptr->infp);
+
+        sprintf(path, "/proc/self/fd/%d", fd);
+        memset(result, 0, sizeof(result));
+        int error= readlink(path, result, sizeof(result)-1);
+        char* token = strtok(result, "/");
+        char* temp = token;
+        while (token != NULL) {
+            temp = token;
+            token = strtok(NULL, "/");
+        }
+        if(error!=0)
+//			err("%s: token is", temp);
+        strcpy(infoptr->fname, temp);
+        return;
+}
+
 static
 int dataread(struct insegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 {
@@ -133,25 +164,45 @@ int dataread(struct insegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 	/* read trace data */
 	switch(tp->trid) {
 	case CHARPACK:
+	    if(infoptr->is_dfs){
+		    infoptr->size = read_dfs_file(infoptr->daos_out, (char *) (&((tp->data)[0])) , databytes);
+		    infoptr->size = get_dfs_file_size(infoptr->daos_out);
+            nread = (int)infoptr->size - infoptr->bytes_read;
+            infoptr->bytes_read += nread;
+		} else {
 		nread = efread((char *) (&((tp->data)[0])),1,databytes,
 				iptr->infp);
+	    }
 	case SHORTPACK:
-		nread = efread((char *) (&((tp->data)[0])),1,databytes,
-				iptr->infp);
+	    if(infoptr->is_dfs){
+		    infoptr->size = read_dfs_file(infoptr->daos_out, (char *) (&((tp->data)[0])) , databytes);
+		    infoptr->size = get_dfs_file_size(infoptr->daos_out);
+            nread = (int)infoptr->size - infoptr->bytes_read;
+            infoptr->bytes_read += nread;
+		} else {
+    		nread = efread((char *) (&((tp->data)[0])),1,databytes,
+	    			iptr->infp);
+	    }
 		if(ctest[0]) swab((char *) (&((tp->data)[0])),
 				  (char *) (&((tp->data)[0])),
 				  databytes);
 	break;
 	default:
-		nread = efread(((char *) (iptr->buf))+HDRBYTES,1,databytes,
-				iptr->infp);
+	     if(infoptr->is_dfs){
+		    infoptr->size = read_dfs_file(infoptr->daos_out, ((char *) (iptr->buf))+HDRBYTES , databytes);
+		    infoptr->size = get_dfs_file_size(infoptr->daos_out);
+            nread = (int)infoptr->size - infoptr->bytes_read;
+            infoptr->bytes_read += nread;
+		  } else {
+    		nread = efread(((char *) (iptr->buf))+HDRBYTES,1,databytes,
+	    			iptr->infp);
+	     }
 		if(nread != databytes || FALSE == xdr_vector(iptr->segy_xdr,
 					(char *) (&((tp->data)[0])),
 					nsread,sizeof(float),(xdrproc_t) xdr_float))
 			nread = 0;
 		else
 			nread = databytes;
-
 	break;
 	}
 	
@@ -186,6 +237,9 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		infoptr->infp = fp;
 		infoptr->itr = 0;
 		infoptr->ntr = -1;
+		infoptr->is_dfs = 0;
+		infoptr->bytes_read =0;
+        infoptr->daos_out = malloc(sizeof(DAOS_FILE));
 		/* allocate XDR struct and associate FILE * ptr */
 		infoptr->segy_xdr = (XDR *) malloc(sizeof(XDR));
 
@@ -195,6 +249,10 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		case TTY:
 			err("%s: segy input can't be tty", __FILE__);
 		break;
+		case DISK:
+		    infoptr->is_dfs = 1;
+            get_file_name();
+            infoptr->daos_out = open_dfs_file(infoptr->fname, 0444, 'r', 0);
 		default: /* the rest are ok */
 		break;
 		}
@@ -203,8 +261,14 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		xdrmem_create(infoptr->segy_xdr, infoptr->buf, sizeof(segy), XDR_DECODE);
 		infoptr->bufstart = xdr_getpos(infoptr->segy_xdr);
 
-		/* retrieve segy trace header */
-		nread = efread(infoptr->buf ,1 ,HDRBYTES ,infoptr->infp);
+
+		if(infoptr->is_dfs){
+		    infoptr->size = read_dfs_file(infoptr->daos_out, infoptr->buf , HDRBYTES);
+		    nread = (int) infoptr->size;
+		} else {
+		    /* retrieve segy trace header */
+		    nread = efread(infoptr->buf ,1 ,HDRBYTES ,infoptr->infp);
+		}
 
 		if(nread != HDRBYTES || FALSE == xdrhdrsub(infoptr->segy_xdr,tp))
 			err("%s: bad first header", __FILE__);
@@ -251,7 +315,12 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 	} else { /* Not first entry */
 
 		  xdr_setpos(infoptr->segy_xdr, infoptr->bufstart);
-		  nread = efread(infoptr->buf ,1 ,HDRBYTES ,infoptr->infp);
+		  if(infoptr->is_dfs){
+		    infoptr->size = read_dfs_file(infoptr->daos_out, infoptr->buf , HDRBYTES);
+		    nread = (int) infoptr->size;
+		  } else {
+		    nread = efread(infoptr->buf ,1 ,HDRBYTES ,infoptr->infp);
+		  }
 		  if ( nread != HDRBYTES || FALSE == xdrhdrsub(infoptr->segy_xdr,tp)) nread=0;
 		  if(nread == HDRBYTES)
 			nread += dataread(infoptr, tp, fixed_length);
@@ -259,8 +328,6 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 			   lastfp = infoptr->infp;
 			   return 0;
 		  }
-
-
 
 		if (fixed_length && (tp->ns != infoptr->nsfirst))
 			err("%s: on trace #%ld, "

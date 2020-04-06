@@ -9,7 +9,17 @@
 #include <math.h>
 #include "su.h"
 #include "segy.h"
-
+#include "tapesegy.h"
+#include "tapebhdr.h"
+#include "bheader.h"
+#include "header.h"
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include "dfs_helper_api.h"
+#include "daos.h"
+#include "daos_fs.h"
 /*********************** self documentation *****************************/
 char *sdoc[] = {
 " SUTRCOUNT - SU program to count the TRaces in infile		",
@@ -32,7 +42,8 @@ NULL};
  */
 
 /**************** end self doc ********************************/
-   
+#define ENABLE_DFS 1
+
 /* Segy data constants */
 segy tr;				/* SEGY trace */
 
@@ -46,12 +57,19 @@ main(int argc, char **argv)
 
 	initargs(argc, argv);
    	requestdoc(1);
-	
+    init_dfs_api("cb78ebbe-7d42-4e5e-9ac5-50d8498c5e1d","0", "cb78ebbe-7d42-4e5e-9ac5-50d8498c5e13",0,1);
+    daos_size_t size;
+    DAOS_FILE *daos_outpar = malloc(sizeof(DAOS_FILE));
+
 	/* Get information from the first header */
 	if (!gettr(&tr)) err("can't get first trace");
 	if (!getparstring("outpar", &outpar))	outpar = "/dev/stdout" ;
-	
-	outparfp = efopen(outpar, "w");
+
+    if(ENABLE_DFS){
+        daos_outpar = open_dfs_file(outpar, 0666, 'w', 0);
+    } else {
+        outparfp = efopen(outpar, "w");
+    }
 
         checkpars();
 	/* Loop over traces getting a count */
@@ -60,6 +78,7 @@ main(int argc, char **argv)
 	} while(gettr(&tr));
 
 	fprintf(outparfp, "%d", ntr);
+    fini_dfs_api();
 
 	return(CWP_Exit());
 

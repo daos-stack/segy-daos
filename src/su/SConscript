@@ -3,7 +3,7 @@ Import('env')
 env.AppendUnique(CPPPATH=['include'])
 print("Calling Program('SU')")
 #libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
-#libraries = libraries + ['dfs','par','cwp','m']
+#libraries = libraries + ['dfs','par','cwp','m', 'dfs_helper']
 env.StaticLibrary('su',['elco_scalar.c',
 	'fgetgthr.c',
 	'fgethdr.c',
@@ -15,4 +15,4 @@ env.StaticLibrary('su',['elco_scalar.c',
 	'tabplot.c',
 	'valpkge.c',
 	'xdrbhdrsub.c',
-	'xdrhdrsub.c'], LIBS=['par','cwp','m'])
+	'xdrhdrsub.c'], LIBS=['par','cwp','m', 'dfs_helper'])

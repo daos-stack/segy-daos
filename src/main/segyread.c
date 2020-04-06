@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include "daos.h"
 #include "daos_fs.h"
+#include "dfs_helper_api.h"
 
 /*********************** self documentation **********************/
 char *sdoc[] = {
@@ -199,22 +200,6 @@ tapebhed tapebh;
 segy tr;
 bhed bh;
 
-void check_error_code(int error, int verbose, const char *message) {
-    if (error == 0 && verbose) {
-        warn("%s : Finished Successfully...\n", message);
-    } else {
-        warn("%s : Error in call with value %d...\n", message, error);
-        exit(0);
-    }
-}
-
-void initialize_daos_dfs(const char *pool_uid, const char *pool_svc_list, const char *container_uuid,
-                         int allow_creation, int verbose_output,
-                         daos_handle_t *poh, daos_handle_t *coh, dfs_t **dfs);
-void finalize_daos_dfs(daos_handle_t *poh, daos_handle_t *coh, dfs_t *dfs, int verbose_output);
-
-
-
 
 int
 main(int argc, char **argv)
@@ -280,14 +265,14 @@ main(int argc, char **argv)
     short nextended;
 
     /* Initialize */
-    daos_handle_t poh;
-    daos_handle_t coh;
-    dfs_t *dfs;
-    daos_oclass_id_t cid= OC_S1;
+//    daos_handle_t poh;
+//    daos_handle_t coh;
+//    dfs_t *dfs;
+//    daos_oclass_id_t cid= OC_S1;
+
     initargs(argc, argv);
     requestdoc(0); /* stdin not used */
-    initialize_daos_dfs("cb78ebbe-7d42-4e5e-9ac5-50d8498c5e1d","0","cb78ebbe-7d42-4e5e-9ac5-50d8498c5e13",1,verbose,&poh,&coh,&dfs);
-
+    init_dfs_api("cb78ebbe-7d42-4e5e-9ac5-50d8498c5e1d","0", "cb78ebbe-7d42-4e5e-9ac5-50d8498c5e13",0,1);
 
     /* Make sure stdout is a file or pipe */
     switch(filestat(STDOUT)) {
@@ -388,19 +373,19 @@ main(int argc, char **argv)
     }
 
 
-//    dfs_t *dfs;
-    dfs_obj_t *obj_tape =NULL;
-    dfs_obj_t *obj_header =NULL;
-    dfs_obj_t *obj_binary =NULL;
-//     dfs_obj_t *obj_pipe =NULL;
-    dfs_obj_t *obj_xheader =NULL;
     daos_size_t size;
+    DAOS_FILE *daos_tape = malloc(sizeof(DAOS_FILE));
+    DAOS_FILE *daos_header = malloc(sizeof(DAOS_FILE));
+    DAOS_FILE *daos_binary = malloc(sizeof(DAOS_FILE));
+    DAOS_FILE *daos_xheader = malloc(sizeof(DAOS_FILE));
 
     int error;
     /* Open files - first the tape */
     if(ENABLE_DFS){
-        if ( tape[0] == '-' && tape[1] == '\0' ) obj_tape = NULL;
-        else error = dfs_lookup(dfs, tape, O_RDONLY, &obj_tape,NULL,NULL);
+        if ( tape[0] == '-' && tape[1] == '\0' ) daos_tape->file = NULL;
+        else{
+            daos_tape = open_dfs_file(tape, 0444, 'r', 0);
+        }
     }else{
         if (buff) {
             if ( tape[0] == '-' && tape[1] == '\0' ) tapefd = 0;
@@ -412,10 +397,12 @@ main(int argc, char **argv)
     }
 
     if(ENABLE_DFS){
-        error = dfs_open(dfs, NULL, hfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_header);
-        if(error ==0 && verbose) warn("header file opened successfully in dfs");
-        error = dfs_open(dfs, NULL, bfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_binary);
-        if(error ==0 && verbose) warn("binary file opened successfully in dfs ");
+        daos_header = open_dfs_file(hfile, 0444, 'w', 0);
+//        error = dfs_open(dfs, NULL, hfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_header);
+//        if(error ==0 && verbose) warn("header file opened successfully in dfs");
+        daos_binary = open_dfs_file(bfile, 0444, 'w', 0);
+//        error = dfs_open(dfs, NULL, bfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_binary);
+//        if(error ==0 && verbose) warn("binary file opened successfully in dfs ");
     }else{
         /* - the ebcdic header file in ascii */
         headerfp = efopen(hfile, "w");
@@ -430,22 +417,22 @@ main(int argc, char **argv)
 
     /* Read the ebcdic raw bytes from the tape into the buffer */
     if(ENABLE_DFS){
-        d_iov_t iov;
-        d_sg_list_t sgl;
-        //    char *ebcdic_buff= malloc(EBCBYTES);
-        sgl.sg_nr = 1;
-        sgl.sg_nr_out = 0;
-        d_iov_set(&iov, (void *)ebcbuf, EBCBYTES);
-        sgl.sg_iovs = &iov;
-        error = dfs_read(dfs,obj_tape, &sgl, 0, &size, 0);
-        result = size;
-        if(error != 0){
-            SEGYREAD_TAPE_ERROR("ebcdic header");
-        }
-        else {
-            errcount = 0;
-        }
-
+//        d_iov_t iov;
+//        d_sg_list_t sgl;
+//        //    char *ebcdic_buff= malloc(EBCBYTES);
+//        sgl.sg_nr = 1;
+//        sgl.sg_nr_out = 0;
+//        d_iov_set(&iov, (void *)ebcbuf, EBCBYTES);
+//        sgl.sg_iovs = &iov;
+//        error = dfs_read(dfs,obj_tape, &sgl, 0, &size, 0);
+//        result = size;
+//        if(error != 0){
+//            SEGYREAD_TAPE_ERROR("ebcdic header");
+//        }
+//        else {
+//            errcount = 0;
+//        }
+        size = read_dfs_file(daos_tape, ebcbuf, EBCBYTES);
     }else{
         if (buff) {
             if (-1 == (int) read(tapefd, ebcbuf, EBCBYTES)) {
@@ -502,21 +489,23 @@ main(int argc, char **argv)
 
 
     if(ENABLE_DFS){
-        d_iov_t iov;
-        d_sg_list_t sgl;
-        char *bin_buff= (char *) &tapebh;
-        sgl.sg_nr = 1;
-        sgl.sg_nr_out = 0;
-        d_iov_set(&iov, (void *)bin_buff, BNYBYTES);
-        sgl.sg_iovs = &iov;
-        error = dfs_read(dfs,obj_tape, &sgl, EBCBYTES, &size, 0);
-        result = size;
-        if(error != 0){
-            SEGYREAD_TAPE_ERROR("binary header");
-        }
-        else {
-            errcount = 0;
-        }
+//        d_iov_t iov;
+//        d_sg_list_t sgl;
+//        char *bin_buff= (char *) &tapebh;
+//        sgl.sg_nr = 1;
+//        sgl.sg_nr_out = 0;
+//        d_iov_set(&iov, (void *)bin_buff, BNYBYTES);
+//        sgl.sg_iovs = &iov;
+//        error = dfs_read(dfs,obj_tape, &sgl, EBCBYTES, &size, 0);
+//        result = size;
+//        if(error != 0){
+//            SEGYREAD_TAPE_ERROR("binary header");
+//        }
+//        else {
+//            errcount = 0;
+//        }
+        size = read_dfs_file(daos_tape, (char *) &tapebh, BNYBYTES);
+
     }else{
         /* Read binary header from tape to bh structure */
         if (buff) {
@@ -533,7 +522,8 @@ main(int argc, char **argv)
             } else { /* Reset counter on successful tape IO */
                 errcount = 0;
             }
-        }}
+        }
+    }
 
     /* Convert from bytes to ints/shorts */
     tapebhed_to_bhed(&tapebh, &bh);
@@ -592,25 +582,27 @@ main(int argc, char **argv)
 
 
     if(ENABLE_DFS){
-        d_iov_t iov;
-        d_sg_list_t sgl;
+//        d_iov_t iov;
+//        d_sg_list_t sgl;
+//
+//        /** set memory location */
+//        sgl.sg_nr = 1;
+//        sgl.sg_nr_out = 0;
+//        char * binbuf = (char *) &bh;
+//        d_iov_set(&iov, (void *)binbuf, BNYBYTES);
+//        sgl.sg_iovs = &iov;
+//        error = dfs_write(dfs, obj_binary, &sgl, 0, NULL);
+        write_dfs_file(daos_binary, (char *) &bh, BNYBYTES);
+        close_dfs_file(daos_binary);
+        close_dfs_file(daos_header);
+//        error = dfs_release(obj_binary);
+//        if(error == 0 && verbose) warn("binary file closed successfully in dfs");
 
-        /** set memory location */
-        sgl.sg_nr = 1;
-        sgl.sg_nr_out = 0;
-        char * binbuf = (char *) &bh;
-        d_iov_set(&iov, (void *)binbuf, BNYBYTES);
-        sgl.sg_iovs = &iov;
-        error = dfs_write(dfs, obj_binary, &sgl, 0, NULL);
-
-        error = dfs_release(obj_binary);
-        if(error == 0 && verbose) warn("binary file closed successfully in dfs");
-
-        error = dfs_release(obj_header);
+//        error = dfs_release(obj_header);
    //     if(error ==0) warn("Released header object");
       //  error = dfs_release(obj_pipe);
         epclose(pipefp);
-        if(error == 0 && verbose) warn("header file closed successfully in dfs");
+//        if(error == 0 && verbose) warn("header file closed successfully in dfs");
 
     }else{
         /* Write binary header from bhed structure to binary file */
@@ -639,8 +631,9 @@ main(int argc, char **argv)
         /* so test should actually be !=0, but ... */
 
         if(ENABLE_DFS){
-            error = dfs_open(dfs, NULL, xfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_xheader);
-            if(error==0 && verbose) warn("extended text header file opened successfully");
+//            error = dfs_open(dfs, NULL, xfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_xheader);
+//            if(error==0 && verbose) warn("extended text header file opened successfully");
+            daos_xheader = open_dfs_file(xfile, 0666, 'w', 1);
         }else{
             /* open the extended text header file in whatever it's in */
             xheaderfp = efopen(xfile, "w");
@@ -654,22 +647,25 @@ main(int argc, char **argv)
             /* Read the bytes from the tape for one xhdr into the
              * buffer */
             if(ENABLE_DFS){
-                d_iov_t iov;
-                d_sg_list_t sgl;
-                //    char *ebcdic_buff= malloc(EBCBYTES);
-                sgl.sg_nr = 1;
-                sgl.sg_nr_out = 0;
-                d_iov_set(&iov, (void *)ebcbuf, EBCBYTES);
-                sgl.sg_iovs = &iov;
-                error = dfs_read(dfs,obj_tape, &sgl, (EBCBYTES +BNYBYTES)+ (i*EBCBYTES) , &size, 0);
-                result = size;
-                if(error != 0){
-                    SEGYREAD_TAPE_ERROR("extended text header in dfs");
-                }
-                else {
-                    errcount = 0;
-                }
-                error = dfs_write(dfs, obj_xheader, &sgl, (i*EBCBYTES), NULL);
+//                d_iov_t iov;
+//                d_sg_list_t sgl;
+//                //    char *ebcdic_buff= malloc(EBCBYTES);
+//                sgl.sg_nr = 1;
+//                sgl.sg_nr_out = 0;
+//                d_iov_set(&iov, (void *)ebcbuf, EBCBYTES);
+//                sgl.sg_iovs = &iov;
+//                error = dfs_read(dfs,obj_tape, &sgl, (EBCBYTES +BNYBYTES)+ (i*EBCBYTES) , &size, 0);
+                size = read_dfs_file(daos_tape, ebcbuf, EBCBYTES);
+//                result = size;
+//                if(error != 0){
+//                    SEGYREAD_TAPE_ERROR("extended text header in dfs");
+//                }
+//                else {
+//                    errcount = 0;
+//                }
+//                error = dfs_write(dfs, obj_xheader, &sgl, (i*EBCBYTES), NULL);
+                write_dfs_file(daos_xheader, ebcbuf, EBCBYTES);
+
             }else{
                 if (buff) {
                     if (-1 == (int) read(tapefd, ebcbuf, EBCBYTES)) {
@@ -693,8 +689,10 @@ main(int argc, char **argv)
         }
 
         if(ENABLE_DFS){
-            error = dfs_release(obj_xheader);
-            if(error==0 && verbose) warn("extended text header file closed successfully in dfs");
+            close_dfs_file(daos_xheader);
+//
+//            error = dfs_release(obj_xheader);
+//            if(error==0 && verbose) warn("extended text header file closed successfully in dfs");
         }else{
             /* Close extended text header file */
             efclose(xheaderfp);
@@ -708,21 +706,22 @@ main(int argc, char **argv)
     while (itr < trmax) {
         int nread;
         if(ENABLE_DFS){
-            d_iov_t iov;
-            d_sg_list_t sgl;
-            char *tapetr_buff= (char *) &tapetr;
-            sgl.sg_nr = 1;
-            sgl.sg_nr_out = 0;
-            d_iov_set(&iov, (void *)tapetr_buff, nsegy);
-            sgl.sg_iovs = &iov;
-            error = dfs_read(dfs,obj_tape, &sgl,EBCBYTES + BNYBYTES +(nextended*EBCBYTES) + (itr *nsegy), &size, 0);
-            nread = size;
-            if(error != 0){
-                SEGYREAD_TAPE_ERROR_TRACE(itr);
-            }
-            else {
-                errcount = 0;
-            }
+//            d_iov_t iov;
+//            d_sg_list_t sgl;
+//            char *tapetr_buff= (char *) &tapetr;
+//            sgl.sg_nr = 1;
+//            sgl.sg_nr_out = 0;
+//            d_iov_set(&iov, (void *)tapetr_buff, nsegy);
+//            sgl.sg_iovs = &iov;
+//            error = dfs_read(dfs,obj_tape, &sgl,EBCBYTES + BNYBYTES +(nextended*EBCBYTES) + (itr *nsegy), &size, 0);
+//            nread = size;
+//            if(error != 0){
+//                SEGYREAD_TAPE_ERROR_TRACE(itr);
+//            }
+//            else {
+//                errcount = 0;
+//            }
+            size = read_dfs_file(daos_tape, (char *) &tapetr, nsegy);
         }else{
             if (buff) {
                 if (-1 ==
@@ -866,8 +865,9 @@ main(int argc, char **argv)
 
 
     if(ENABLE_DFS){
-        error=dfs_release(obj_tape);
-        if(error==0 && verbose) warn("tape closed successfully in dfs");
+        close_dfs_file(daos_tape);
+//        error=dfs_release(obj_tape);
+//        if(error==0 && verbose) warn("tape closed successfully in dfs");
     }else{
         /* Clean up (binary & header files already closed above) */
         (buff) ? eclose(tapefd):
@@ -879,8 +879,8 @@ main(int argc, char **argv)
     free(cmdbuf);
     free(ebcbuf);
     free(key1);
-    finalize_daos_dfs(&poh,&coh,dfs,verbose);
-
+//    finalize_daos_dfs(&poh,&coh,dfs,verbose);
+    fini_dfs_api();
     return(CWP_Exit());
 }
 
@@ -1222,65 +1222,3 @@ void ugethval(cwp_String type1, Value *valp1,
 
 #undef SEGYREAD_TAPE_ERROR
 #undef SEGYREAD_TAPE_ERROR_TRACE
-void initialize_daos_dfs(const char *pool_uid, const char *pool_svc_list, const char *container_uuid,
-                         int allow_creation, int verbose_output,
-                         daos_handle_t *poh, daos_handle_t *coh, dfs_t **dfs) {
-    // Pool UUID
-    uuid_t po_uuid;
-    // Container UUID
-    uuid_t co_uuid;
-    // Pool service replica ranks
-    d_rank_list_t *svc = NULL;
-    // Initialize DAOS API.
-    check_error_code(daos_init(), verbose_output, "Initializing DAOS API Library");
-    // Parse Pool UUID.
-    int error = uuid_parse(pool_uid, po_uuid);
-    if(po_uuid == NULL){
-        warn("Error parsing pool uuid : %d\n", error);
-        exit(0);
-    }
-    if (verbose_output) {
-        warn("Pool UUID : %s \n", pool_uid);
-    }
-    // Parse Pool service replica ranks.
-    svc = daos_rank_list_parse(pool_svc_list, ":");
-    if(svc == NULL){
-        warn("Error parsing rank list : %d\n ", error);
-        exit(0);
-    }
-    check_error_code(daos_pool_connect(po_uuid, 0, svc, DAOS_PC_RW, poh, NULL, NULL), verbose_output, "Connecting To Pool");
-    // Parse Container UUID.
-    error = uuid_parse(container_uuid, co_uuid);
-    if(co_uuid == NULL){
-        warn("Error parsing container uuid : %d \n", error);
-        exit(0);
-    }
-    if (verbose_output) {
-        warn("Container UUID : %s \n", container_uuid);
-    }
-    // Open Container
-    error = daos_cont_open(*poh, co_uuid, DAOS_COO_RW, coh, NULL, NULL);
-    if (error == 0 && verbose_output) {
-        warn("Container opened successfully...\n");
-    } else if (error == -DER_NONEXIST){
-        if (allow_creation) {
-            // Create container if it doesn't exist and you are allowed to do that.
-            check_error_code(dfs_cont_create(*poh, co_uuid, NULL, coh, NULL), verbose_output, "Creating Container");
-        } else {
-            warn("Container doesn't exist...\n");
-            exit(0);
-        }
-    } else {
-        check_error_code(error, verbose_output, "Opening Container");
-    }
-    // Mounting DFS system.
-    check_error_code(dfs_mount(*poh, *coh, O_RDWR, dfs), verbose_output, "Mounting DFS to DAOS");
-}
-
-
-void finalize_daos_dfs(daos_handle_t *poh, daos_handle_t *coh, dfs_t *dfs, int verbose_output) {
-    check_error_code(dfs_umount(dfs), verbose_output, "Unmounting DFS");
-    check_error_code(daos_cont_close(*coh, 0), verbose_output, "Closing Container");
-    check_error_code(daos_pool_disconnect( *poh, NULL), verbose_output, "Closing Pool Connection");
-    check_error_code(daos_fini(), verbose_output, "Finalizing DAOS API Library");
-}

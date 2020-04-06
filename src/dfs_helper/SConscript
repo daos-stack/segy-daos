@@ -4,5 +4,5 @@ Import('env')
 print("Calling Program('DFS_HELPER_API')")
 libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
 libraries = libraries + ['dfs']
-env.StaticLibrary('dfs_helper','dfs_helper_api.c',LIBS=libraries)
+env.SharedLibrary('dfs_helper','dfs_helper_api.c',LIBS=libraries)
 
