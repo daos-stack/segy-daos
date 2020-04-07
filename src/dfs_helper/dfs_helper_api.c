@@ -16,8 +16,8 @@
 #define warn1(x) fprintf(stderr,x)
 #define warn2(x,y) fprintf(stderr,x,y)
 #define warn3(x,y,z) fprintf(stderr,x,y,z)
-static daos_handle_t *poh;
-static daos_handle_t *coh;
+static daos_handle_t poh;
+static daos_handle_t coh;
 static dfs_t *dfs;
 static int verbose_output;
 
@@ -67,7 +67,7 @@ void init_dfs_api(const char *pool_uid, const char *pool_svc_list, const char *c
         warn("Error parsing rank list : %d\n ", err);
         exit(0);
     }
-    check_error_code(daos_pool_connect(po_uuid, 0, svc, DAOS_PC_RW, poh, NULL, NULL), "Connecting To Pool");
+    check_error_code(daos_pool_connect(po_uuid, 0, svc, DAOS_PC_RW, &poh, NULL, NULL), "Connecting To Pool");
     // Parse Container UUID.
     err = uuid_parse(container_uuid, co_uuid);
     if(co_uuid == NULL){
@@ -78,13 +78,13 @@ void init_dfs_api(const char *pool_uid, const char *pool_svc_list, const char *c
         warn("Container UUID : %s \n", container_uuid);
     }
     // Open Container
-    err = daos_cont_open(*poh, co_uuid, DAOS_COO_RW, coh, NULL, NULL);
+    err = daos_cont_open(poh, co_uuid, DAOS_COO_RW, &coh, NULL, NULL);
     if (err == 0 && verbose_output) {
         warn("Container opened successfully...\n");
     } else if (err == -DER_NONEXIST){
         if (allow_creation) {
             // Create container if it doesn't exist and you are allowed to do that.
-            check_error_code(dfs_cont_create(*poh, co_uuid, NULL, coh, NULL), "Creating Container");
+            check_error_code(dfs_cont_create(poh, co_uuid, NULL, &coh, NULL), "Creating Container");
         } else {
             warn("Container doesn't exist...\n");
             exit(0);
@@ -93,23 +93,40 @@ void init_dfs_api(const char *pool_uid, const char *pool_svc_list, const char *c
         check_error_code(err, "Opening Container");
     }
     // Mounting DFS system.
-    check_error_code(dfs_mount(*poh, *coh, O_RDWR, &dfs), "Mounting DFS to DAOS");
+    check_error_code(dfs_mount(poh, coh, O_RDWR, &dfs), "Mounting DFS to DAOS");
 }
 
 int dfs_file_exists(const char *file_directory){
-    dfs_obj_t *parent = NULL;
-    int err = dfs_lookup(dfs, file_directory, O_RDWR, &parent, NULL, NULL);
-    if (err == 0) {
-        if (verbose_output) {
-            warn("Directory '%s'already exist \n", file_directory);
+    if (file_directory[0] == '/') {
+        dfs_obj_t *parent = NULL;
+        int err = dfs_lookup(dfs, file_directory, O_RDWR, &parent, NULL, NULL);
+        if (err == 0) {
+            if (verbose_output) {
+                warn("Directory '%s'already exist \n", file_directory);
+            }
+            dfs_release(parent);
+            return 1;
+        } else {
+            if (verbose_output) {
+                warn("Directory '%s' doesn't exist \n", file_directory);
+            }
+            return 0;
         }
-        dfs_release(parent);
-        return 1;
     } else {
-        if (verbose_output) {
-            warn("Directory '%s' doesn't exist \n", file_directory);
+        dfs_obj_t *parent = NULL;
+        int err = dfs_lookup_rel(dfs, NULL, file_directory, O_RDWR, &parent, NULL, NULL);
+        if (err == 0) {
+            if (verbose_output) {
+                warn("File '%s'already exist \n", file_directory);
+            }
+            dfs_release(parent);
+            return 1;
+        } else {
+            if (verbose_output) {
+                warn("File '%s' doesn't exist \n", file_directory);
+            }
+            return 0;
         }
-        return 0;
     }
 }
 
@@ -251,7 +268,7 @@ void close_dfs_file(DAOS_FILE *file){
 
 void fini_dfs_api(){
     check_error_code(dfs_umount(dfs), "Unmounting DFS");
-    check_error_code(daos_cont_close(*coh, 0), "Closing Container");
-    check_error_code(daos_pool_disconnect( *poh, NULL), "Closing Pool Connection");
+    check_error_code(daos_cont_close(coh, 0), "Closing Container");
+    check_error_code(daos_pool_disconnect( poh, NULL), "Closing Pool Connection");
     check_error_code(daos_fini(), "Finalizing DAOS API Library");
 }

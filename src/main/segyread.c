@@ -272,7 +272,7 @@ main(int argc, char **argv)
 
     initargs(argc, argv);
     requestdoc(0); /* stdin not used */
-    init_dfs_api("cb78ebbe-7d42-4e5e-9ac5-50d8498c5e1d","0", "cb78ebbe-7d42-4e5e-9ac5-50d8498c5e13",0,1);
+    init_dfs_api("8c83156e-598b-4546-b6b8-f342df715e02","0", "8c83156e-598b-4546-b6b8-f342df715e00",0,1);
 
     /* Make sure stdout is a file or pipe */
     switch(filestat(STDOUT)) {
@@ -374,17 +374,17 @@ main(int argc, char **argv)
 
 
     daos_size_t size;
-    DAOS_FILE *daos_tape = malloc(sizeof(DAOS_FILE));
-    DAOS_FILE *daos_header = malloc(sizeof(DAOS_FILE));
-    DAOS_FILE *daos_binary = malloc(sizeof(DAOS_FILE));
-    DAOS_FILE *daos_xheader = malloc(sizeof(DAOS_FILE));
+    DAOS_FILE *daos_tape;
+    DAOS_FILE *daos_header;
+    DAOS_FILE *daos_binary;
+    DAOS_FILE *daos_xheader;
 
     int error;
     /* Open files - first the tape */
     if(ENABLE_DFS){
         if ( tape[0] == '-' && tape[1] == '\0' ) daos_tape->file = NULL;
         else{
-            daos_tape = open_dfs_file(tape, 0444, 'r', 0);
+            daos_tape = open_dfs_file(tape, S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
         }
     }else{
         if (buff) {
@@ -397,10 +397,10 @@ main(int argc, char **argv)
     }
 
     if(ENABLE_DFS){
-        daos_header = open_dfs_file(hfile, 0444, 'w', 0);
+        daos_header = open_dfs_file(hfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
 //        error = dfs_open(dfs, NULL, hfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_header);
 //        if(error ==0 && verbose) warn("header file opened successfully in dfs");
-        daos_binary = open_dfs_file(bfile, 0444, 'w', 0);
+        daos_binary = open_dfs_file(bfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
 //        error = dfs_open(dfs, NULL, bfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_binary);
 //        if(error ==0 && verbose) warn("binary file opened successfully in dfs ");
     }else{
@@ -633,7 +633,7 @@ main(int argc, char **argv)
         if(ENABLE_DFS){
 //            error = dfs_open(dfs, NULL, xfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_xheader);
 //            if(error==0 && verbose) warn("extended text header file opened successfully");
-            daos_xheader = open_dfs_file(xfile, 0666, 'w', 1);
+            daos_xheader = open_dfs_file(xfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
         }else{
             /* open the extended text header file in whatever it's in */
             xheaderfp = efopen(xfile, "w");
@@ -722,6 +722,7 @@ main(int argc, char **argv)
 //                errcount = 0;
 //            }
             size = read_dfs_file(daos_tape, (char *) &tapetr, nsegy);
+            nread = size;
         }else{
             if (buff) {
                 if (-1 ==

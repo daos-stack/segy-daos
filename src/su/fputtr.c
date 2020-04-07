@@ -327,7 +327,7 @@ void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 //            }else{
 //                warn("dfs_open failed \n");
 //            }
-            infoptr->daos_out = open_dfs_file(infoptr->fname, 0666, 'w', 1);
+            infoptr->daos_out = open_dfs_file(infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
         break;
 		default:  /* the rest are ok */
 		break;

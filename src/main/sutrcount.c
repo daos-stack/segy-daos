@@ -57,16 +57,16 @@ main(int argc, char **argv)
 
 	initargs(argc, argv);
    	requestdoc(1);
-    init_dfs_api("cb78ebbe-7d42-4e5e-9ac5-50d8498c5e1d","0", "cb78ebbe-7d42-4e5e-9ac5-50d8498c5e13",0,1);
+    init_dfs_api("8c83156e-598b-4546-b6b8-f342df715e02","0", "8c83156e-598b-4546-b6b8-f342df715e00",0,1);
     daos_size_t size;
-    DAOS_FILE *daos_outpar = malloc(sizeof(DAOS_FILE));
+    DAOS_FILE *daos_outpar;
 
 	/* Get information from the first header */
 	if (!gettr(&tr)) err("can't get first trace");
 	if (!getparstring("outpar", &outpar))	outpar = "/dev/stdout" ;
 
-    if(ENABLE_DFS){
-        daos_outpar = open_dfs_file(outpar, 0666, 'w', 0);
+    if(ENABLE_DFS && strcmp(outpar, "/dev/stdout") != 0) {
+        daos_outpar = open_dfs_file(outpar, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
     } else {
         outparfp = efopen(outpar, "w");
     }

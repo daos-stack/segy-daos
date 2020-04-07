@@ -139,6 +139,7 @@ void get_file_name(){
         sprintf(path, "/proc/self/fd/%d", fd);
         memset(result, 0, sizeof(result));
         int error= readlink(path, result, sizeof(result)-1);
+
         char* token = strtok(result, "/");
         char* temp = token;
         while (token != NULL) {
@@ -166,8 +167,7 @@ int dataread(struct insegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 	case CHARPACK:
 	    if(infoptr->is_dfs){
 		    infoptr->size = read_dfs_file(infoptr->daos_out, (char *) (&((tp->data)[0])) , databytes);
-		    infoptr->size = get_dfs_file_size(infoptr->daos_out);
-            nread = (int)infoptr->size - infoptr->bytes_read;
+		    nread = (int)infoptr->size;
             infoptr->bytes_read += nread;
 		} else {
 		nread = efread((char *) (&((tp->data)[0])),1,databytes,
@@ -176,8 +176,7 @@ int dataread(struct insegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 	case SHORTPACK:
 	    if(infoptr->is_dfs){
 		    infoptr->size = read_dfs_file(infoptr->daos_out, (char *) (&((tp->data)[0])) , databytes);
-		    infoptr->size = get_dfs_file_size(infoptr->daos_out);
-            nread = (int)infoptr->size - infoptr->bytes_read;
+            nread = (int)infoptr->size;
             infoptr->bytes_read += nread;
 		} else {
     		nread = efread((char *) (&((tp->data)[0])),1,databytes,
@@ -190,8 +189,7 @@ int dataread(struct insegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 	default:
 	     if(infoptr->is_dfs){
 		    infoptr->size = read_dfs_file(infoptr->daos_out, ((char *) (iptr->buf))+HDRBYTES , databytes);
-		    infoptr->size = get_dfs_file_size(infoptr->daos_out);
-            nread = (int)infoptr->size - infoptr->bytes_read;
+            nread = (int)infoptr->size;
             infoptr->bytes_read += nread;
 		  } else {
     		nread = efread(((char *) (iptr->buf))+HDRBYTES,1,databytes,
@@ -252,7 +250,7 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		case DISK:
 		    infoptr->is_dfs = 1;
             get_file_name();
-            infoptr->daos_out = open_dfs_file(infoptr->fname, 0444, 'r', 0);
+            infoptr->daos_out = open_dfs_file(infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
 		default: /* the rest are ok */
 		break;
 		}
