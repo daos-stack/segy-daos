@@ -26,7 +26,10 @@ char *sdoc[] = {
 "       							",
 "   sutrcount < infile					     	",
 " Required parameters:						",
-"       none							",
+" pool=			pool uuid to connect		        ",
+" container=		container uuid to connect		",
+" svc=			service ranklist of pool seperated by : ",
+"								",
 " Optional parameter:						",
 "    outpar=stdout						",
 " Notes:       							",
@@ -54,10 +57,17 @@ main(int argc, char **argv)
 	int ntr=0;		/* number of traces			*/
 	char *outpar=NULL;	/* name of file holding output		*/
 	FILE *outparfp=stdout;	/* ... its file pointer			*/
+	char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
 
 	initargs(argc, argv);
    	requestdoc(1);
-    init_dfs_api("8c83156e-598b-4546-b6b8-f342df715e02","0", "8c83156e-598b-4546-b6b8-f342df715e00",0,1);
+
+   	MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
     daos_size_t size;
     DAOS_FILE *daos_outpar;
 
