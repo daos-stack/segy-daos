@@ -28,7 +28,10 @@ char *sdoc[] = {
         "   SEG-Y data stream ... | segyread tape=-  > stdout			",
         "									",
         " Required parameter:							",
-        " tape=		input tape device or seg-y filename (see notes)		",
+        " tape=			input tape device or seg-y filename (see notes)		",
+        " pool=			pool uuid to connect		",
+        " container=	container uuid to connect		",
+        " svc=			service ranklist of pool seperated by :		",
         "									",
         " Optional parameters:							",
         " buff=1	for buffered device (9-track reel tape drive)		",
@@ -205,6 +208,9 @@ int
 main(int argc, char **argv)
 {
     char *tape;		/* name of raw tape device	*/
+    char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
     char *bfile;		/* name of binary header file	*/
     char *hfile;		/* name of ascii header file	*/
     char *xfile;		/* name of extended header file	*/
@@ -272,7 +278,7 @@ main(int argc, char **argv)
 
     initargs(argc, argv);
     requestdoc(0); /* stdin not used */
-    init_dfs_api("8c83156e-598b-4546-b6b8-f342df715e02","0", "8c83156e-598b-4546-b6b8-f342df715e00",0,1);
+    
 
     /* Make sure stdout is a file or pipe */
     switch(filestat(STDOUT)) {
@@ -291,6 +297,10 @@ main(int argc, char **argv)
 
     /* Set filenames */
     MUSTGETPARSTRING("tape",  &tape);
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
     if (!getparstring("hfile", &hfile))	hfile = "header";
     if (!getparstring("bfile", &bfile))	bfile = "binary";
     if (!getparstring("xfile", &xfile))	xfile = "xhdrs";
