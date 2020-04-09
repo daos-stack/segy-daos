@@ -24,7 +24,7 @@
 char *sdoc[] = {
 " SUTRCOUNT - SU program to count the TRaces in infile		",
 "       							",
-"   sutrcount < infile					     	",
+"   sutrcount pool=uuid container=uuid svc=r0:r1:r2 < infile					     	",
 " Required parameters:						",
 " pool=			pool uuid to connect		        ",
 " container=		container uuid to connect		",

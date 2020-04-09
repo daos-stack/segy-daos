@@ -21,7 +21,7 @@ char *sdoc[] = {
         "									",
         " SEGYREAD - read an SEG-Y tape						",
         "									",
-        "   segyread > stdout tape=						",
+        "   segyread pool=uuid container=uuid svc=r0:r1:r2 > stdout tape=						",
         "									",
         "   or									",
         "									",
