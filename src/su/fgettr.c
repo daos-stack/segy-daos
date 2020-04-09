@@ -103,13 +103,8 @@ static struct insegyinfo {
 	XDR *segy_xdr;		     /* allocated XDR structure  */
 	char *buf;		     /* buffer for trace I/O     */
 	size_t bufstart;	     /* "offset" of start of buf */
-	//	dfs_obj_t *obj_out;
-    //dfs_t *dfs;
     daos_size_t size;
     DAOS_FILE *daos_out;
-   // daos_handle_t poh;
-    //daos_handle_t coh;
-    //daos_oclass_id_t cid;
     int bytes_read;
     int is_dfs;
     char fname[1024];

@@ -94,13 +94,8 @@ static struct outsegyinfo {
 	XDR *segy_xdr;		      /* allocated XDR structure 	*/
 	char *buf;		  /* buffer for trace I/O	*/
 	unsigned int bufstart;  /* "offset" of start of buf	*/
-//	dfs_obj_t *obj_out;
-    //dfs_t *dfs;
     daos_size_t size;
     DAOS_FILE *daos_out;
-   // daos_handle_t poh;
-    //daos_handle_t coh;
-    //daos_oclass_id_t cid;
     int bytes_written;
     int is_dfs;
     char fname[1024];
@@ -153,78 +148,29 @@ int datawrite(struct outsegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 	switch(tp->trid) {
 	case CHARPACK:
 	    if(infoptr->is_dfs){
-//	        d_iov_t iov;
-//        d_sg_list_t sgl;
-//
-//        /** set memory location */
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        char * tpbuf = (char *) &((tp->data)[0]);
-//        d_iov_set(&iov, (void *)tpbuf, databytes);
-//        sgl.sg_iovs = &iov;
-//        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
-//        if(error ==0){
-//            warn("Charpack dfs write passed");
-//        }else{
-//            warn("Charpack dfs write failed");
-//        }
-//        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
-//        if(error ==0){
-//            warn("Charpack dfs get size passed");
-//        }else{
-//            warn("Charpack dfs get size failed");
-//        }
-        write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
-        infoptr->size = get_dfs_file_size(infoptr->daos_out);
-
-        nwritten = (int)infoptr->size - infoptr->bytes_written;
-        infoptr->bytes_written += nwritten;
-         warn("trace bytes written=  %d",nwritten);
-        warn("total bytes written=  %d",infoptr->bytes_written);
+	        write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
+	        infoptr->size = get_dfs_file_size(infoptr->daos_out);
+	        nwritten = (int)infoptr->size - infoptr->bytes_written;
+	        infoptr->bytes_written += nwritten;
 	    }else{
-		nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
-				  iptr->outfp);
+			nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
+					  iptr->outfp);
 		}
 	case SHORTPACK:
 		if(ctest[0]) swab((char *) (&((tp->data)[0])),
 				 (char *) (&((tp->data)[0])),
 				  databytes);
 		if(infoptr->is_dfs){
-//	        d_iov_t iov;
-//        d_sg_list_t sgl;
-//
-//        /** set memory location */
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        char * tpbuf = (char *) &((tp->data)[0]);
-//        d_iov_set(&iov, (void *)tpbuf, databytes);
-//        sgl.sg_iovs = &iov;
-//        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
-//        if(error ==0){
-//            warn("shortpack dfs write passed");
-//        }else{
-//            warn("shortpack dfs write failed");
-//        }
-//        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
-//        if(error ==0){
-//            warn("shortpack dfs get size passed");
-//        }else{
-//            warn("shortpack dfs get size failed");
-//        }
-        write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
-        infoptr->size = get_dfs_file_size(infoptr->daos_out);
+	        write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
+	        infoptr->size = get_dfs_file_size(infoptr->daos_out);
 
-        nwritten = (int)infoptr->size - infoptr->bytes_written;
-        infoptr->bytes_written += nwritten;
-         warn("trace bytes written=  %d",nwritten);
-        warn("total bytes written=  %d",infoptr->bytes_written);
-
+	        nwritten = (int)infoptr->size - infoptr->bytes_written;
+	        infoptr->bytes_written += nwritten;
 	    }else{
-		nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
+			nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
 				  iptr->outfp);
 		}
-
-	break;
+		break;
 	default:
 		if(FALSE == xdr_vector(iptr->segy_xdr,
 					(char *) (&((tp->data)[0])),
@@ -234,39 +180,14 @@ int datawrite(struct outsegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 			nwritten = databytes;
 		if(nwritten > 0) {
 		   if(infoptr->is_dfs){
-//	        d_iov_t iov;
-//        d_sg_list_t sgl;
-//
-//        /** set memory location */
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        char * tpbuf = ((char *) (iptr->buf))+HDRBYTES;
-//     //   iptr->buf = tpbuf;
-//        d_iov_set(&iov, (void *)tpbuf, databytes);
-//        sgl.sg_iovs = &iov;
-//        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
-//        if(error ==0){
-//            warn("default dfs write passed");
-//        }else{
-//            warn("default dfs write failed");
-//        }
-//        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
-//        if(error ==0){
-//            warn("default dfs get size passed");
-//        }else{
-//            warn("default dfs get size failed");
-//        }
+		        write_dfs_file(infoptr->daos_out, ((char *) (iptr->buf))+HDRBYTES, databytes);
+		        infoptr->size = get_dfs_file_size(infoptr->daos_out);
 
-        write_dfs_file(infoptr->daos_out, ((char *) (iptr->buf))+HDRBYTES, databytes);
-        infoptr->size = get_dfs_file_size(infoptr->daos_out);
-
-        nwritten = (int)infoptr->size - infoptr->bytes_written;
-        infoptr->bytes_written += nwritten;
-         warn("trace bytes written=  %d",nwritten);
-        warn("total bytes written=  %d",infoptr->bytes_written);
+		        nwritten = (int)infoptr->size - infoptr->bytes_written;
+		        infoptr->bytes_written += nwritten;
 
 		   }else{
-	    nwritten =efwrite(((char *) (iptr->buf))+HDRBYTES,1,databytes,iptr->outfp);
+	    		nwritten =efwrite(((char *) (iptr->buf))+HDRBYTES,1,databytes,iptr->outfp);
 		   }
 		}
 		if(nwritten != databytes) nwritten = 0;
@@ -300,8 +221,6 @@ void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		infoptr->is_dfs = 0;
 		infoptr->bytes_written =0;
         infoptr->daos_out = malloc(sizeof(DAOS_FILE));
-//		infoptr->obj_out =NULL;
-		//infoptr->cid = OC_S1;
 		/* allocate XDR struct and associate FILE * ptr */
 		infoptr->segy_xdr = (XDR *) malloc(sizeof(XDR));
 		
@@ -312,21 +231,8 @@ void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 			err("%s: segy output can't be tty", __FILE__);
 		break;
 		case DISK:
-		          //       err("%s: segy output is file ", infoptr->fname);
 		    infoptr->is_dfs = 1;
-           //  err("%s: segy output is file ", infoptr->fname);
             get_file_name();
-         //    err("%s: seg
-         //    y output is file ", infoptr->fname);
-         //   infoptr->cid = OC_S1;
-            //infoptr->obj_out =NULL;
-//            initialize_daos_dfs_puttr("cb78ebbe-7d42-4e5e-9ac5-50d8498c5e1d","0","cb78ebbe-7d42-4e5e-9ac5-50d8498c5e13",1,1,&(infoptr->poh),&(infoptr->coh),&(infoptr->dfs));
-//            error = dfs_open(infoptr->dfs, NULL, infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, infoptr->cid, 0, NULL, &(infoptr->obj_out));
-//            if(error ==0){
-//                warn("dfs_open passed successfully \n");
-//            }else{
-//                warn("dfs_open failed \n");
-//            }
             infoptr->daos_out = open_dfs_file(infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
         break;
 		default:  /* the rest are ok */
@@ -360,35 +266,12 @@ void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		err("%s: unable to write header on trace #%ld",
 		    __FILE__, (infoptr->itr)+1);
 	if(infoptr->is_dfs){
-//	    d_iov_t iov;
-//        d_sg_list_t sgl;
-//
-//        /** set memory location */
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        //char * binbuf = (char *) &bh;
-//        d_iov_set(&iov, (void *)infoptr->buf, HDRBYTES);
-//        sgl.sg_iovs = &iov;
-//        error = dfs_write(infoptr->dfs, infoptr->obj_out, &sgl, infoptr->bytes_written, NULL);
-//         if(error ==0){
-//            warn("header dfs write passed");
-//        }else{
-//            warn("header dfs write failed");
-//        }
         write_dfs_file(infoptr->daos_out, infoptr->buf, HDRBYTES);
 
-//        error = dfs_get_size(infoptr->dfs, infoptr->obj_out, &infoptr->size);
         infoptr->size = get_dfs_file_size(infoptr->daos_out);
 
-//         if(error ==0){
-//            warn("header dfs size passed");
-//        }else{
-//            warn("headr dfs size failed");
-//        }
         nwritten = (int)infoptr->size - infoptr->bytes_written;
         infoptr->bytes_written += nwritten;
-        warn("header bytes written=  %d",nwritten);
-        warn("total bytes written=  %d",infoptr->bytes_written);
         if(nwritten != HDRBYTES)
                err("%s: unable to write header on trace #%ld",__FILE__, (infoptr->itr)+1);
 	}else{

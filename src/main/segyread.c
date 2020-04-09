@@ -271,11 +271,6 @@ main(int argc, char **argv)
     short nextended;
 
     /* Initialize */
-//    daos_handle_t poh;
-//    daos_handle_t coh;
-//    dfs_t *dfs;
-//    daos_oclass_id_t cid= OC_S1;
-
     initargs(argc, argv);
     requestdoc(0); /* stdin not used */
     
@@ -408,11 +403,7 @@ main(int argc, char **argv)
 
     if(ENABLE_DFS){
         daos_header = open_dfs_file(hfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-//        error = dfs_open(dfs, NULL, hfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_header);
-//        if(error ==0 && verbose) warn("header file opened successfully in dfs");
         daos_binary = open_dfs_file(bfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-//        error = dfs_open(dfs, NULL, bfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_binary);
-//        if(error ==0 && verbose) warn("binary file opened successfully in dfs ");
     }else{
         /* - the ebcdic header file in ascii */
         headerfp = efopen(hfile, "w");
@@ -427,21 +418,6 @@ main(int argc, char **argv)
 
     /* Read the ebcdic raw bytes from the tape into the buffer */
     if(ENABLE_DFS){
-//        d_iov_t iov;
-//        d_sg_list_t sgl;
-//        //    char *ebcdic_buff= malloc(EBCBYTES);
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        d_iov_set(&iov, (void *)ebcbuf, EBCBYTES);
-//        sgl.sg_iovs = &iov;
-//        error = dfs_read(dfs,obj_tape, &sgl, 0, &size, 0);
-//        result = size;
-//        if(error != 0){
-//            SEGYREAD_TAPE_ERROR("ebcdic header");
-//        }
-//        else {
-//            errcount = 0;
-//        }
         size = read_dfs_file(daos_tape, ebcbuf, EBCBYTES);
     }else{
         if (buff) {
@@ -480,42 +456,14 @@ main(int argc, char **argv)
         sprintf(cmdbuf, "dd ibs=1 of=%s count=3200", hfile);
     }
 #endif
-//	if(dfs){
-//        err = dfs_open(dfs, obj_tape, cmdbuf, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_pipe);
-//        d_iov_t iov;
-//        d_sg_list_t sgl;
-//
-//        /** set memory location */
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        d_iov_set(&iov, (void *)ebcbuf, EBCBYTES);
-//        sgl.sg_iovs = &iov;
-//        err = dfs_write(dfs, obj_pipe, &sgl, 0, NULL);
-//	}else{
     pipefp = epopen(cmdbuf, "w");
     /* Write ebcdic stream from buffer into pipe */
     efwrite(ebcbuf, EBCBYTES, 1, pipefp);
-//	}
+
 
 
     if(ENABLE_DFS){
-//        d_iov_t iov;
-//        d_sg_list_t sgl;
-//        char *bin_buff= (char *) &tapebh;
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        d_iov_set(&iov, (void *)bin_buff, BNYBYTES);
-//        sgl.sg_iovs = &iov;
-//        error = dfs_read(dfs,obj_tape, &sgl, EBCBYTES, &size, 0);
-//        result = size;
-//        if(error != 0){
-//            SEGYREAD_TAPE_ERROR("binary header");
-//        }
-//        else {
-//            errcount = 0;
-//        }
         size = read_dfs_file(daos_tape, (char *) &tapebh, BNYBYTES);
-
     }else{
         /* Read binary header from tape to bh structure */
         if (buff) {
@@ -592,28 +540,10 @@ main(int argc, char **argv)
 
 
     if(ENABLE_DFS){
-//        d_iov_t iov;
-//        d_sg_list_t sgl;
-//
-//        /** set memory location */
-//        sgl.sg_nr = 1;
-//        sgl.sg_nr_out = 0;
-//        char * binbuf = (char *) &bh;
-//        d_iov_set(&iov, (void *)binbuf, BNYBYTES);
-//        sgl.sg_iovs = &iov;
-//        error = dfs_write(dfs, obj_binary, &sgl, 0, NULL);
         write_dfs_file(daos_binary, (char *) &bh, BNYBYTES);
         close_dfs_file(daos_binary);
         close_dfs_file(daos_header);
-//        error = dfs_release(obj_binary);
-//        if(error == 0 && verbose) warn("binary file closed successfully in dfs");
-
-//        error = dfs_release(obj_header);
-   //     if(error ==0) warn("Released header object");
-      //  error = dfs_release(obj_pipe);
         epclose(pipefp);
-//        if(error == 0 && verbose) warn("header file closed successfully in dfs");
-
     }else{
         /* Write binary header from bhed structure to binary file */
         efwrite( (char *) &bh, 1, BNYBYTES, binaryfp);
@@ -641,8 +571,6 @@ main(int argc, char **argv)
         /* so test should actually be !=0, but ... */
 
         if(ENABLE_DFS){
-//            error = dfs_open(dfs, NULL, xfile, S_IFREG | S_IWUSR | S_IRUSR, O_RDWR | O_CREAT, cid, 0, NULL, &obj_xheader);
-//            if(error==0 && verbose) warn("extended text header file opened successfully");
             daos_xheader = open_dfs_file(xfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
         }else{
             /* open the extended text header file in whatever it's in */
@@ -657,25 +585,8 @@ main(int argc, char **argv)
             /* Read the bytes from the tape for one xhdr into the
              * buffer */
             if(ENABLE_DFS){
-//                d_iov_t iov;
-//                d_sg_list_t sgl;
-//                //    char *ebcdic_buff= malloc(EBCBYTES);
-//                sgl.sg_nr = 1;
-//                sgl.sg_nr_out = 0;
-//                d_iov_set(&iov, (void *)ebcbuf, EBCBYTES);
-//                sgl.sg_iovs = &iov;
-//                error = dfs_read(dfs,obj_tape, &sgl, (EBCBYTES +BNYBYTES)+ (i*EBCBYTES) , &size, 0);
                 size = read_dfs_file(daos_tape, ebcbuf, EBCBYTES);
-//                result = size;
-//                if(error != 0){
-//                    SEGYREAD_TAPE_ERROR("extended text header in dfs");
-//                }
-//                else {
-//                    errcount = 0;
-//                }
-//                error = dfs_write(dfs, obj_xheader, &sgl, (i*EBCBYTES), NULL);
                 write_dfs_file(daos_xheader, ebcbuf, EBCBYTES);
-
             }else{
                 if (buff) {
                     if (-1 == (int) read(tapefd, ebcbuf, EBCBYTES)) {
@@ -700,9 +611,6 @@ main(int argc, char **argv)
 
         if(ENABLE_DFS){
             close_dfs_file(daos_xheader);
-//
-//            error = dfs_release(obj_xheader);
-//            if(error==0 && verbose) warn("extended text header file closed successfully in dfs");
         }else{
             /* Close extended text header file */
             efclose(xheaderfp);
@@ -716,21 +624,6 @@ main(int argc, char **argv)
     while (itr < trmax) {
         int nread;
         if(ENABLE_DFS){
-//            d_iov_t iov;
-//            d_sg_list_t sgl;
-//            char *tapetr_buff= (char *) &tapetr;
-//            sgl.sg_nr = 1;
-//            sgl.sg_nr_out = 0;
-//            d_iov_set(&iov, (void *)tapetr_buff, nsegy);
-//            sgl.sg_iovs = &iov;
-//            error = dfs_read(dfs,obj_tape, &sgl,EBCBYTES + BNYBYTES +(nextended*EBCBYTES) + (itr *nsegy), &size, 0);
-//            nread = size;
-//            if(error != 0){
-//                SEGYREAD_TAPE_ERROR_TRACE(itr);
-//            }
-//            else {
-//                errcount = 0;
-//            }
             size = read_dfs_file(daos_tape, (char *) &tapetr, nsegy);
             nread = size;
         }else{
@@ -877,8 +770,6 @@ main(int argc, char **argv)
 
     if(ENABLE_DFS){
         close_dfs_file(daos_tape);
-//        error=dfs_release(obj_tape);
-//        if(error==0 && verbose) warn("tape closed successfully in dfs");
     }else{
         /* Clean up (binary & header files already closed above) */
         (buff) ? eclose(tapefd):
