@@ -6,6 +6,7 @@
 #include "su.h"
 #include "segy.h"
 #include "header.h"
+#include "dfs_helper_api.h"
 
 /*********************** self documentation ******************************/
 char *sdoc[] = {
@@ -16,6 +17,9 @@ char *sdoc[] = {
 " 									",
 " Required parameter:							",
 " 	ns=the number of samples per trace				",
+"   pool=			pool uuid to connect		                ",
+"   container=		container uuid to connect		        ",
+"   svc=			service ranklist of pool seperated by :		",
 " 									",
 " Optional parameter:							",
 #ifdef SU_LINE_HEADER
@@ -60,6 +64,7 @@ NULL};
  *      UNOCAL: Zhiming Li	add ascii and binary headers
  */
 
+#define ENABLE_DFS 1
 
 extern unsigned char su_text_hdr[3200];
 extern bhed su_binary_hdr;
@@ -82,12 +87,22 @@ main(int argc, char **argv)
 	FILE *infp=stdin, *outfp=stdout; /* input and output files 	*/
 #endif
 	FILE *headfp=NULL;	/* . file pointer for pointers		*/
+	DAOS_FILE *daos_headfp = NULL; /*  daos file pointer for pointers     */ 
+	char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
+    char file_name[2048];
+    DAOS_FILE *daos_in_file;
+    int is_file;
 
 	/* Initialize */
 	initargs(argc, argv);
 	requestdoc(1);
 
-
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
 	/* Get parameters */
 	if (!getparint("n1", &ns)
 	 && !getparint("nt", &ns)
@@ -104,11 +119,13 @@ main(int argc, char **argv)
 
 	} else {
 		ihead = 1;
-		if( !(headfp=efopen(head, "r")) ){
-
-                   err( "unable to open header file " );
-                }
-              
+		if (ENABLE_DFS) {
+			daos_headfp = open_dfs_file(head, S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
+		} else {
+			if( !(headfp=efopen(head, "r")) ){
+                err( "unable to open header file " );
+            }	
+		}     
 	}
         checkpars();
 
@@ -119,21 +136,40 @@ main(int argc, char **argv)
 		su_binary_hdr.tsort = tsort;
 		su_binary_hdr.fold = ntrpr;
 	} else {
-		fgethdr(headfp,&su_text_hdr,&su_binary_hdr);
+		if (ENABLE_DFS) {
+			dfsfgethdr(daos_headfp, &su_text_hdr, &su_binary_hdr);
+		} else {
+			fgethdr(headfp,&su_text_hdr,&su_binary_hdr);
+		}
 	}
 
 	su_binary_hdr.hns = ns;
 
 #endif
-		
+	
+	if (DISK == filestat(fileno(stdin))) {
+        get_file_name(stdin, file_name);
+        is_file = 1;
+        daos_in_file = open_dfs_file(file_name, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
+    } else {
+        is_file = 0;
+    }
+
 	while (isreading==cwp_true) {
 		static int tracl = 0;	/* one-based trace number */
 
 		/* If Fortran data, read past the record size bytes */
-		if (ftn) efread(junk, ISIZE, 1, stdin);
-
+		if (ENABLE_DFS && is_file) {
+			if (ftn) read_dfs_file(daos_in_file, junk, ISIZE);
+		} else {
+			if (ftn) efread(junk, ISIZE, 1, stdin);
+		}
 		/* Do read of data for the segy */
-		iread = fread((char *) tr.data, FSIZE, ns, stdin);
+		if (ENABLE_DFS && is_file) {
+			iread = read_dfs_file(daos_in_file, (char *) tr.data, FSIZE * ns);
+		} else {
+			iread = fread((char *) tr.data, FSIZE, ns, stdin);
+		}
 		if(iread!=ns) {
 			return(CWP_Exit());
 
@@ -141,7 +177,11 @@ main(int argc, char **argv)
 			if(ihead==0) {
 				tr.tracl = ++tracl;
 			} else {
-				efread(&tr, 1, HDRBYTES, headfp);
+				if (ENABLE_DFS && is_file) {
+					read_dfs_file(daos_headfp, &tr, HDRBYTES);
+				} else {
+					efread(&tr, 1, HDRBYTES, headfp);
+				}
 			}
 			tr.ns = ns;
 			tr.trid = TREAL;
@@ -149,8 +189,12 @@ main(int argc, char **argv)
 		}
 
 		/* If Fortran data, read past the record size bytes */
-		if (ftn) efread(junk, ISIZE, 1, stdin);
+		if (ENABLE_DFS && is_file) {
+			if (ftn) read_dfs_file(daos_in_file, junk, ISIZE);
+		} else {
+			if (ftn) efread(junk, ISIZE, 1, stdin);
+		}
 	}
-
+	fini_dfs_api();
 	return(CWP_Exit());
 }

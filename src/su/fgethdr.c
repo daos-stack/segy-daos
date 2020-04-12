@@ -25,10 +25,16 @@ Authors:  zhiming li  and j. dulac ,   unocal
 #include "segy.h"
 #include "header.h"
 #include "bheader.h"
-
+#include "dfs_helper_api.h"
 
 void fgethdr(FILE *fp, char* chdr, bhed* bhdr)
 {
 	efread(chdr, 1, EBCBYTES, fp);
 	efread(bhdr, 1, sizeof(bhed), fp);
+}
+
+void dfsfgethdr(DAOS_FILE *fp, char* chdr, bhed* bhdr)
+{
+	read_dfs_file(fp, chdr, EBCBYTES);
+	read_dfs_file(fp, (char *) bhdr, sizeof(bhed));
 }

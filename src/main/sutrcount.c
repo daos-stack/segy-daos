@@ -87,7 +87,15 @@ main(int argc, char **argv)
 		++ntr;
 	} while(gettr(&tr));
 
-	fprintf(outparfp, "%d", ntr);
+
+    if(ENABLE_DFS && strcmp(outpar, "/dev/stdout") != 0) {
+        char output_str[500];
+        sprintf(output_str, "%d", ntr);
+        write_dfs_file(daos_outpar, output_str, strlen(output_str));
+    } else {
+	   fprintf(outparfp, "%d", ntr);
+    }
+    
     fini_dfs_api();
 
 	return(CWP_Exit());
