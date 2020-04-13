@@ -31,27 +31,6 @@ char *sdoc[] = {
 NULL};
 
 
-/**
- * Reads a byte array from a specified file in the posix system.
- *
- * \param[in]	file			String containing the path of the file we want to read from.
- * \param[in]	byte_array		Pointer to the byte array to be allocated and filled with the bytes read.
- * \param[in]	verbose_output	Integer to enable verbosity to print messages in case of sucess if given non-zero values.
- * \return		Will return the number of bytes read from the file.
- */
-size_t read_posix(const char *file, char **byte_array, int verbose_output);
-
-/**
- * Writes a byte array to a specified file in the posix system.
- *
- * \param[in]   file            String containing the path of the file we want to write to.
- * \param[in]   byte_array      Pointer to the byte array to be written to the file.
- * \param[in]   len             Integer containing the number of bytes to be written from the array to the file.
- * \param[in]   verbose_output  Integer to enable verbosity to print messages in case of sucess if given non-zero values.
- * \return      Will return the number of bytes written to the file.
- */
-size_t write_posix(const char *file, char *byte_array, int len, int verbose_output);
-
 
 int main(int argc, char *argv[]) {
     /* Declare variables that will be parsed from commandline */
@@ -103,7 +82,7 @@ int main(int argc, char *argv[]) {
         char *read = malloc(size);
         size = read_dfs_file(daos_file, read, size);
         // Write the byte array read to the posix file.
-        size = write_posix(out_file, read, size, verbose);
+        size = write_posix(out_file, read, size);
         if (verbose) {
             printf("File size returned from Posix write : %ld \n", size);
         }
@@ -111,7 +90,7 @@ int main(int argc, char *argv[]) {
         if (validate) {
             // Read written posix file back.
             char *ret;
-            long len = read_posix(out_file, &ret, verbose);
+            long len = read_posix(out_file, &ret);
             if (verbose) {
                 printf("File size read back from Posix is %ld \n", len);
             }
@@ -140,7 +119,7 @@ int main(int argc, char *argv[]) {
         // Read posix file.
         long len;
         char *ret;
-        len = read_posix(in_file, &ret, verbose);
+        len = read_posix(in_file, &ret);
         // Open DFS file to be written, this will create it. And then write the byte array to it.
         DAOS_FILE * daos_file = open_dfs_file(out_file, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
         write_dfs_file(daos_file, ret, len);
@@ -178,34 +157,4 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-size_t read_posix(const char *file, char **byte_array, int verbose_output) {
-	FILE *fl = fopen(file, "r");
-	if (fl == 0) {
-		printf("Posix read not successfull for file '%s'...", file);
-		exit(0);
-	}
-    fseek(fl, 0, SEEK_END);
-    long len = ftell(fl);
-    *byte_array = malloc(len);
-    fseek(fl, 0, SEEK_SET);
-    size_t file_size = fread(*byte_array, 1, len, fl);
-    fclose(fl);
-    if (verbose_output) {
-    	printf("Read %zu bytes from posix file %s\n", file_size*sizeof(**byte_array), file);
-    }
-    return len;
-}
 
-size_t write_posix(const char *file, char *byte_array, int len, int verbose_output) {
-    FILE *fl = fopen(file, "w");
-    if (fl == 0) {
-        printf("Posix write not successfull for file '%s'...", file);
-        exit(0);
-    }
-    size_t file_size = fwrite(byte_array, 1, len, fl);
-    fclose(fl);
-    if (verbose_output) {
-        printf("Writed %zu bytes to posix file %s\n", file_size*sizeof(*byte_array), file);
-    }
-    return file_size;
-}

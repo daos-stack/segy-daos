@@ -6,16 +6,19 @@
 #include "su.h"
 #include "segy.h"
 #include "header.h"
+#include "dfs_helper_api.h"
 
 /*********************** self documentation **********************/
 char *sdoc[] = {
 "									",
 " SUCHW - Change Header Word using one or two header word fields	",
 "									",
-"  suchw <stdin >stdout [optional parameters]				",
+"  suchw <stdin pool=uuid container=uuid svc=r0:r1:r2 >stdout [optional parameters]				",
 "									",
 " Required parameters:							",
-" none									",
+" pool=			pool uuid to connect		                ",
+" container=		container uuid to connect		        ",
+" svc=			service ranklist of pool seperated by :		",
 "									",
 " Optional parameters:							",
 " key1=cdp,...	output key(s) 						",
@@ -93,7 +96,11 @@ main(int argc, char **argv)
 	int index2[SU_NKEYS];		/*      ....        for key2	*/
 	int index3[SU_NKEYS];		/*      ....        for key3	*/
 
-	Value val1;			/* value of key1		*/
+    char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
+
+    Value val1;			/* value of key1		*/
 	Value val2;			/* value of key2		*/
 	Value val3;			/* value of key3		*/
 
@@ -107,6 +114,11 @@ main(int argc, char **argv)
 	/* Initialize */
 	initargs(argc, argv);
 	requestdoc(1);
+
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
 
 	/* Get parameters */
 	/* get key1's */
@@ -256,6 +268,8 @@ main(int argc, char **argv)
     free(type1);
     free(type2);
     free(type3);
+
+    fini_dfs_api();
 
 	return(CWP_Exit());
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) Colorado School of Mines, 2011.*/
+    /* Copyright (c) Colorado School of Mines, 2011.*/
 /* All rights reserved.                       */
 
 /* HDRPKGE: $Revision: 1.12 $ ; $Date: 2011/11/11 23:57:38 $	*/

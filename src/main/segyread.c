@@ -460,6 +460,16 @@ main(int argc, char **argv)
     /* Write ebcdic stream from buffer into pipe */
     efwrite(ebcbuf, EBCBYTES, 1, pipefp);
 
+    if(ENABLE_DFS){
+	    char * header_bytes;
+	    long len_header_bytes = read_posix(hfile, &header_bytes);
+	    write_dfs_file(daos_header,header_bytes, len_header_bytes);
+	    free(header_bytes);
+    }
+
+
+
+
 
 
     if(ENABLE_DFS){

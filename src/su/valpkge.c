@@ -64,8 +64,35 @@ Authors: CWP: Jack K. Cohen, Shuki Ronen
 #include "su.h"
 #include "segy.h"
 #include "header.h"
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include "daos.h"
+#include "daos_fs.h"
+#include "dfs_helper_api.h"
+#define ENABLE_DFS 1
 
 
+/*
+void get_file_name__(FILE* fp, char *file_name){
+    char path[1024];
+    char result[1024];
+    int fd = fileno(fp);
+    sprintf(path, "/proc/self/fd/%d", fd);
+    memset(result, 0, sizeof(result));
+    int error= readlink(path, result, sizeof(result)-1);
+    char* token = strtok(result, "/");
+    char* temp = token;
+    while (token != NULL) {
+        temp = token;
+        token = strtok(NULL, "/");
+    }
+    if(error!=0)
+        strcpy(file_name, temp);
+    return;
+}
+*/
 int vtoi(register cwp_String type, Value val)
 {
 	switch(*type) {
@@ -192,6 +219,78 @@ int valcmp(register cwp_String type, Value val1, Value val2)
 	}
 }
 
+void printdfsval(register cwp_String type, Value val, DAOS_FILE *daos_out_file){
+    char *buffer = malloc(1000 * sizeof(char));
+
+    switch(*type) {
+        case 's':
+            sprintf(buffer, "%s", val.s);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+            //write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'h':
+            sprintf(buffer, "%d", val.h);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+            //write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'u':
+            sprintf(buffer, "%d", val.u);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+            //write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'i':
+            sprintf(buffer, "%d", val.i);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+           // write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'p':
+            sprintf(buffer, "%d", val.p);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+            //write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'l':
+            sprintf(buffer, "%ld", val.l);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+           // write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'v':
+            sprintf(buffer, "%ld", val.v);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+            //write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'f':
+            sprintf(buffer, "%f", val.f);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+           // write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'd':
+            sprintf(buffer, "%f", val.d);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+         //   write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'U':
+            sprintf(buffer, "%d", val.U);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+       //     write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        case 'P':
+            sprintf(buffer, "%d", val.P);
+            write_dfs_file(daos_out_file,buffer,strlen(buffer));
+     //       write_dfs_file(daos_out_file,char_arr,1);
+            break;
+        default:
+            err("printfval: unknown type %s", type);
+    }
+    free(buffer);
+}
+
+void putdfschar(DAOS_FILE *daos_out_file, char x){
+    char char_arr[2];
+    char_arr[0] = x;
+    char_arr[1]= '\0';
+    write_dfs_file(daos_out_file,char_arr,1);
+}
+
 
 void printfval(register cwp_String type, Value val)
 {
@@ -239,39 +338,39 @@ void printfval(register cwp_String type, Value val)
 
 void fprintfval(FILE *stream, register cwp_String type, Value val)
 {
-	switch(*type) {
+    switch(*type) {
 	case 's':
-		(void) fprintf(stream, "%s", val.s);
+            (void) fprintf(stream, "%s", val.s);
 	break;
 	case 'h':
-		(void) fprintf(stream, "%d", val.h);
+            (void) fprintf(stream, "%d", val.h);
 	break;
 	case 'u':
-		(void) fprintf(stream, "%d", val.u);
+            (void) fprintf(stream, "%d", val.u);
 	break;
 	case 'i':
-		(void) fprintf(stream, "%d", val.i);
+            (void) fprintf(stream, "%d", val.i);
 	break;
 	case 'p':
-		(void) fprintf(stream, "%d", val.p);
+            (void) fprintf(stream, "%d", val.p);
 	break;
 	case 'l':
-		(void) fprintf(stream, "%ld", val.l);
+            (void) fprintf(stream, "%ld", val.l);
 	break;
 	case 'v':
-		(void) fprintf(stream, "%ld", val.v);
+            (void) fprintf(stream, "%ld", val.v);
 	break;
 	case 'f':
-		(void) fprintf(stream, "%f", val.f);
+            (void) fprintf(stream, "%f", val.f);
 	break;
 	case 'd':
-		(void) fprintf(stream, "%f", val.d);
+            (void) fprintf(stream, "%f", val.d);
 	break;
 	case 'U':
-		(void) fprintf(stream, "%d", val.U);
+            (void) fprintf(stream, "%d", val.U);
 	break;
 	case 'P':
-		(void) fprintf(stream, "%d", val.P);
+            (void) fprintf(stream, "%d", val.P);
 	break;
 	default:
 		err("fprintfval: unknown type %s", type);

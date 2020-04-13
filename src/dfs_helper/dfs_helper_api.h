@@ -103,8 +103,9 @@ daos_size_t read_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long le
  * \param[in]	byte_array		Pointer to the byte array we want to write.
  * \param[in]	len				Long that containes the length of the byte array to be written to the file.
  * \param[in]	verbose_output	Integer to enable verbosity to print messages in case of sucess if given non-zero values.
+ * \return		Will return the number of bytes written to the file.
  */
-void write_dfs_file(DAOS_FILE* file, char *byte_array, long len);
+daos_size_t write_dfs_file(DAOS_FILE* file, char *byte_array, long len);
 
 /**
  * Writes a byte array to a specified file.
@@ -115,8 +116,9 @@ void write_dfs_file(DAOS_FILE* file, char *byte_array, long len);
  * \param[in]	len				Long that containes the length of the byte array to be written to the file.
  * \param[in]	offset			Long that contains the offset to bypass in the file before doing the operation.
  * \param[in]	verbose_output	Integer to enable verbosity to print messages in case of sucess if given non-zero values.
+ * \return		Will return the number of bytes written to the file.
  */
-void write_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long len, long offset);
+daos_size_t write_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long len, long offset);
 
 /**
  * Query for the size of an opened file in DAOS.
@@ -171,6 +173,40 @@ int dfs_file_exists(const char *file_directory);
  *
  */
 void fini_dfs_api();
+
+void get_file_name(FILE* fp, char *file_name);
+
+
+/**
+ * Reads a byte array from a specified file in the posix system.
+ *
+ * \param[in]	file			String containing the path of the file we want to read from.
+ * \param[in]	byte_array		Pointer to the byte array to be allocated and filled with the bytes read.
+ * \param[in]	verbose_output	Integer to enable verbosity to print messages in case of sucess if given non-zero values.
+ * \return		Will return the number of bytes read from the file.
+ */
+size_t read_posix(const char *file, char **byte_array);
+
+/**
+ * Writes a byte array to a specified file in the posix system.
+ *
+ * \param[in]   file            String containing the path of the file we want to write to.
+ * \param[in]   byte_array      Pointer to the byte array to be written to the file.
+ * \param[in]   len             Integer containing the number of bytes to be written from the array to the file.
+ * \param[in]   verbose_output  Integer to enable verbosity to print messages in case of sucess if given non-zero values.
+ * \return      Will return the number of bytes written to the file.
+ */
+size_t write_posix(const char *file, char *byte_array, int len);
+
+
+/**
+ * Remove file from dfs container.
+ *
+ * \param[in]   file            String containing the path of the file we want to remove.
+ */
+void remove_dfs_file(const char *file);
+
+
 
 #if defined(__cplusplus)
 }

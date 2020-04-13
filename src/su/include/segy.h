@@ -825,6 +825,8 @@ void fputtr(FILE *fp, segy *tp);
 void fvputtr(FILE *fp, segy *tp);
 int fgettra(FILE *fp, segy *tp, int itr);
 
+DAOS_FILE* gettr_daos_file();
+
 /* get gather and put gather */
 segy **fget_gather(FILE *fp, cwp_String *key,cwp_String *type,Value *n_val,
                         int *nt,int *ntr, float *dt,int *first);

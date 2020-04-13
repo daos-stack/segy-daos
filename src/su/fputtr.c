@@ -114,10 +114,12 @@ void searchlist(FILE *fp)
 		oldinfoptr = &infoptr->nextinfo;
 	}
 }
-void get_file_name(){
+
+/*
+void get_file_name(FILE* fp, char *file_name){
         char path[1024];
         char result[1024];
-        int fd = fileno(infoptr->outfp);
+        int fd = fileno(fp);
 
         sprintf(path, "/proc/self/fd/%d", fd);
         memset(result, 0, sizeof(result));
@@ -130,9 +132,10 @@ void get_file_name(){
         }
         if(error!=0)
 //			err("%s: token is", temp);
-        strcpy(infoptr->fname, temp);
+        strcpy(file_name, temp);
         return;
 }
+*/
 
 static
 int datawrite(struct outsegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
@@ -148,9 +151,8 @@ int datawrite(struct outsegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 	switch(tp->trid) {
 	case CHARPACK:
 	    if(infoptr->is_dfs){
-	        write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
-	        infoptr->size = get_dfs_file_size(infoptr->daos_out);
-	        nwritten = (int)infoptr->size - infoptr->bytes_written;
+	        nwritten = write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
+	       
 	        infoptr->bytes_written += nwritten;
 	    }else{
 			nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
@@ -161,11 +163,9 @@ int datawrite(struct outsegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 				 (char *) (&((tp->data)[0])),
 				  databytes);
 		if(infoptr->is_dfs){
-	        write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
-	        infoptr->size = get_dfs_file_size(infoptr->daos_out);
-
-	        nwritten = (int)infoptr->size - infoptr->bytes_written;
-	        infoptr->bytes_written += nwritten;
+	        nwritten = write_dfs_file(infoptr->daos_out, (char *) &((tp->data)[0]), databytes);
+	       
+		infoptr->bytes_written += nwritten;
 	    }else{
 			nwritten = efwrite((char *) (&((tp->data)[0])),1,databytes,
 				  iptr->outfp);
@@ -180,10 +180,8 @@ int datawrite(struct outsegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
 			nwritten = databytes;
 		if(nwritten > 0) {
 		   if(infoptr->is_dfs){
-		        write_dfs_file(infoptr->daos_out, ((char *) (iptr->buf))+HDRBYTES, databytes);
-		        infoptr->size = get_dfs_file_size(infoptr->daos_out);
-
-		        nwritten = (int)infoptr->size - infoptr->bytes_written;
+		        nwritten = write_dfs_file(infoptr->daos_out, ((char *) (iptr->buf))+HDRBYTES, databytes);
+		        
 		        infoptr->bytes_written += nwritten;
 
 		   }else{
@@ -232,7 +230,7 @@ void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		break;
 		case DISK:
 		    infoptr->is_dfs = 1;
-            get_file_name();
+            get_file_name(fp, infoptr->fname);
             infoptr->daos_out = open_dfs_file(infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
         break;
 		default:  /* the rest are ok */
@@ -266,11 +264,8 @@ void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		err("%s: unable to write header on trace #%ld",
 		    __FILE__, (infoptr->itr)+1);
 	if(infoptr->is_dfs){
-        write_dfs_file(infoptr->daos_out, infoptr->buf, HDRBYTES);
+        nwritten = write_dfs_file(infoptr->daos_out, infoptr->buf, HDRBYTES);
 
-        infoptr->size = get_dfs_file_size(infoptr->daos_out);
-
-        nwritten = (int)infoptr->size - infoptr->bytes_written;
         infoptr->bytes_written += nwritten;
         if(nwritten != HDRBYTES)
                err("%s: unable to write header on trace #%ld",__FILE__, (infoptr->itr)+1);

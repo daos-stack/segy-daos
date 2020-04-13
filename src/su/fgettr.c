@@ -105,6 +105,8 @@ static struct insegyinfo {
 	size_t bufstart;	     /* "offset" of start of buf */
     daos_size_t size;
     DAOS_FILE *daos_out;
+    long current_offset;
+    long new_offset;
     int bytes_read;
     int is_dfs;
     char fname[1024];
@@ -125,11 +127,11 @@ void searchlist(FILE *fp)
 		oldinfoptr = &infoptr->nextinfo;
 	}
 }
-
-void get_file_name(){
+/*
+void get_file_name(FILE* fp, char *file_name){
         char path[1024];
         char result[1024];
-        int fd = fileno(infoptr->infp);
+        int fd = fileno(fp);
 
         sprintf(path, "/proc/self/fd/%d", fd);
         memset(result, 0, sizeof(result));
@@ -143,9 +145,9 @@ void get_file_name(){
         }
         if(error!=0)
 //			err("%s: token is", temp);
-        strcpy(infoptr->fname, temp);
+        strcpy(file_name, temp);
         return;
-}
+}*/
 
 static
 int dataread(struct insegyinfo *iptr, segy *tp, cwp_Bool fixed_length)
@@ -232,7 +234,6 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		infoptr->ntr = -1;
 		infoptr->is_dfs = 0;
 		infoptr->bytes_read =0;
-        infoptr->daos_out = malloc(sizeof(DAOS_FILE));
 		/* allocate XDR struct and associate FILE * ptr */
 		infoptr->segy_xdr = (XDR *) malloc(sizeof(XDR));
 
@@ -244,7 +245,7 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		break;
 		case DISK:
 		    infoptr->is_dfs = 1;
-            get_file_name();
+            get_file_name(fp, infoptr->fname);
             infoptr->daos_out = open_dfs_file(infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
 		default: /* the rest are ok */
 		break;
@@ -298,10 +299,22 @@ int fgettr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		}
 
 		if(infoptr->ftype == DISK) { /* compute ntr */
+			if(infoptr->is_dfs){
+
+		curoff = get_daos_file_offset(infoptr->daos_out);
+		daos_size_t File_End = get_dfs_file_size(infoptr->daos_out);//????
+           	//seek_daos_file(infoptr->daos_out, File_End);//????
+		//infoptr->current_offset = get_daos_file_offset(infoptr->daos_out);
+		infoptr->ntr = File_End/infoptr->nsegy;
+		//infoptr->new_offset = curoff;
+		//seek_daos_file(infoptr->daos_out,infoptr->new_offset);
+			} else {
+
 		    curoff = eftello(fp); 
 		    efseeko(fp,(off_t) 0,SEEK_END);
 		    infoptr->ntr = eftello(fp)/infoptr->nsegy;
 		    efseeko(fp, curoff, SEEK_SET); /* restore location */
+			}
 		    }
 
 
@@ -364,18 +377,34 @@ int fgettra(FILE *fp, segy *tp, int itr)
 	    break;
 	  }
 
+	if(infoptr->is_dfs){
+		daos_size_t File_End = get_dfs_file_size(infoptr->daos_out);//????
+           	seek_daos_file(infoptr->daos_out, File_End);//????
+		infoptr->current_offset = get_daos_file_offset(infoptr->daos_out);
+		infoptr->ntr = infoptr->current_offset/infoptr->nsegy;
+	} else { 
 	efseeko(fp,(off_t) 0,SEEK_END);
 	infoptr->ntr = eftello(fp)/infoptr->nsegy;
+	}
 	} /* end first entry initialization */
 
  /* Check on requested trace number */
   if(itr >= infoptr->ntr) err("%s: trying to read off end of file",__FILE__);
 
+  if(infoptr->is_dfs){
+	  //infoptr->current_offset = get_daos_file_offset(infoptr->daos_out);
+	  infoptr->new_offset = (((off_t) itr) * ((off_t) infoptr->nsegy));
+	  seek_daos_file(infoptr->daos_out,infoptr->new_offset);
+	  if(0 > get_daos_file_offset(infoptr->daos_out)){
+		   err("%s: unable to seek xdr disk file to trace %d",__FILE__,itr);
+	  }
+  }
+  else {
  /* Position file pointer at start of requested trace */
   if(0 > efseeko(fp, ((off_t) itr) * ((off_t) infoptr->nsegy), SEEK_SET)) {
 	err("%s: unable to seek xdr disk file to trace %d",__FILE__,itr);
   }
-
+  }
  nread=fgettr(fp, tp);
  if(nread != infoptr->nsegy)
 	err("%s: read %d bytes with %d bytes in trace",
@@ -388,7 +417,9 @@ int fgettra(FILE *fp, segy *tp, int itr)
  return(infoptr->ntr);
 }
 
-
+DAOS_FILE* gettr_daos_file(){
+	return infoptr->daos_out;
+}
 #else 
 /**********************************************************
 code without  XDR 

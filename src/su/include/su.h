@@ -12,6 +12,7 @@
 #define SU_H
 
 #include "par.h"
+#include "dfs_helper_api.h"
 
 /* TYPEDEFS */
 typedef union { /* storage for arbitrary type */
@@ -86,6 +87,8 @@ double vtod(register cwp_String type, Value val);
 int valcmp(register cwp_String type, Value val1, Value val2);
 void printfval(register cwp_String type, Value val);
 void fprintfval(FILE *stream, register cwp_String type, Value val);
+void printdfsval(register cwp_String type, Value val, DAOS_FILE *daos_out_file);
+void putdfschar(DAOS_FILE *daos_out_file, char x);
 void scanfval(register cwp_String type, Value *valp);
 void atoval(cwp_String type, cwp_String keyval, Value *valp);
 void getparval(cwp_String name, cwp_String type, int n, Value *valp);

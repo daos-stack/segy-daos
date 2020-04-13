@@ -6,7 +6,9 @@
 #include "su.h"
 #include "segy.h"
 #include "header.h"
+#include "dfs_helper_api.h"
 
+#define ENABLE_DFS 1
 /*********************** self documentation ******************************/
 char *sdoc[] = {
 " 									",
@@ -15,16 +17,19 @@ char *sdoc[] = {
 "	 the header word values from a file				",
 " 									",
 " ... compute header fields						",
-"   sushw <stdin >stdout key=cdp,.. a=0,..  b=0,.. c=0,.. d=0,.. j=..,..",
+"   sushw <stdin >stdout key=cdp,.. a=0,..  b=0,.. c=0,.. d=0,.. j=..,.. pool=pool_uuid container=container_uuid svc=svc_ranklist",
 " 									",
 " ... or read headers from a binary file				",
-"   sushw <stdin > stdout  key=key1,..    infile=binary_file		",
+"   sushw <stdin > stdout  key=key1,..    infile=binary_file pool=pool_uuid container=container_uuid svc=svc_ranklist		",
 " 									",
 " 									",
 " Required Parameters for setting headers from infile:			",
 " key=key1,key2 ... is the list of header fields as they appear in infile",
 " infile= 	binary file of values for field specified by		",
 " 		key1,key2,...						",
+" pool=			pool uuid to connect		        ",
+" container=		container uuid to connect		",
+" svc=			service ranklist of pool seperated by : ",
 " 									",
 " Optional parameters ():						",
 " key=cdp,...			header key word(s) to set 		",
@@ -143,14 +148,26 @@ main(int argc, char **argv)
 	double *j=NULL;		/* array of "j" values			*/
 	int n;			/* number of a,b,c,d,j values		*/
 
-	/* Initialize */
+    char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
+
+    char file_name[1024];
+    daos_size_t size;
+    DAOS_FILE *daos_out_file;
+
+    /* Initialize */
 	initargs(argc, argv);
 	requestdoc(1);
+
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
 
 	/* Get "key" values */
 	if ((nkeys=countparval("key"))!=0) {
 		getparstringarray("key",key);
-
 	} else {
 		key[0]="cdp";
 	}
@@ -167,10 +184,13 @@ main(int argc, char **argv)
 
 	/* if infile is specified get specified keys from file */
 	if (*infile!='\0') {
-
-		/* open infile */
-		if((infp=efopen(infile,"r"))==NULL)
-			err("cannot open infile=%s\n",infile);
+	    if(ENABLE_DFS) {
+            daos_out_file = open_dfs_file(infile, S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
+        } else {
+            /* open infile */
+            if((infp=efopen(infile,"r"))==NULL)
+                err("cannot open infile=%s\n",infile);
+	    }
 
 		/* set from_file flag */
 		from_file=cwp_true;
@@ -252,6 +272,20 @@ main(int argc, char **argv)
 	while (gettr(&tr)) {
 
 		if (from_file) {
+		    if(ENABLE_DFS){
+//		        size = read_dfs_file(daos_out_file, (char *) &afile, FSIZE*nkeys);
+                if(read_dfs_file(daos_out_file, (char *) afile, FSIZE*nkeys) !=0){
+                    for (ikey=0; ikey<nkeys; ++ikey) {
+                        double a_in;
+                        a_in=(double) afile[ikey];
+                        setval(type[ikey],&val,a_in,
+                               0,0,0,ULONG_MAX);
+                        puthval(&tr,index[ikey],&val);
+                        ++count;
+                    }
+                }
+		    }
+		    else {
 			/* use the "a" value from file to trace by trace */
 			if (efread(afile,FSIZE,nkeys,infp)!=0) {
 				for (ikey=0; ikey<nkeys; ++ikey) {
@@ -263,6 +297,7 @@ main(int argc, char **argv)
 				++count;
 				}
 			}
+		    }
 		} else { /* use getparred values of a,b,c,d,j */
 			for (ikey=0; ikey<nkeys; ++ikey) {
 				i = (double) itr + d[ikey];
@@ -279,12 +314,18 @@ main(int argc, char **argv)
 	}
 
 	if (from_file) {
-		efclose(infp);
+	    if(ENABLE_DFS){
+            close_dfs_file(daos_out_file);
+	    } else {
+            efclose(infp);
+	    }
 		if (count < (int)(itr*nkeys) ) {
 		   warn("itr=%d > count=%d %s",(int) itr*count,count);
 		   warn("n traces=%d > data count =%d",(itr*nkeys),count);
 		}
 	}
+
+	fini_dfs_api();
 
 
 	return(CWP_Exit());

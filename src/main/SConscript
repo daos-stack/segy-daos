@@ -4,14 +4,14 @@ libraries = libraries + ['dfs','dfs_helper','su','par','cwp','m']
 libraries_path = ['../../build/dfs_helper_build','../../build/su_build','../../build/par_build','../../build/cwp_build']
 print("Calling Program('main')")
 env.Program('segyread.c', LIBS=libraries, LIBPATH=libraries_path)
-#env.Program('build/main_build/suaddhead.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
-#env.Program('build/main_build/sugethw.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
-#env.Program('build/main_build/sushw.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+env.Program('suaddhead.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('sugethw.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('sushw.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('sutrcount.c', LIBS=libraries, LIBPATH=libraries_path)
-#env.Program('build/main_build/suchw.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
-#env.Program('build/main_build/surange.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
-#env.Program('build/main_build/suwind.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
-#env.Program('build/main_build/susort.c', LIBS=['su','par','cwp','m'], LIBPATH=['build/su_build','build/par_build','build/cwp_build'])
+env.Program('suchw.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('surange.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('suwind.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('susort.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('dfs_file_mount.c', LIBS=libraries, LIBPATH=libraries_path)
 
 

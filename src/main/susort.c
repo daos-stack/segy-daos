@@ -6,13 +6,18 @@
 #include "su.h"
 #include "segy.h"
 #include <signal.h>
-
+#include "dfs_helper_api.h"
 /*********************** self documentation **********************/
 char *sdoc[] = {
 " 								",
 " SUSORT - sort on any segy header keywords			",
 " 								",
-" susort <stdin >stdout [[+-]key1 [+-]key2 ...]			",
+" susort <stdin pool=uuid container=uuid svc=r0:r1:r2 >stdout [[+-]key1 [+-]key2 ...]			",
+" 								",
+" Required parameters:							",
+" pool=			pool uuid to connect		                ",
+" container=		container uuid to connect		        ",
+" svc=			service ranklist of pool seperated by :		",
 " 								",
 " Susort supports any number of (secondary) keys with either	",
 " ascending (+, the default) or descending (-) directions for 	",
@@ -62,6 +67,7 @@ NULL};
 
 
 #define NTRSTEP	1024	/* realloc() icrement measured in traces */
+#define ENABLE_DFS 1
 
 segy tr;
 static int nkey;	/* number of keys to sort on	*/
@@ -76,6 +82,13 @@ static void closefiles(void);		/* signal handler		*/
 /* Globals (so can trap signal) defining temporary disk files */
 char tracefile[BUFSIZ];	/* filename for trace storage file	*/
 FILE *tracefp;		/* fp for trace storage file		*/
+DAOS_FILE *daos_tmp;
+
+
+int startsWith(const char *pre, const char *str) {
+    size_t lenpre = strlen(pre), lenstr = strlen(str);
+    return lenstr < lenpre ? 0 : memcmp(pre, str, lenpre) == 0;
+}
 
 
 int
@@ -101,12 +114,25 @@ main(int argc, char **argv)
 	char *tmpdir;		/* directory path for tmp files		*/
 	cwp_Bool istmpdir=cwp_false;/* true for user given path		*/
 
+    char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
 
-	/* Initialize */
+    daos_size_t size;
+    DAOS_FILE *daos_out_file;
+    int is_out_file;
+    char file_name[2048];
+
+    /* Initialize */
 	initargs(argc, argv);
 	requestdoc(1);
 
-	/* Look for user-supplied tmpdir form environment */
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
+
+    /* Look for user-supplied tmpdir form environment */
 	if (!(tmpdir = getenv("CWP_TMPDIR"))) tmpdir="";
 	if (!STREQ(tmpdir, "") && access(tmpdir, WRITE_OK))
 		err("you can't write in %s (or it doesn't exist)", tmpdir);
@@ -121,11 +147,25 @@ main(int argc, char **argv)
 	if (ispipe && ftypeout != DISK)
 		err("OK IO types are: DISK->ANYTHING, PIPE->DISK");
 
+    if (DISK == filestat(fileno(stdout))) {
+        get_file_name(stdout, file_name);
+        is_out_file = 1;
+        daos_out_file = open_dfs_file(file_name, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
+    } else {
+        is_out_file = 0;
+    }
 
-	/* If pipe, prepare temporary file to hold data */
+        /* If pipe, prepare temporary file to hold data */
 	if (ispipe) {
 		if (STREQ(tmpdir,"")) {
-			tracefp = etmpfile();
+		    if (ENABLE_DFS) {
+		        char buffer[512]="";
+                strcpy(tracefile, temporary_filename(buffer));
+                daos_tmp = open_dfs_file(tracefile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
+                warn(" temporary file created is %s",tracefile);
+            } else {
+                tracefp = etmpfile();
+		    }
 		} else {	/* user-supplied tmpdir from environment */
 			char *directory;
             directory = (char*) malloc(BUFSIZ * sizeof(char));
@@ -136,14 +176,18 @@ main(int argc, char **argv)
 			signal(SIGQUIT, (void (*) (int)) closefiles);
 			signal(SIGHUP,  (void (*) (int)) closefiles);
 			signal(SIGTERM, (void (*) (int)) closefiles);
-			tracefp = efopen(tracefile, "w+");
+			if(ENABLE_DFS){
+                daos_tmp = open_dfs_file(tracefile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
+            } else{
+                tracefp = efopen(tracefile, "w+");
+			}
 			istmpdir=cwp_true;
 		}
 	}
 
 	/* Set number of sort keys */
-	if (argc == 1) nkey = 1; /* no explicit keys: default cdp key */
-	else  nkey = argc - 1;   /* one or more explicit keys */
+	if (argc == 4) nkey = 1; /* no explicit keys: default cdp key */
+	else  nkey = argc - 4;   /* one or more explicit keys */
 
 
 	/* Allocate lists for key indices, sort directions and key types */
@@ -153,14 +197,18 @@ main(int argc, char **argv)
 
 
 	/* Initialize index, type and up */
-	if (argc == 1) {
+	if (argc == 4) {
 		index[0] = getindex("cdp");
 		up[0] = cwp_true;
 		type[0] = 'l';
 	} else {
 		register int i;
 		for (i = 0; i < nkey; ++i) {
-			switch (**++argv) { /* sign char of next arg */
+		    ++argv;
+		    while(startsWith("pool=", *argv) || startsWith("container=", *argv) || startsWith("svc=", *argv)){
+		        ++argv;
+		    }
+            switch (**argv) { /* sign char of next arg */
 			case '+':
 				up[i] = cwp_true;
 				++*argv;   /* discard sign char in arg */
@@ -210,11 +258,29 @@ main(int argc, char **argv)
 				/* negative values give reverse sort */
 		  }
 		}
-		if (ispipe) efwrite((char *)&tr, 1, nsegy, tracefp);
+		if (ispipe){
+		    if(ENABLE_DFS){
+                size = write_dfs_file(daos_tmp, (char *)&tr, nsegy);
+		    } else {
+		        efwrite((char *)&tr, 1, nsegy, tracefp);
+		    }
+		}
 	} while (gettr(&tr));
 
-	if      (ispipe)  rewind(tracefp);
-	else /* disk */	  rewind(stdin);
+	if(ispipe){
+	    if(ENABLE_DFS){
+            seek_daos_file(daos_tmp,0);
+        } else {
+            rewind(tracefp);
+        }
+	} else {
+	    if(ENABLE_DFS){
+            seek_daos_file(gettr_daos_file(),0);
+        } else {
+            /* disk */	  rewind(stdin);
+        }
+	}
+
 
 	/* Sort the headers values */
 	qsort(val_list, ntr, nvsize, cmp_list);
@@ -237,19 +303,34 @@ main(int argc, char **argv)
 	        }
 		for (i = 0; i < ntr; ++i) {
 			itr = val_list[i*ngroup + 1].l;
-			efread(&tr, 1, nsegy, tracefp);
+            if(ENABLE_DFS){
+                read_dfs_file(daos_tmp, (char *) &tr, nsegy);
+            } else {
+                efread(&tr, 1, nsegy, tracefp);
+            }
 			tr.tracl = tr.tracr = (int) (itr + 1);
-			efseeko(stdout, ((off_t) itr)*((off_t) nsegy), SEEK_SET);
-			efwrite(&tr, 1, nsegy, stdout);
+			if(ENABLE_DFS && is_out_file){
+                seek_daos_file(daos_out_file,(((off_t) itr) * ((off_t) nsegy)));
+                write_dfs_file(daos_out_file,(char *) &tr,nsegy);
+			} else {
+                efseeko(stdout, ((off_t) itr)*((off_t) nsegy), SEEK_SET);
+                efwrite(&tr, 1, nsegy, stdout);
+			}
 		}
 	}
 
 	/* Clean up */
 	if (ispipe) {
-		efclose(tracefp);
-		if (istmpdir) eremove(tracefile);
+        if(ENABLE_DFS){
+            close_dfs_file(daos_tmp);
+            if(istmpdir) remove_dfs_file(tracefile);
+        } else {
+            efclose(tracefp);
+            if (istmpdir) eremove(tracefile);
+        }
 	}
-	
+
+	fini_dfs_api();
 	return(CWP_Exit());
 }
 
@@ -313,7 +394,12 @@ Value negval(cwp_String typee, Value val)
 /* for graceful interrupt termination */
 static void closefiles(void)
 {
-	efclose(tracefp);
-	eremove(tracefile);
-	exit(EXIT_FAILURE);
+    if(ENABLE_DFS){
+       close_dfs_file(daos_tmp);
+       remove_dfs_file(tracefile);
+    } else {
+        efclose(tracefp);
+        eremove(tracefile);
+    }
+    exit(EXIT_FAILURE);
 }

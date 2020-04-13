@@ -6,16 +6,20 @@
 #include "su.h"
 #include "segy.h"
 #include "header.h"
+#include "dfs_helper_api.h"
 
 /*********************** self documentation **********************/
 char *sdoc[] = {
 " 									",
 " SUGETHW - sugethw writes the values of the selected key words		",
 " 									",
-"   sugethw key=key1,... [output=] <infile [>outfile]			",
+"   sugethw key=key1,... pool=pool_uuid container=container_uuid svc=svc_ranklist [output=] <infile [>outfile]			",
 " 									",
 " Required parameters:							",
 " key=key1,...		At least one key word.				",
+" pool=			pool uuid to connect		        ",
+" container=		container uuid to connect		",
+" svc=			service ranklist of pool seperated by : ",
 " 									",
 " Optional parameters:							",
 " output=ascii		output written as ascii for display		",
@@ -54,6 +58,8 @@ NULL};
 #define ASCII 0
 #define BINARY 1
 #define GEOM 2
+#define ENABLE_DFS 1
+
 
 segy tr;
 
@@ -67,12 +73,26 @@ main(int argc, char **argv)
 	cwp_String output;	/* string representing output format	*/
 	int ioutput=ASCII;	/* integer representing output format	*/
 	int verbose;		/* verbose?				*/
+    char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
 
-	/* Initialize */
+    char file_name[1024];
+    int is_file=0;
+
+    /* Initialize */
 	initargs(argc, argv);
 	requestdoc(1);
 
-	/* Get key values */
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
+    daos_size_t size;
+    DAOS_FILE *daos_out_file;
+
+
+    /* Get key values */
 	if (!getparint("verbose",&verbose))	verbose=0;
 	if ((nkeys=countparval("key"))!=0) {
 		getparstringarray("key",key);
@@ -109,7 +129,19 @@ main(int argc, char **argv)
 	else if (!STREQ(output, "ascii"))
 		err("unknown format output=\"%s\", see self-doc", output);
 
-	/* Loop over traces writing selected header field values */
+
+    if (DISK == filestat(fileno(stdout))) {
+        get_file_name(stdout, file_name);
+        is_file = 1;
+        daos_out_file = open_dfs_file(file_name, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
+    } else {
+        is_file = 0;
+    }
+
+
+
+
+    /* Loop over traces writing selected header field values */
 	while (gettr(&tr)) {
 		register int ikey;
 
@@ -121,30 +153,62 @@ main(int argc, char **argv)
 
 			switch(ioutput) {
 			case ASCII:
-				printf("%6s=", key[ikey]);
-				printfval(hdtype(key[ikey]), val);
-				putchar('\t');
+			    if(ENABLE_DFS && is_file){
+			        char *buffer = malloc(512 * sizeof(char));
+                    sprintf(buffer, "%6s=", key[ikey]);
+                    write_dfs_file(daos_out_file, buffer, strlen(buffer));
+                    printdfsval(hdtype(key[ikey]), val, daos_out_file);
+                    putdfschar(daos_out_file, '\t');
+                    free(buffer);
+                } else {
+                    printf("%6s=", key[ikey]);
+                    printfval(hdtype(key[ikey]), val);
+                    putchar('\t');
+			    }
 			break;
 			case BINARY:
-				fval = vtof(hdtype(key[ikey]), val);
-				efwrite((char *) &fval, FSIZE, 1, stdout);
+			    if(ENABLE_DFS && is_file){
+                    fval = vtof(hdtype(key[ikey]), val);
+                    write_dfs_file(daos_out_file, (char *) &fval, FSIZE);
+                } else {
+                    fval = vtof(hdtype(key[ikey]), val);
+                    efwrite((char *) &fval, FSIZE, 1, stdout);
+			    }
 			break;
 			case GEOM:
-				printfval(hdtype(key[ikey]), val);
-				putchar(' ');
+			    if(ENABLE_DFS && is_file){
+                    printdfsval(hdtype(key[ikey]), val, daos_out_file);
+                    putdfschar(daos_out_file, ' ');
+                }else{
+                    printfval(hdtype(key[ikey]), val);
+                    putchar(' ');
+			    }
 			break;
 			}
 		}
 
 		switch(ioutput) {
 		case GEOM:
-			printf("\n");
+		    if(ENABLE_DFS && is_file){
+		        putdfschar(daos_out_file, '\n');
+		    } else {
+                printf("\n");
+		    }
 		break;
 		case ASCII:
-			printf("\n\n");
+		    if(ENABLE_DFS && is_file){
+                putdfschar(daos_out_file, '\n');
+                putdfschar(daos_out_file, '\n');
+		    } else {
+                printf("\n\n");
+		    }
 		break;
 		}
 	}
+//    if(ENABLE_DFS){
+//        close_dfs_file(daos_out_file);
+//    }
 
+    fini_dfs_api();
 	return(CWP_Exit());
 }

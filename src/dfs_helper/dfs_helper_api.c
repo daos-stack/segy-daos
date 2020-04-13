@@ -230,12 +230,13 @@ daos_size_t read_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long le
     return size;
 }
 
-void write_dfs_file(DAOS_FILE* file, char *byte_array, long len){
+daos_size_t write_dfs_file(DAOS_FILE* file, char *byte_array, long len){
     write_dfs_file_with_offset(file, byte_array, len, file->offset);
     file->offset += len;
+    return len;
 }
 
-void write_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long len, long offset){
+daos_size_t write_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long len, long offset){
     d_iov_t iov;
     d_sg_list_t sgl;
     /** set memory location */
@@ -244,6 +245,7 @@ void write_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long len, lon
     d_iov_set(&iov, (void *)byte_array, len);
     sgl.sg_iovs = &iov;
     check_error_code(dfs_write(dfs, file->file, &sgl, offset, NULL), "Writing To File");
+    return len;
 }
 
 daos_size_t get_dfs_file_size(DAOS_FILE* file){
@@ -271,4 +273,68 @@ void fini_dfs_api(){
     check_error_code(daos_cont_close(coh, 0), "Closing Container");
     check_error_code(daos_pool_disconnect( poh, NULL), "Closing Pool Connection");
     check_error_code(daos_fini(), "Finalizing DAOS API Library");
+}
+
+void get_file_name(FILE* fp, char *file_name){
+    char path[1024];
+    char result[1024];
+    int fd = fileno(fp);
+    sprintf(path, "/proc/self/fd/%d", fd);
+    memset(result, 0, sizeof(result));
+    int error= readlink(path, result, sizeof(result)-1);
+    char* token = strtok(result, "/");
+    char* temp = token;
+    while (token != NULL) {
+        temp = token;
+        token = strtok(NULL, "/");
+    }
+    if(error!=0)
+        strcpy(file_name, temp);
+    return;
+}
+
+
+size_t read_posix(const char *file, char **byte_array) {
+	FILE *fl = fopen(file, "r");
+	if (fl == 0) {
+		warn("Posix read not successfull for file '%s'...", file);
+		exit(0);
+	}
+    fseek(fl, 0, SEEK_END);
+    long len = ftell(fl);
+    *byte_array = malloc(len);
+    fseek(fl, 0, SEEK_SET);
+    size_t file_size = fread(*byte_array, 1, len, fl);
+    fclose(fl);
+    if (verbose_output) {
+    	warn("Read %zu bytes from posix file %s\n", file_size*sizeof(**byte_array), file);
+    }
+    return len;
+}
+
+size_t write_posix(const char *file, char *byte_array, int len) {
+    FILE *fl = fopen(file, "w");
+    if (fl == 0) {
+        warn("Posix write not successfull for file '%s'...", file);
+        exit(0);
+    }
+    size_t file_size = fwrite(byte_array, 1, len, fl);
+    fclose(fl);
+    if (verbose_output) {
+        warn("Writed %zu bytes to posix file %s\n", file_size*sizeof(*byte_array), file);
+    }
+    return file_size;
+}
+
+
+void remove_dfs_file(const char *file){
+    if(dfs_file_exists(file)){
+        char *file_name = malloc(1024 * sizeof(char));
+        dfs_obj_t * parent = get_parent_of_file(file, 0, file_name);
+        check_error_code(dfs_remove(dfs, parent, file_name, 0, NULL), "Removing file");
+        dfs_release(parent);
+        free(file_name);
+    } else {
+        warn("File %s doesn't exist to be removed \n", file);
+    }
 }

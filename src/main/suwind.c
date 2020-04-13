@@ -11,10 +11,12 @@ char *sdoc[] = {
 "									",
 " SUWIND - window traces by key word					",
 "									",
-"  suwind <stdin >stdout [options]					",
+"  suwind <stdin pool=uuid container=uuid svc=r0:r1:r2 >stdout [options]					",
 "									",
-" Required Parameters:							",
-"  none 								",
+" Required parameters:							",
+" pool=			pool uuid to connect		                ",
+" container=		container uuid to connect		        ",
+" svc=			service ranklist of pool seperated by :		",
 "									",
 " Optional Parameters:							",
 " verbose=0		=1 for verbose					",
@@ -153,14 +155,23 @@ main(int argc, char **argv)
         int skip=0;     /* traces to skip                       */
 	size_t nzeros;  /* number of zeroes to pad		*/
 	char *pzeros;   /* pointer to zero pad			*/
-        
+
+    char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
 
 
 	/* Initialize */
 	initargs(argc, argv);
 	requestdoc(1);
 
-	/* Default parameters;  User-defined overrides */
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
+
+
+    /* Default parameters;  User-defined overrides */
 	if (!getparstring("key", &key))		key = "tracl";
 	if (!getparlong("min", &min))		min = INT_MIN;
 	if (!getparlong("max", &max))		max = INT_MAX;
@@ -427,5 +438,6 @@ main(int argc, char **argv)
 		} while (gettr(&tr));
         }
 
+    fini_dfs_api();
 	return(CWP_Exit());
 }

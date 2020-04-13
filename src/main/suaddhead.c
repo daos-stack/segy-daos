@@ -167,10 +167,12 @@ main(int argc, char **argv)
 		/* Do read of data for the segy */
 		if (ENABLE_DFS && is_file) {
 			iread = read_dfs_file(daos_in_file, (char *) tr.data, FSIZE * ns);
+			iread /= FSIZE;
 		} else {
 			iread = fread((char *) tr.data, FSIZE, ns, stdin);
 		}
 		if(iread!=ns) {
+			fini_dfs_api();
 			return(CWP_Exit());
 
 		} else {
@@ -178,7 +180,7 @@ main(int argc, char **argv)
 				tr.tracl = ++tracl;
 			} else {
 				if (ENABLE_DFS && is_file) {
-					read_dfs_file(daos_headfp, &tr, HDRBYTES);
+					read_dfs_file(daos_headfp, (char *) &tr, HDRBYTES);
 				} else {
 					efread(&tr, 1, HDRBYTES, headfp);
 				}

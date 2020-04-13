@@ -7,14 +7,19 @@
 #include "segy.h"
 #include "header.h"
 #include <signal.h>
+#include "dfs_helper_api.h"
 
 /*********************** self documentation **********************/
 char *sdoc[] = {
 " 								",
 " SURANGE - get max and min values for non-zero header entries	",
 " 								",
-" surange <stdin	 					",
+" surange <stdin pool=uuid container=uuid svc=r0:r1:r2	 					",
 "								",
+" Required parameters:							",
+" pool=			pool uuid to connect		                ",
+" container=		container uuid to connect		        ",
+" svc=			service ranklist of pool seperated by :		",
 " Optional parameters:						",
 "	key=		Header key(s) to range (default=all)	",
 "	dim=0		dim seismic flag	",
@@ -71,19 +76,29 @@ main(int argc, char **argv)
 	cwp_String key[SU_NKEYS];	/* array of keywords		*/
 	int dim;			/* dim line with coords in ft (1) or m (2) */
 
-        double eastShot[2], westShot[2], northShot[2], southShot[2];
-        double eastRec[2], westRec[2], northRec[2], southRec[2];
-        double eastCmp[2], westCmp[2], northCmp[2], southCmp[2];
-        double dcoscal = 1.0;
-        double sx, sy, gx, gy, mx, my;
-        double mx1=0.0, my1=0.0;
-        double mx2=0.0, my2=0.0, dm=0.0, dmin=0.0, dmax=0.0, davg=0.0;
-        int coscal = 1;
+    char *pool_id;  /* string of the pool uuid to connect to */
+    char *container_id; /*string of the container uuid to connect to */
+    char *svc_list;		/*string of the service rank list to connect to */
+
+
+    double eastShot[2], westShot[2], northShot[2], southShot[2];
+    double eastRec[2], westRec[2], northRec[2], southRec[2];
+    double eastCmp[2], westCmp[2], northCmp[2], southCmp[2];
+    double dcoscal = 1.0;
+    double sx, sy, gx, gy, mx, my;
+    double mx1=0.0, my1=0.0;
+    double mx2=0.0, my2=0.0, dm=0.0, dmin=0.0, dmax=0.0, davg=0.0;
+    int coscal = 1;
 
 
 	/* Initialize */
 	initargs(argc, argv);
 	requestdoc(1);
+
+    MUSTGETPARSTRING("pool",  &pool_id);
+    MUSTGETPARSTRING("container",  &container_id);
+    MUSTGETPARSTRING("svc",  &svc_list);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
 
 	/* Get "key" value */
 	if ((nkeys=countparval("key"))!=0) {
@@ -271,7 +286,8 @@ main(int argc, char **argv)
             printf("Line length = %g km (using avg CMP interval of %g m)\n",davg*ntr/1000,davg);
         }
     }
-    
+
+    fini_dfs_api();
     return(CWP_Exit());
 }
 
