@@ -87,7 +87,7 @@ main(int argc, char **argv)
     MUSTGETPARSTRING("pool",  &pool_id);
     MUSTGETPARSTRING("container",  &container_id);
     MUSTGETPARSTRING("svc",  &svc_list);
-    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 0);
     daos_size_t size;
     DAOS_FILE *daos_out_file;
 

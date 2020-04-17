@@ -5,6 +5,6 @@
 config.log
 .sconf_temp
 
-
+data/
 build/
 

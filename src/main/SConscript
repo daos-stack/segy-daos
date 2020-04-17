@@ -3,15 +3,15 @@ libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
 libraries = libraries + ['dfs','dfs_helper','su','par','cwp','m']
 libraries_path = ['../../build/dfs_helper_build','../../build/su_build','../../build/par_build','../../build/cwp_build']
 print("Calling Program('main')")
-env.Program('segyread.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('suaddhead.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('sugethw.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('sushw.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('sutrcount.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('suchw.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('surange.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('suwind.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('susort.c', LIBS=libraries, LIBPATH=libraries_path)
-env.Program('dfs_file_mount.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_segyread', 'segyread.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_suaddhead', 'suaddhead.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_sugethw', 'sugethw.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_sushw', 'sushw.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_sutrcount', 'sutrcount.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_suchw', 'suchw.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_surange', 'surange.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_suwind', 'suwind.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_susort', 'susort.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('dfs_file_mount','dfs_file_mount.c', LIBS=libraries, LIBPATH=libraries_path)
 
 

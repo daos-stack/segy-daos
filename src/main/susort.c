@@ -130,7 +130,7 @@ main(int argc, char **argv)
     MUSTGETPARSTRING("pool",  &pool_id);
     MUSTGETPARSTRING("container",  &container_id);
     MUSTGETPARSTRING("svc",  &svc_list);
-    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 0);
 
     /* Look for user-supplied tmpdir form environment */
 	if (!(tmpdir = getenv("CWP_TMPDIR"))) tmpdir="";
@@ -162,7 +162,7 @@ main(int argc, char **argv)
 		        char buffer[512]="";
                 strcpy(tracefile, temporary_filename(buffer));
                 daos_tmp = open_dfs_file(tracefile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-                warn(" temporary file created is %s",tracefile);
+                istmpdir=cwp_true;
             } else {
                 tracefp = etmpfile();
 		    }

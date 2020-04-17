@@ -295,7 +295,7 @@ main(int argc, char **argv)
     MUSTGETPARSTRING("pool",  &pool_id);
     MUSTGETPARSTRING("container",  &container_id);
     MUSTGETPARSTRING("svc",  &svc_list);
-    init_dfs_api(pool_id, svc_list, container_id, 0, 1);
+    init_dfs_api(pool_id, svc_list, container_id, 0, 0);
     if (!getparstring("hfile", &hfile))	hfile = "header";
     if (!getparstring("bfile", &bfile))	bfile = "binary";
     if (!getparstring("xfile", &xfile))	xfile = "xhdrs";
@@ -460,14 +460,6 @@ main(int argc, char **argv)
     /* Write ebcdic stream from buffer into pipe */
     efwrite(ebcbuf, EBCBYTES, 1, pipefp);
 
-    if(ENABLE_DFS){
-	    char * header_bytes;
-	    long len_header_bytes = read_posix(hfile, &header_bytes);
-	    write_dfs_file(daos_header,header_bytes, len_header_bytes);
-	    free(header_bytes);
-    }
-
-
 
 
 
@@ -552,8 +544,14 @@ main(int argc, char **argv)
     if(ENABLE_DFS){
         write_dfs_file(daos_binary, (char *) &bh, BNYBYTES);
         close_dfs_file(daos_binary);
-        close_dfs_file(daos_header);
         epclose(pipefp);
+        if (ENABLE_DFS){
+            char * header_bytes;
+            long len_header_bytes = read_posix(hfile, &header_bytes);
+            write_dfs_file(daos_header,header_bytes, len_header_bytes);
+            free(header_bytes);
+        }
+        close_dfs_file(daos_header);
     }else{
         /* Write binary header from bhed structure to binary file */
         efwrite( (char *) &bh, 1, BNYBYTES, binaryfp);
