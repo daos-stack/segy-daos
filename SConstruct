@@ -1,7 +1,6 @@
-#Import('env')
-#VariantDir('build/main_build', '.')
-env = Environment()
-#env['CC'] = env['CXX']
+import os
+
+env = Environment(ENV=os.environ)
 env.AppendUnique(CPPDEFINES='SUXDR')
 env.SConscript(dirs=['src/dfs_helper'], exports='env',variant_dir='build/dfs_helper_build')
 env.SConscript(dirs=['src/cwp'], exports='env',variant_dir='build/cwp_build')

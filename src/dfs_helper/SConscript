@@ -1,8 +1,7 @@
 Import('env')
-#env = env.Clone()
-#env.AppendUnique(CPPPATH=['include'])
+
 print("Calling Program('DFS_HELPER_API')")
 libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
 libraries = libraries + ['dfs']
-env.SharedLibrary('dfs_helper','dfs_helper_api.c',LIBS=libraries)
+env.StaticLibrary('dfs_helper','dfs_helper_api.c',LIBS=libraries)
 
