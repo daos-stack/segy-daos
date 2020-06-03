@@ -1,3 +1,11 @@
+# DAOS Mapping
+
+* Make sure you export these shared libraries
+``` 
+export LD_LIBRARY_PATH=/usr/lib:/home/daos/daos/build/src/common:/home/daos/daos/build/src/client/api:/home/daos/daos/build/src/client/dfs:/home/daos/daos/lsu/build/dfs_helper_build:/home/daos/daos/_build.external/pmdk/src/nondebug:/home/daos/daos/lsu/build/client/seis_build:
+```
+
+
 # DAOS Compatible Seismic Unix
 * This works on modifying the original seismic unix and achieving an application level integration for the DFS API for the basic 9 commands supported in it.
 
