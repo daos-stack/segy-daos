@@ -1,0 +1,9 @@
+Import('env')
+#env = env.Clone()
+#env.AppendUnique(CPPPATH=['../../include'])
+print("Calling Program('DAOS_SEISMIC_API')")
+libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
+libraries = libraries + ['dfs']
+env.AppendUnique(CPPPATH=['/home/daos/daos/src/include'])
+env.SharedLibrary('daos_seis','daos_seis.c',LIBS=libraries)
+

@@ -338,3 +338,9 @@ void remove_dfs_file(const char *file){
         warn("File %s doesn't exist to be removed \n", file);
     }
 }
+
+
+dfs_t* get_dfs(){
+	return dfs;
+}
+
