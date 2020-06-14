@@ -12,6 +12,8 @@
 
 #include "daos.h"
 #include "daos_fs.h"
+//#include "segy.h"
+
 //#include "dfs_helper_api.h"
 
 #define SEIS_MAX_PATH NAME_MAX
@@ -20,6 +22,7 @@
 #define DS_A_TEXT_HEADER "Text_Header"
 #define DS_A_BINARY_HEADER "Binary_Header"
 #define DS_A_EXTENDED_HEADER "Extended_Text_Header"
+#define DS_A_NTRACES_HEADER "Number_of_Traces"
 #define DS_D_TRACE_HEADER "Trace_Header"
 #define DS_A_TRACE_HEADER "File_Trace_Header"
 #define DS_D_TRACE_DATA "Trace_Data_"
@@ -33,65 +36,85 @@
 typedef struct segy_root_obj segy_root_obj_t;
 typedef struct seis_obj seis_obj_t;
 typedef struct trace_obj trace_obj_t;
+typedef struct seis_gather seis_gather_t;
+typedef struct seismic_entry seismic_entry_t;
 
 
-/** object struct that is instantiated for SEGYROOT open object */
-struct segy_root_obj {
-	/** DAOS object ID */
-	daos_obj_id_t		oid;
-	/** DAOS object open handle */
-	daos_handle_t		oh;
-	/** mode_t containing permissions & type */
-	mode_t			mode;
-	/** open access flags */
-	int			flags;
-	/** DAOS object ID of the CMP object */
-	daos_obj_id_t		cmp_oid;
-	/** DAOS object ID of the SHOT object */
-	daos_obj_id_t		shot_oid;
-	/** DAOS object ID of the GATHER object */
-	daos_obj_id_t		offset_oid;
-	/** entry name of the object */
-	char			name[SEIS_MAX_PATH + 1];
-};
-
-/** object struct that is instantiated for a Seismic open object */
-struct seis_obj {
-	/** DAOS object ID */
-	daos_obj_id_t		oid;
-	/** DAOS object open handle */
-	daos_handle_t		oh;
-	/** mode_t containing permissions & type */
-	mode_t			mode;
-	/** open access flags */
-	int			flags;
-	/** DAOS object ID of the parent of the object */
-	daos_obj_id_t		parent_oid;
-	/** entry name of the object */
-	char			name[SEIS_MAX_PATH + 1];
-	/** current sequence number */
-	int sequence_number;
-	/** number of traces */
-	int number_of_traces;
-};
-
-/** object struct that is instantiated for a Seismic open object */
-struct trace_obj {
-	/** DAOS object ID */
-	daos_obj_id_t		oid;
-	/** DAOS object open handle */
-	daos_handle_t		oh;
-	/** mode_t containing permissions & type */
-	mode_t			mode;
-	/** open access flags */
-	int			flags;
-	/** DAOS object ID of the parent of the object */
-	daos_obj_id_t		parent_oid;
-	/** entry name of the object */
-	char			name[SEIS_MAX_PATH + 1];
-	/**trace header */
-
-};
+//struct seis_gather{
+//	/** number of traces under specific gather */
+//	int number_of_traces;
+//	/** array of object ids under specific gather*/
+//	daos_obj_id_t *oid;
+//
+//	int nkeys;
+//	float *keys;
+//
+//};
+//
+///** object struct that is instantiated for SEGYROOT open object */
+//struct segy_root_obj {
+//	/** DAOS object ID */
+//	daos_obj_id_t		oid;
+//	/** DAOS object open handle */
+//	daos_handle_t		oh;
+//	/** mode_t containing permissions & type */
+//	mode_t			mode;
+//	/** open access flags */
+//	int			flags;
+//	/** DAOS object ID of the CMP object */
+//	daos_obj_id_t		cmp_oid;
+//	/** DAOS object ID of the SHOT object */
+//	daos_obj_id_t		shot_oid;
+//	/** DAOS object ID of the GATHER object */
+//	daos_obj_id_t		offset_oid;
+//	/** entry name of the object */
+//	char			name[SEIS_MAX_PATH + 1];
+//	/** number of traces */
+//	int 	number_of_traces;
+//	/** number of extended text headers */
+//	int 	nextended;
+//};
+//
+///** object struct that is instantiated for a Seismic open object */
+//struct seis_obj {
+//	/** DAOS object ID */
+//	daos_obj_id_t		oid;
+//	/** DAOS object open handle */
+//	daos_handle_t		oh;
+//	/** mode_t containing permissions & type */
+//	mode_t			mode;
+//	/** open access flags */
+//	int			flags;
+//	/** DAOS object ID of the parent of the object */
+//	daos_obj_id_t		parent_oid;
+//	/** entry name of the object */
+//	char			name[SEIS_MAX_PATH + 1];
+//	/** current sequence number */
+//	int sequence_number;
+//	/** number of gathers */
+//	int number_of_gathers;
+//	/**array of gathers */
+//	seis_gather_t *gathers;
+//};
+//
+//
+///** object struct that is instantiated for a Seismic trace object */
+//struct trace_obj {
+//	/** DAOS object ID */
+//	daos_obj_id_t		oid;
+//	/** DAOS object open handle */
+//	daos_handle_t		oh;
+//	/** mode_t containing permissions & type */
+//	mode_t			mode;
+//	/** open access flags */
+//	int			flags;
+//	/** DAOS object ID of the parent of the object */
+//	daos_obj_id_t		parent_oid;
+//	/** entry name of the object */
+//	char			name[SEIS_MAX_PATH + 1];
+//	/**trace header */
+//	segy *trace;
+//};
 
 
 
