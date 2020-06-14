@@ -19,18 +19,16 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-    char pool_id[100]="2cf85316-4a0f-4dbe-903e-608458ffb623";
-	char container_id[100]="2cf85316-4a0f-4dbe-903e-608458ffb625";
+    char pool_id[100]="a18bdf9d-c189-444b-95eb-2e7755919565";
+	char container_id[100]="a18bdf9d-c189-444b-95eb-2e7755919561";
 	char svc_list[100]="0";
 
 
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
-	DAOS_FILE *segyfile = open_dfs_file("/segy_file", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
-
-	check_error_code(daos_seis_parse_segy(get_dfs(), NULL, "SEGYROOT", segyfile->file), "Init segyroot object");
-
-
+	DAOS_FILE *segyfile = open_dfs_file("/Test/segyobj", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
+	daos_seis_parse_segy(get_dfs(), NULL, "SEGY_ROOT_OBJECT", segyfile->file);
+    close_dfs_file(segyfile);
     fini_dfs_api();
 
 

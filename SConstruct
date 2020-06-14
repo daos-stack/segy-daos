@@ -3,6 +3,7 @@
 env = Environment()
 #env['CC'] = env['CXX']
 env.AppendUnique(CPPDEFINES='SUXDR')
+env.Append( CCFLAGS=["-fPIC"] )
 env.SConscript(dirs=['src/dfs_helper'], exports='env',variant_dir='build/dfs_helper_build')
 env.SConscript(dirs=['src/cwp'], exports='env',variant_dir='build/cwp_build')
 env.SConscript(dirs=['src/par'], exports='env',variant_dir='build/par_build')
