@@ -31,7 +31,14 @@
 #define DS_A_SHOT_GATHER "Shot_Gather"
 #define DS_A_CMP_GATHER "Cmp_Gather"
 #define DS_A_OFFSET_GATHER "Offset_Gather"
-
+#define DS_D_SHOT "Shot_"
+#define DS_D_CMP "Cmp_"
+#define DS_D_OFFSET "Off_"
+#define DS_A_TRACE_OIDS "Trace_oids"
+#define DS_A_SHOT_ID "Shot_id"
+#define DS_A_NTRACES "Number_of_traces"
+#define DS_A_CMP_VAL "Cmp_value"
+#define DS_A_OFF_VAL "Offset_value"
 
 typedef struct segy_root_obj segy_root_obj_t;
 typedef struct seis_obj seis_obj_t;
