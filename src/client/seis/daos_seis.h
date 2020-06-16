@@ -45,13 +45,12 @@ typedef struct seis_obj seis_obj_t;
 typedef struct trace_obj trace_obj_t;
 typedef struct seis_gather seis_gather_t;
 typedef struct seismic_entry seismic_entry_t;
-
-
+typedef struct bhed bh_t;
 //struct seis_gather{
 //	/** number of traces under specific gather */
 //	int number_of_traces;
 //	/** array of object ids under specific gather*/
-//	daos_obj_id_t *oid;
+//	daos_obj_id_t *oids;
 //
 //	int nkeys;
 //	float *keys;
@@ -103,8 +102,8 @@ typedef struct seismic_entry seismic_entry_t;
 //	/**array of gathers */
 //	seis_gather_t *gathers;
 //};
-//
-//
+
+
 ///** object struct that is instantiated for a Seismic trace object */
 //struct trace_obj {
 //	/** DAOS object ID */
@@ -127,16 +126,21 @@ typedef struct seismic_entry seismic_entry_t;
 
 int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root);
 
-///** returns pointer to segy root object */
+/** returns pointer to segy root object */
 segy_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
-//
-///** returns pointer to segy root object */
-//segy_root_obj_t* daos_seis_open_root(dfs_t *dfs, char *directory_name);
+/** returns pointer to segy root object */
+segy_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, char *root_name);
+
+int daos_seis_close_root(segy_root_obj_t *segy_root_object);
 
 /** Returns number of traces in segyroot file.
  * equivalent to sutrcount command.
  */
 int daos_seis_get_trace_count(segy_root_obj_t *root);
+
+/** Read segy root object binary header
+ * write the struct in file and compare it with original binary header */
+bh_t* daos_seis_bh_read(segy_root_obj_t *root);
 
 
 /** Read from SEGY file with offset */

@@ -227,6 +227,7 @@ struct seismic_entry {
 
 int daos_seis_root_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char* databuf, int nbytes);
+
 int daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, struct seismic_entry entry);
 /*
  * OID generation for the dfs objects.
@@ -290,14 +291,68 @@ get_daos_obj_mode(int flags)
 		return -1;
 }
 
-segy_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
-	segy_root_obj_t *root_obj;
+static inline int
+check_name(const char *name)
+{
+	if (name == NULL || strchr(name, '/'))
+		return EINVAL;
+	if (strnlen(name, DFS_MAX_PATH) > DFS_MAX_PATH)
+		return EINVAL;
+	return 0;
+}
+
+static int fetch_entry(daos_handle_t oh, daos_handle_t th, const char *name,
+					bool *exists, struct dfs_entry *entry)
+{
+	d_sg_list_t	sgl;
+	d_iov_t		sg_iovs[INODE_AKEYS];
+	daos_iod_t	iod;
+	daos_recx_t	recx;
+	char		*value = NULL;
+	daos_key_t	dkey;
+	unsigned int	i;
+	int		rc;
+
+	D_ASSERT(name);
+
+	/** TODO - not supported yet */
+	if (strcmp(name, ".") == 0)
+		D_ASSERT(0);
+
+	d_iov_set(&dkey, (void *)name, strlen(name));
+	d_iov_set(&iod.iod_name, INODE_AKEY_NAME, strlen(INODE_AKEY_NAME));
+	iod.iod_nr	= 1;
+	recx.rx_idx	= 0;
+	recx.rx_nr	= sizeof(mode_t) + sizeof(time_t) * 3 +
+			    sizeof(daos_obj_id_t) + sizeof(daos_size_t);
+	iod.iod_recxs	= &recx;
+	iod.iod_type	= DAOS_IOD_ARRAY;
+	iod.iod_size	= 1;
+	i = 0;
+
+	d_iov_set(&sg_iovs[i++], &entry->mode, sizeof(mode_t));
+	d_iov_set(&sg_iovs[i++], &entry->oid, sizeof(daos_obj_id_t));
+	d_iov_set(&sg_iovs[i++], &entry->atime, sizeof(time_t));
+	d_iov_set(&sg_iovs[i++], &entry->mtime, sizeof(time_t));
+	d_iov_set(&sg_iovs[i++], &entry->ctime, sizeof(time_t));
+	d_iov_set(&sg_iovs[i++], &entry->chunk_size, sizeof(daos_size_t));
 
 
+	sgl.sg_nr	= i;
+	sgl.sg_nr_out	= 0;
+	sgl.sg_iovs	= sg_iovs;
 
+	rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, NULL);
+	if (rc) {
+		D_ERROR("Failed to fetch entry %s (%d)\n", name, rc);
+	}
 
+	if (sgl.sg_nr_out == 0)
+		*exists = false;
+	else
+		*exists = true;
 
-	return root_obj;
+	return rc;
 }
 
 int insert_entry(daos_handle_t oh, daos_handle_t th, const char *name,
@@ -342,84 +397,155 @@ int insert_entry(daos_handle_t oh, daos_handle_t th, const char *name,
 
 	return rc;
 }
+int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry)
+{
+	d_sg_list_t	sgl;
+	d_iov_t		sg_iovs;
+	daos_iod_t	iod;
+	daos_recx_t	recx;
+	daos_key_t	dkey;
+	int		rc;
 
-//static int
-//fetch_entry(daos_handle_t oh, daos_handle_t th, const char *dkey_name, const char *akey_name, bool *exists, struct seismic_entry *entry, int target)
-//{
-//	d_sg_list_t	sgl;
-//	d_iov_t		sg_iovs[INODE_AKEYS];
-//	daos_iod_t	iod;
-//	daos_recx_t	recx;
-//	char		*value = NULL;
-//	daos_key_t	dkey;
-//	unsigned int	i;
-//	int		rc;
-//
-//	D_ASSERT(dkey_name);
-//
-//	/** TODO - not supported yet */
-//	if (strcmp(dkey_name, ".") == 0)
-//		D_ASSERT(0);
-//
-//	d_iov_set(&dkey, (void *)dkey_name, strlen(dkey_name));
-//	d_iov_set(&iod.iod_name, akey_name, strlen(akey_name));
-//	iod.iod_nr	= 1;
-//	recx.rx_idx	= 0;
-//	recx.rx_nr	= 3 * PATH_MAX + sizeof(daos_obj_id_t) + sizeof(int);
-//	iod.iod_recxs	= &recx;
-//	iod.iod_type	= DAOS_IOD_ARRAY;
-//	iod.iod_size	= 1;
-//	i = 0;
-//
-//	d_iov_set(&sg_iovs[i++], &entry->akey_name, sizeof(PATH_MAX));
-//	d_iov_set(&sg_iovs[i++], &entry->oid, sizeof(daos_obj_id_t));
-//	d_iov_set(&sg_iovs[i++], &entry->dkey_name, sizeof(PATH_MAX));
-//	d_iov_set(&sg_iovs[i++], &entry->data, sizeof(PATH_MAX));
-//	d_iov_set(&sg_iovs[i++], &entry->size, sizeof(int));
-//
-//	if (fetch_sym) {
-//		D_ALLOC(value, PATH_MAX);
-//		if (value == NULL)
-//			return ENOMEM;
-//
-//		recx.rx_nr += PATH_MAX;
-//		/** Set Akey for Symlink Value, will be empty if no symlink */
-//		d_iov_set(&sg_iovs[i++], value, PATH_MAX);
-//	}
-//
-//	sgl.sg_nr	= i;
-//	sgl.sg_nr_out	= 0;
-//	sgl.sg_iovs	= sg_iovs;
-//
-//	rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, NULL);
-//	if (rc) {
-//		D_ERROR("Failed to fetch entry %s (%d)\n", name, rc);
-//		D_GOTO(out, rc = daos_der2errno(rc));
-//	}
-//
-//	if (fetch_sym && S_ISLNK(entry->mode)) {
-//		if (sgl.sg_nr_out == i) {
-//			size_t sym_len = sg_iovs[i-1].iov_len;
-//
-//			if (sym_len != 0) {
-//				D_ASSERT(value);
-//				D_STRNDUP(entry->value, value, PATH_MAX - 1);
-//				if (entry->value == NULL)
-//					D_GOTO(out, rc = ENOMEM);
-//			}
-//		}
-//	}
-//
-//	if (sgl.sg_nr_out == 0)
-//		*exists = false;
-//	else
-//		*exists = true;
-//
-//out:
-//	if (fetch_sym)
-//		D_FREE(value);
-//	return rc;
-//}
+	d_iov_set(&dkey, (void *)entry->dkey_name, strlen(entry->dkey_name));
+	d_iov_set(&iod.iod_name, (void *)entry->akey_name, strlen(entry->akey_name));
+	iod.iod_nr	= 1;
+	recx.rx_idx	= 0;
+	recx.rx_nr	= entry->size;
+	iod.iod_recxs	= &recx;
+	iod.iod_type	= DAOS_IOD_ARRAY;
+	iod.iod_size	= 1;
+
+	d_iov_set(&sg_iovs, entry->data, sizeof(daos_obj_id_t));
+
+	sgl.sg_nr	= 1;
+	sgl.sg_nr_out	= 0;
+	sgl.sg_iovs	= &sg_iovs;
+
+	rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, NULL);
+	if (rc) {
+		D_ERROR("Failed to fetch entry %s (%d)\n", entry->dkey_name, rc);
+	}
+
+
+		return rc;
+}
+
+int daos_seis_close_root(segy_root_obj_t *segy_root_object){
+	int rc;
+	rc = daos_obj_close(segy_root_object->oh, NULL);
+	free(segy_root_object);
+	return rc;
+
+}
+
+segy_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
+
+	segy_root_obj_t* root_obj = malloc(sizeof(segy_root_obj_t));
+	int rc;
+	struct seismic_entry entry ={0};
+	daos_handle_t	th = DAOS_TX_NONE;
+    daos_oclass_id_t cid = OC_SX;
+
+	root_obj->oid = root->oid;
+	root_obj->oh = root->oh;
+	root_obj->mode = root->mode;
+	root_obj->flags = root->flags;
+	strcpy(root_obj->name, root->name);
+/** fetch shot oid value */
+	entry.dkey_name = DS_D_SORTING_TYPES;
+	entry.akey_name = DS_A_SHOT_GATHER;
+	entry.size = sizeof(daos_obj_id_t);
+	entry.oid = root->oid;
+	entry.data = (char*)(&root_obj->shot_oid);
+	rc = daos_seis_fetch_entry(root->oh, th, &entry);
+
+/** fetch CMP oid value */
+	entry.dkey_name = DS_D_SORTING_TYPES;
+	entry.akey_name = DS_A_CMP_GATHER;
+	entry.size = sizeof(daos_obj_id_t);
+	entry.oid = root->oid;
+	entry.data = (char*)(&root_obj->cmp_oid);
+	rc = daos_seis_fetch_entry(root->oh, th, &entry);
+
+
+/** fetch OFFSET oid value */
+	entry.dkey_name = DS_D_SORTING_TYPES;
+	entry.akey_name = DS_A_OFFSET_GATHER;
+	entry.size = sizeof(daos_obj_id_t);
+	entry.oid = root->oid;
+	entry.data = (char*)(&root_obj->offset_oid);
+	rc = daos_seis_fetch_entry(root->oh, th, &entry);
+
+
+/** fetch number of traces */
+	entry.dkey_name = DS_D_FILE_HEADER;
+	entry.akey_name = DS_A_NTRACES_HEADER;
+	entry.size = sizeof(int);
+	entry.oid = root->oid;
+	entry.data = (char*)(&root_obj->number_of_traces);
+	rc = daos_seis_fetch_entry(root->oh, th, &entry);
+
+
+/** fetch number of extended text headers */
+	entry.dkey_name = DS_D_FILE_HEADER;
+	entry.akey_name = DS_A_NEXTENDED_HEADER;
+	entry.size = sizeof(int);
+	entry.oid = root->oid;
+	entry.data = (char*)(&root_obj->nextended);
+	rc = daos_seis_fetch_entry(root->oh, th, &entry);
+
+
+	return root_obj;
+}
+
+segy_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, char *root_name){
+	segy_root_obj_t* root_obj;
+
+	struct dfs_entry	entry = {0};
+	daos_handle_t		th = DAOS_TX_NONE;
+	bool			exists;
+	dfs_obj_t root;
+	int daos_mode;
+	int rc;
+	if (dfs == NULL || !dfs->mounted)
+			return EINVAL;
+	if (parent == NULL)
+		parent = &dfs->root;
+
+//	daos_mode = get_daos_obj_mode(flags);
+//	if (daos_mode == -1)
+//		return EINVAL;
+
+	rc = check_name(root_name);
+	if (rc)
+		return rc;
+	rc = fetch_entry(parent->oh, th, root_name, &exists, &entry);
+
+	int flags = O_RDWR;
+
+	daos_mode = get_daos_obj_mode(flags);
+
+
+	if (exists){
+		rc = daos_obj_open(dfs->coh, entry.oid, daos_mode, &root.oh, NULL);
+		if (rc) {
+			D_ERROR("daos_obj_open() Failed (%d)\n", rc);
+			return daos_der2errno(rc);
+		}
+	} else{
+		return EINVAL;
+	}
+	root.mode = entry.mode;
+	oid_cp(&root.oid, entry.oid);
+
+	root_obj = daos_seis_open_root(dfs, &root);
+
+	return root_obj;
+}
+
+int daos_seis_get_trace_count(segy_root_obj_t *root){
+	return root->number_of_traces;
+}
 
 int daos_seis_th_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *data, int nbytes){
@@ -758,10 +884,6 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t
 //	daos_obj_close(offset_obj->oh, NULL);
 
 	return rc;
-}
-
-int daos_seis_trace_ids_array_update(daos_handle_t oh, daos_handle_t th, struct seismic_entry entry){
-
 }
 
 //int daos_seis_shot_obj_update(dfs_t* dfs, seis_obj_t *shot_obj, seis_obj_t* tr_obj, int shot_id){
@@ -1245,6 +1367,25 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 			off_obj->number_of_gathers++;
 		}
 	return rc;
+}
+
+bh_t* daos_seis_bh_read(segy_root_obj_t *root){
+	struct seismic_entry entry ={0};
+	daos_handle_t	th = DAOS_TX_NONE;
+    daos_oclass_id_t cid = OC_SX;
+	bh_t *bh_read;
+	char *returned_data = malloc(sizeof(int));
+
+	int rc;
+	entry.dkey_name = DS_D_FILE_HEADER;
+	entry.akey_name = DS_A_NTRACES_HEADER;
+	entry.size = sizeof(int);
+	entry.oid = root->oid;
+	rc = daos_seis_fetch_entry(root->oh, th, &entry);
+	bh_read = (bh_t*)entry.data;
+
+
+	return bh_read;
 }
 
 int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root){
