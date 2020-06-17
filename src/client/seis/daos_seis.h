@@ -34,6 +34,8 @@
 #define DS_D_SHOT "Shot_"
 #define DS_D_CMP "Cmp_"
 #define DS_D_OFFSET "Off_"
+#define DS_D_NGATHERS "Number_of_gathers"
+#define DS_A_NGATHERS "Number_of_gathers"
 #define DS_A_TRACE_OIDS "Trace_oids"
 #define DS_A_SHOT_ID "Shot_id"
 #define DS_A_NTRACES "Number_of_traces"
@@ -45,7 +47,7 @@ typedef struct seis_obj seis_obj_t;
 typedef struct trace_obj trace_obj_t;
 typedef struct seis_gather seis_gather_t;
 typedef struct seismic_entry seismic_entry_t;
-typedef struct bhed bh_t;
+
 //struct seis_gather{
 //	/** number of traces under specific gather */
 //	int number_of_traces;
@@ -138,10 +140,15 @@ int daos_seis_close_root(segy_root_obj_t *segy_root_object);
  */
 int daos_seis_get_trace_count(segy_root_obj_t *root);
 
-/** Read segy root object binary header
- * write the struct in file and compare it with original binary header */
-bh_t* daos_seis_bh_read(segy_root_obj_t *root);
+int daos_seis_read_binary_header(segy_root_obj_t *segy_root_object);
 
+int daos_seis_get_cmp_gathers(dfs_t *dfs, segy_root_obj_t *root);
+
+int daos_seis_get_shot_gathers(dfs_t *dfs, segy_root_obj_t *root);
+
+int daos_seis_get_offset_gathers(dfs_t *dfs, segy_root_obj_t *root);
+
+int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, segy_root_obj_t *segy_root_object);
 
 /** Read from SEGY file with offset */
 
