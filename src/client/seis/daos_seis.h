@@ -151,7 +151,7 @@ int daos_seis_get_shot_gathers(dfs_t *dfs, segy_root_obj_t *root);
 
 int daos_seis_get_offset_gathers(dfs_t *dfs, segy_root_obj_t *root);
 
-int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, segy_root_obj_t *segy_root_object);
+int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, segy_root_obj_t *segy_root_object, char *name);
 
 /** Read from SEGY file with offset */
 
