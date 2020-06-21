@@ -15,8 +15,8 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-    char pool_id[100]="e616fc44-86cd-48ff-880c-a06bc8c7c954";
-	char container_id[100]="e616fc44-86cd-48ff-880c-a06bc8c7c951";
+    char pool_id[100]="5f70d01a-6e37-4a31-86c7-511a1841fd76";
+	char container_id[100]="5f70d01a-6e37-4a31-86c7-511a1841fd71";
 	char svc_list[100]="0";
 
 
@@ -46,6 +46,9 @@ int main(int argc, char *argv[]){
 
 	printf("READING SEGY ROOT BINARY HEADER KEY == \n");
 	daos_seis_read_binary_header(segy_root_object);
+
+	printf("READING SEGY ROOT TEXT HEADER KEY == \n");
+	daos_seis_read_text_header(segy_root_object);
 
 	printf("READING SHOT TRACES==\n");
 	int shot_id = 610;

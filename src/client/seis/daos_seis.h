@@ -34,6 +34,7 @@
 #define DS_D_SHOT "Shot_"
 #define DS_D_CMP "Cmp_"
 #define DS_D_OFFSET "Off_"
+#define DS_A_TRACE "TRACE_"
 #define DS_D_NGATHERS "Number_of_gathers"
 #define DS_A_NGATHERS "Number_of_gathers"
 #define DS_A_TRACE_OIDS "Trace_oids"
@@ -141,6 +142,8 @@ int daos_seis_close_root(segy_root_obj_t *segy_root_object);
 int daos_seis_get_trace_count(segy_root_obj_t *root);
 
 int daos_seis_read_binary_header(segy_root_obj_t *segy_root_object);
+
+int daos_seis_read_text_header(segy_root_obj_t *segy_root_object);
 
 int daos_seis_get_cmp_gathers(dfs_t *dfs, segy_root_obj_t *root);
 
