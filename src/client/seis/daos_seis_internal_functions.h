@@ -138,6 +138,8 @@ struct seismic_entry {
 	char		*data;
 
 	int		size;
+
+	daos_iod_type_t		iod_type;
 };
 
 
@@ -157,7 +159,7 @@ int daos_seis_root_obj_create(dfs_t *dfs, segy_root_obj_t **obj,daos_oclass_id_t
 int daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, struct seismic_entry entry);
 
 int daos_seis_root_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
-			char* akey_name , char* databuf, int nbytes);
+			char* akey_name , char* databuf, int nbytes, daos_iod_type_t iod_type);
 
 int daos_seis_bh_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , bhed *bhdr, int nbytes);
@@ -177,7 +179,7 @@ daos_obj_id_t get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid);
 int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, segy *trace, int nbytes);
 
 int prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid, char *dkey, char *akey,
-			char *data,int size);
+			char *data,int size, daos_iod_type_t iod_type);
 
 int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 			seis_obj_t *shot_obj, seis_obj_t *cmp_obj, seis_obj_t *off_obj);

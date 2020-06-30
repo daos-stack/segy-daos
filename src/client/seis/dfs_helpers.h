@@ -116,5 +116,4 @@ int fetch_entry(daos_handle_t oh, daos_handle_t th, const char *name,
 int insert_entry(daos_handle_t oh, daos_handle_t th, const char *name,
 		struct dfs_entry entry);
 
-
 #endif /* LSU_SRC_CLIENT_SEIS_DFS_HELPERS_H_ */

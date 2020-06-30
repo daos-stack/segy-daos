@@ -166,3 +166,4 @@ int insert_entry(daos_handle_t oh, daos_handle_t th, const char *name,
 
 	return rc;
 }
+

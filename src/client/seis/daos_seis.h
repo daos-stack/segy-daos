@@ -9,6 +9,7 @@
 #define DAOS_SEIS_DAOS_SEIS_H_
 
 #include <dirent.h>
+#include<string.h>
 
 #include "dfs_helper_api.h"
 #include "su_helpers.h"
@@ -23,7 +24,7 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 /** returns pointer to segy root object */
 segy_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
 /** returns pointer to segy root object */
-segy_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, char *root_name);
+segy_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, const char *root_name);
 
 int daos_seis_close_root(segy_root_obj_t *segy_root_object);
 
