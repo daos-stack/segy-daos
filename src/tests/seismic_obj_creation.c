@@ -25,9 +25,9 @@ int main(int argc, char *argv[]){
 
 	printf(" PARSING SEGY FILE == \n");
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
-//	DAOS_FILE *segyfile = open_dfs_file("/Test/segyobj", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
-//	daos_seis_parse_segy(get_dfs(), NULL, "SEGY_ROOT_OBJECT", segyfile->file);
-//	close_dfs_file(segyfile);
+	DAOS_FILE *segyfile = open_dfs_file("/Test/segyobj", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
+	daos_seis_parse_segy(get_dfs(), NULL, "SEGY_ROOT_OBJECT", segyfile->file);
+	close_dfs_file(segyfile);
 	printf(" OPEN SEGY ROOT OBJECT== \n");
 	segy_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEGY_ROOT_OBJECT");
 
@@ -73,10 +73,10 @@ int main(int argc, char *argv[]){
 	printf("READING SHOT 610 TRACES==\n");
 	int shot_id = 610;
 	daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object, "daos_seis_SHOT_610_.su");
-
-	printf("READING SHOT 606 TRACES==\n");
-	int shot_ = 606;
-	daos_seis_read_shot_traces(get_dfs(), shot_, segy_root_object, "daos_seis_SHOT_606_.su");
+//
+//	printf("READING SHOT 606 TRACES==\n");
+//	int shot_ = 606;
+//	daos_seis_read_shot_traces(get_dfs(), shot_, segy_root_object, "daos_seis_SHOT_606_.su");
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

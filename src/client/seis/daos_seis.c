@@ -1093,70 +1093,87 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 							(char*)&cmp_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
 		rc = daos_seis_obj_update(cmp_obj->oh, th, ngather_entry);
 		if(rc !=0){
-			printf("ERROR adding shot Number of gathers key, error: %d", rc);
+			printf("ERROR adding CMP Number of gathers key, error: %d", rc);
 			return rc;
 		}
 		prepare_seismic_entry(&ngather_entry, shot_obj->oid, DS_D_NGATHERS, DS_A_NGATHERS,
 							(char*)&offset_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
 		rc = daos_seis_obj_update(offset_obj->oh, th, ngather_entry);
 		if(rc !=0){
-			printf("ERROR adding shot Number of gathers key, error: %d", rc);
+			printf("ERROR adding OFFSET Number of gathers key, error: %d", rc);
 			return rc;
 		}
 
-		struct seismic_entry gather_entry={0};
 
-		for(int i=0; i<shot_obj->sequence_number; i++){
-			char temp[200]="";
-			char shot_dkey_name[200] = "";
-			strcat(shot_dkey_name,DS_D_SHOT);
-			sprintf(temp, "%d", shot_obj->gathers[i].keys[0]);
-			strcat(shot_dkey_name,temp);
 
-			prepare_seismic_entry(&gather_entry, shot_obj->oid, shot_dkey_name, DS_A_NTRACES,
-											(char*)&(shot_obj->gathers[i].number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
-			rc = daos_seis_obj_update(shot_obj->oh, th, gather_entry);
-			if(rc !=0){
-				printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
-				return rc;
-			}
+		rc = update_gather_traces(shot_obj->gathers, shot_obj, DS_D_SHOT, DS_A_NTRACES);
+		if(rc!=0){
+			printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
 		}
 
-		for(int j=0; j <cmp_obj->sequence_number; j++){
-			char cmp_dkey_name[200] = "";
-			char temp[200]="";
-			strcat(cmp_dkey_name,DS_D_CMP);
-			sprintf(temp, "%d", cmp_obj->gathers[i].keys[0]);
-			strcat(cmp_dkey_name,temp);
-			strcat(cmp_dkey_name,"_");
-			sprintf(temp, "%d", cmp_obj->gathers[i].keys[1]);
-			strcat(cmp_dkey_name,temp);
-			prepare_seismic_entry(&gather_entry, cmp_obj->oid, cmp_dkey_name, DS_A_NTRACES,
-								(char*)&(cmp_obj->gathers[i].number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
-			rc = daos_seis_obj_update(cmp_obj->oh, th, gather_entry);
-			if(rc !=0){
-				printf("ERROR UPDATING CMP number_of_traces key, error: %d", rc);
-				return rc;
-			}
+		rc = update_gather_traces(cmp_obj->gathers, cmp_obj, DS_D_CMP, DS_A_NTRACES);
+		if(rc!=0){
+			printf("ERROR UPDATING CMP number_of_traces key, error: %d \n", rc);
 		}
 
-		for(int j=0; j <offset_obj->sequence_number; j++){
-			char off_dkey_name[200] = "";
-			char temp[200]="";
-			strcat(off_dkey_name,DS_D_OFFSET);
-			sprintf(temp, "%d", offset_obj->gathers[i].keys[0]);
-			strcat(off_dkey_name,temp);
-			strcat(off_dkey_name,"_");
-			sprintf(temp, "%d", offset_obj->gathers[i].keys[1]);
-			strcat(off_dkey_name,temp);
-			prepare_seismic_entry(&gather_entry, offset_obj->oid, off_dkey_name, DS_A_NTRACES,
-								(char*)&(offset_obj->gathers[i].number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
-			rc = daos_seis_obj_update(offset_obj->oh, th, gather_entry);
-			if(rc !=0){
-				printf("ERROR UPDATING OFF number_of_traces key, error: %d", rc);
-				return rc;
-			}
+		rc = update_gather_traces(offset_obj->gathers, offset_obj, DS_D_OFFSET, DS_A_NTRACES);
+		if(rc!=0){
+			printf("ERROR UPDATING OFFSET number_of_traces key, error: %d \n", rc);
 		}
+
+//		struct seismic_entry gather_entry={0};
+//
+//		for(int i=0; i<shot_obj->sequence_number; i++){
+//			char temp[200]="";
+//			char shot_dkey_name[200] = "";
+//			strcat(shot_dkey_name,DS_D_SHOT);
+//			sprintf(temp, "%d", shot_obj->gathers[i].keys[0]);
+//			strcat(shot_dkey_name,temp);
+//
+//			prepare_seismic_entry(&gather_entry, shot_obj->oid, shot_dkey_name, DS_A_NTRACES,
+//											(char*)&(shot_obj->gathers[i].number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
+//			rc = daos_seis_obj_update(shot_obj->oh, th, gather_entry);
+//			if(rc !=0){
+//				printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
+//				return rc;
+//			}
+//		}
+//
+//		for(int j=0; j <cmp_obj->sequence_number; j++){
+//			char cmp_dkey_name[200] = "";
+//			char temp[200]="";
+//			strcat(cmp_dkey_name,DS_D_CMP);
+//			sprintf(temp, "%d", cmp_obj->gathers[i].keys[0]);
+//			strcat(cmp_dkey_name,temp);
+//			strcat(cmp_dkey_name,"_");
+//			sprintf(temp, "%d", cmp_obj->gathers[i].keys[1]);
+//			strcat(cmp_dkey_name,temp);
+//			prepare_seismic_entry(&gather_entry, cmp_obj->oid, cmp_dkey_name, DS_A_NTRACES,
+//								(char*)&(cmp_obj->gathers[i].number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
+//			rc = daos_seis_obj_update(cmp_obj->oh, th, gather_entry);
+//			if(rc !=0){
+//				printf("ERROR UPDATING CMP number_of_traces key, error: %d", rc);
+//				return rc;
+//			}
+//		}
+//
+//		for(int j=0; j <offset_obj->sequence_number; j++){
+//			char off_dkey_name[200] = "";
+//			char temp[200]="";
+//			strcat(off_dkey_name,DS_D_OFFSET);
+//			sprintf(temp, "%d", offset_obj->gathers[i].keys[0]);
+//			strcat(off_dkey_name,temp);
+//			strcat(off_dkey_name,"_");
+//			sprintf(temp, "%d", offset_obj->gathers[i].keys[1]);
+//			strcat(off_dkey_name,temp);
+//			prepare_seismic_entry(&gather_entry, offset_obj->oid, off_dkey_name, DS_A_NTRACES,
+//								(char*)&(offset_obj->gathers[i].number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
+//			rc = daos_seis_obj_update(offset_obj->oh, th, gather_entry);
+//			if(rc !=0){
+//				printf("ERROR UPDATING OFF number_of_traces key, error: %d", rc);
+//				return rc;
+//			}
+//		}
 
 
 		daos_obj_close(root_obj->oh, NULL);

@@ -61,6 +61,8 @@ struct seis_gather{
 	int nkeys;
 	/** gather unique info */
 	int keys[2];
+	/** pointer to the next gather */
+	struct seis_gather *next_gather;
 };
 
 /** object struct that is instantiated for SEGYROOT open object */
@@ -188,5 +190,11 @@ int pcreate(int fds[2], const char *command, char *const argv[]);
 
 int execute_command(char *const argv[], char *write_buffer,
     int write_bytes, char *read_buffer, int read_bytes);
+
+void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
+
+int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, int *ntraces);
+
+int update_gather_traces(seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */
