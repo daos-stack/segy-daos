@@ -189,7 +189,7 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 int pcreate(int fds[2], const char *command, char *const argv[]);
 
 int execute_command(char *const argv[], char *write_buffer,
-    int write_bytes, char *read_buffer, int read_bytes);
+						int write_bytes, char *read_buffer, int read_bytes);
 
 void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
 
@@ -197,4 +197,9 @@ int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, i
 
 int update_gather_traces(seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name);
 
+int update_gather_object(seis_obj_t *shot_obj, char *dkey_name, char *akey_name,
+								char *data, int nbytes, daos_iod_type_t type);
+
+void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
+						char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix);
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */
