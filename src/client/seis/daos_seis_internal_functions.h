@@ -37,19 +37,11 @@
 #define DS_A_NTRACES "Number_of_traces"
 #define DS_A_CMP_VAL "Cmp_value"
 #define DS_A_OFF_VAL "Offset_value"
+#define DS_A_GATHER_TRACE_OIDS "TRACE_OIDS_OBJECT_ID"
 
-
-//typedef struct seismic_entry seismic_entry_t;
-//typedef struct seis_gather seis_gather_t;
 struct stat *seismic_stat;
 
-typedef struct segy_root_obj segy_root_obj_t;
-typedef struct seis_obj seis_obj_t;
-typedef struct trace_obj trace_obj_t;
-typedef struct seis_gather seis_gather_t;
-typedef struct seismic_entry seismic_entry_t;
-
-struct seis_gather{
+typedef struct seis_gather{
 	/** number of traces under specific gather key */
 	int number_of_traces;
 	/** array of object ids under specific gather key*/
@@ -63,44 +55,36 @@ struct seis_gather{
 	int keys[2];
 	/** pointer to the next gather */
 	struct seis_gather *next_gather;
-};
+}seis_gather_t;
 
 /** object struct that is instantiated for SEGYROOT open object */
-struct segy_root_obj {
-	/** DAOS object ID */
-	daos_obj_id_t		oid;
-	/** DAOS object open handle */
-	daos_handle_t		oh;
-	/** mode_t containing permissions & type */
-	mode_t			mode;
-	/** open access flags */
-	int			flags;
+typedef struct seis_root_obj {
+	/** root dfs object */
+	dfs_obj_t *root_obj;
 	/** DAOS object ID of the CMP object */
 	daos_obj_id_t		cmp_oid;
 	/** DAOS object ID of the SHOT object */
 	daos_obj_id_t		shot_oid;
 	/** DAOS object ID of the GATHER object */
 	daos_obj_id_t		offset_oid;
-	/** entry name of the object */
-	char			name[SEIS_MAX_PATH + 1];
 	/** number of traces */
 	int 	number_of_traces;
 	/** number of extended text headers */
 	int 	nextended;
-};
+}seis_root_obj_t;
 
 /** object struct that is instantiated for a Seismic open object */
-struct seis_obj {
+typedef struct seis_obj {
 	/** DAOS object ID */
 	daos_obj_id_t		oid;
 	/** DAOS object open handle */
 	daos_handle_t		oh;
-	/** mode_t containing permissions & type */
-	mode_t			mode;
-	/** open access flags */
-	int			flags;
-	/** DAOS object ID of the parent of the object */
-	daos_obj_id_t		parent_oid;
+//	/** mode_t containing permissions & type */
+//	mode_t			mode;
+//	/** open access flags */
+//	int			flags;
+//	/** DAOS object ID of the parent of the object */
+//	daos_obj_id_t		parent_oid;
 	/** entry name of the object */
 	char			name[SEIS_MAX_PATH + 1];
 	/** current sequence number */
@@ -109,28 +93,27 @@ struct seis_obj {
 	int number_of_gathers;
 	/**array of gathers */
 	seis_gather_t *gathers;
-};
+}seis_obj_t;
 
 /** object struct that is instantiated for a Seismic trace object */
-struct trace_obj {
+typedef struct trace_obj {
 	/** DAOS object ID */
 	daos_obj_id_t		oid;
 	/** DAOS object open handle */
 	daos_handle_t		oh;
-	/** mode_t containing permissions & type */
-	mode_t			mode;
-	/** open access flags */
-	int			flags;
-	/** DAOS object ID of the parent of the object */
-	daos_obj_id_t		parent_oid;
+//	/** mode_t containing permissions & type */
+//	mode_t			mode;
+//	/** open access flags */
+//	int			flags;
+//	/** DAOS object ID of the parent of the object */
+//	daos_obj_id_t		parent_oid;
 	/** entry name of the object */
 	char			name[SEIS_MAX_PATH + 1];
 	/**trace header */
 	segy *trace;
-};
+}trace_obj_t;
 
-
-struct seismic_entry {
+typedef struct seismic_entry {
 	char 		*dkey_name;
 
 	char 		*akey_name;
@@ -142,8 +125,15 @@ struct seismic_entry {
 	int		size;
 
 	daos_iod_type_t		iod_type;
-};
+}seismic_entry_t;
 
+/** object struct that is instantiated for a Seismic trace object */
+typedef struct trace_array_obj {
+	/** DAOS object ID */
+	daos_obj_id_t		oid;
+	/** DAOS object open handle */
+	daos_handle_t		oh;
+}trace_array_obj_t;
 
 
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry);
@@ -152,24 +142,24 @@ int daos_seis_array_fetch_entry(daos_handle_t oh, daos_handle_t th,int nrecords,
 
 int daos_seis_array_obj_update(daos_handle_t oh, daos_handle_t th, int nrecords, struct seismic_entry entry);
 
-int daos_seis_th_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_th_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *data, int nbytes);
 
-int daos_seis_root_obj_create(dfs_t *dfs, segy_root_obj_t **obj,daos_oclass_id_t cid,
+int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,daos_oclass_id_t cid,
 			char *name, dfs_obj_t *parent);
 
 int daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, struct seismic_entry entry);
 
-int daos_seis_root_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_root_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char* databuf, int nbytes, daos_iod_type_t iod_type);
 
-int daos_seis_bh_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_bh_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , bhed *bhdr, int nbytes);
 
-int daos_seis_exth_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_exth_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *ebcbuf, int index, int nbytes);
 
-int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t *parent,
+int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t *parent,
 			seis_obj_t **shot_obj, seis_obj_t **cmp_obj, seis_obj_t **offset_obj);
 
 int daos_seis_trh_update(dfs_t* dfs, trace_obj_t* tr_obj, segy *tr, int hdrbytes);
@@ -195,12 +185,12 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
 
 int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, int *ntraces);
 
-int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_obj_t *trace_oids_obj, char *dkey_name, char *akey_name);
+int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_array_obj_t *trace_oids_obj, char *dkey_name, char *akey_name);
 
 int update_gather_object(seis_obj_t *shot_obj, char *dkey_name, char *akey_name,
 								char *data, int nbytes, daos_iod_type_t type);
 
-int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_obj_t* object, seis_gather_t *gather);
+int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_array_obj_t* object, seis_gather_t *gather);
 
 void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 						char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix);

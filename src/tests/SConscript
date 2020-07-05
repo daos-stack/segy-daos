@@ -4,5 +4,5 @@ libraries = libraries + ['dfs','dfs_helper','daos_seis']
 libraries_path = ['../../build/dfs_helper_build', '../../build/client/seis_build']
 print("Calling Program('SEISMIC TESTS')")
 env.Program('seismic_obj_creation', 'seismic_obj_creation.c', LIBS=libraries, LIBPATH=libraries_path)
-
-
+env.Program('get_traces_count', 'get_traces_count.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('read_traces', 'read_traces.c', LIBS=libraries, LIBPATH=libraries_path)

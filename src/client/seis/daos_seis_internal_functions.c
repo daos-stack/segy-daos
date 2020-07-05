@@ -126,7 +126,7 @@ int daos_seis_array_obj_update(daos_handle_t oh, daos_handle_t th, int nrecords,
 		return rc;
 }
 
-int daos_seis_th_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_th_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *data, int nbytes){
 	daos_handle_t	th = DAOS_TX_NONE;
     daos_oclass_id_t cid = OC_SX;
@@ -135,36 +135,20 @@ int daos_seis_th_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
     int daos_mode;
 	struct seismic_entry	th_seismic_entry = {0};
 
-//	daos_mode = get_daos_obj_mode(root_obj->flags);
-
-//	rc = daos_obj_open(dfs->coh, root_obj->oid, daos_mode, &root_obj->oh, NULL);
-//	if (rc) {
-//		D_ERROR("daos_obj_open() Failed (%d)\n", rc);
-//		return daos_der2errno(rc);
-//	}
-
-//	th_seismic_entry.oid = root_obj->oid;
-//	th_seismic_entry.dkey_name = dkey_name;
-//	th_seismic_entry.akey_name = akey_name;
-//	th_seismic_entry.data = data;
-//	th_seismic_entry.size = nbytes;
-
-	rc = prepare_seismic_entry(& th_seismic_entry, root_obj->oid, dkey_name, akey_name,
+	rc = prepare_seismic_entry(& th_seismic_entry, root_obj->root_obj->oid, dkey_name, akey_name,
 				data, nbytes, DAOS_IOD_ARRAY);
 	if(rc !=0){
 		printf("ERROR PREPARING SEISMIC ENTRY IN daos_seis_th_update error = %d \n", rc);
 	}
-	rc = daos_seis_obj_update(root_obj->oh, th, th_seismic_entry);
+	rc = daos_seis_obj_update(root_obj->root_obj->oh, th, th_seismic_entry);
 	if (rc != 0)
 		{
 			return rc;
 		}
-//	daos_obj_close(root_obj->oh, NULL);
-
 	return rc;
 }
 
-int daos_seis_root_obj_create(dfs_t *dfs, segy_root_obj_t **obj,daos_oclass_id_t cid, char *name, dfs_obj_t *parent){
+int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,daos_oclass_id_t cid, char *name, dfs_obj_t *parent){
 
 	int		rc;
 	int daos_mode;
@@ -179,38 +163,38 @@ int daos_seis_root_obj_create(dfs_t *dfs, segy_root_obj_t **obj,daos_oclass_id_t
 	if (*obj == NULL)
 		return ENOMEM;
 
-	strncpy((*obj)->name, name, SEIS_MAX_PATH);
-	(*obj)->name[SEIS_MAX_PATH] = '\0';
-	(*obj)->mode = S_IFDIR | S_IWUSR | S_IRUSR;
-	(*obj)->flags = O_RDWR;
+	D_ALLOC_PTR((*obj)->root_obj);
+	if ((*obj)->root_obj == NULL)
+		return ENOMEM;
+
+	strncpy((*obj)->root_obj->name, name, DFS_MAX_PATH);
+	(*obj)->root_obj->name[DFS_MAX_PATH] = '\0';
+	(*obj)->root_obj->mode = S_IFDIR | S_IWUSR | S_IRUSR;
+	(*obj)->root_obj->flags = O_RDWR;
 	(*obj)->number_of_traces = 0;
 	if(parent==NULL)
 		parent = &dfs->root;
 
-//	oid_cp(&obj->cmp_oid, NULL);
-//	oid_cp(&obj->shot_oid, NULL);
-//	oid_cp(&obj->cdp_oid, NULL);
-
 	/** Get new OID for root object */
-	rc = oid_gen(dfs, cid,false, &(*obj)->oid);
+	rc = oid_gen(dfs, cid,false, &((*obj)->root_obj->oid));
 	if (rc != 0)
 		return rc;
 
-	daos_mode = get_daos_obj_mode((*obj)->flags);
+	daos_mode = get_daos_obj_mode((*obj)->root_obj->flags);
 
-	rc = daos_obj_open(dfs->coh, (*obj)->oid, daos_mode, &(*obj)->oh, NULL);
+	rc = daos_obj_open(dfs->coh, (*obj)->root_obj->oid, daos_mode, &((*obj)->root_obj->oh), NULL);
 	if (rc) {
 		D_ERROR("daos_obj_open() Failed (%d)\n", rc);
 		return daos_der2errno(rc);
 	}
 
-	dfs_entry.oid = (*obj)->oid;
-	dfs_entry.mode = (*obj)->mode;
+	dfs_entry.oid = (*obj)->root_obj->oid;
+	dfs_entry.mode = (*obj)->root_obj->mode;
 	dfs_entry.chunk_size = 0;
 	dfs_entry.atime = dfs_entry.mtime = dfs_entry.ctime = time(NULL);
 
 /** insert segyRoot object created under dfs root */
-	rc = insert_entry(parent->oh, th, (*obj)->name, dfs_entry);
+	rc = insert_entry(parent->oh, th, (*obj)->root_obj->name, dfs_entry);
 
 	return rc;
 }
@@ -279,7 +263,7 @@ int daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, struct seismic_entr
 	return rc;
 }
 
-int daos_seis_root_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_root_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char* databuf, int nbytes, daos_iod_type_t iod_type){
 	daos_handle_t	th = DAOS_TX_NONE;
     daos_oclass_id_t cid = OC_SX;
@@ -288,38 +272,22 @@ int daos_seis_root_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name
     int daos_mode;
 	struct seismic_entry	seismic_entry = {0};
 
-//	daos_mode = get_daos_obj_mode(root_obj->flags);
-
-//	rc = daos_obj_open(dfs->coh, root_obj->oid, daos_mode, &root_obj->oh, NULL);
-//	if (rc) {
-//		D_ERROR("daos_obj_open() Failed (%d)\n", rc);
-//		return daos_der2errno(rc);
-//	}
-
-//	seismic_entry.oid = root_obj->oid;
-//	seismic_entry.dkey_name = dkey_name;
-//	seismic_entry.akey_name = akey_name;
-//	seismic_entry.data = databuf;
-//	seismic_entry.size = nbytes;
-
-	rc = prepare_seismic_entry(& seismic_entry, root_obj->oid, dkey_name, akey_name,
+	rc = prepare_seismic_entry(& seismic_entry, root_obj->root_obj->oid, dkey_name, akey_name,
 			databuf, nbytes, iod_type);
 	if(rc !=0){
 		printf("ERROR PREPARING SEISMIC ENTRY IN daos_seis_root_update error = %d \n", rc);
 	}
 
-	rc = daos_seis_obj_update(root_obj->oh, th, seismic_entry);
+	rc = daos_seis_obj_update(root_obj->root_obj->oh, th, seismic_entry);
 	if (rc != 0)
 	{
 		return rc;
 	}
 
-//	daos_obj_close(root_obj->oh, NULL);
-
 	return rc;
 }
 
-int daos_seis_bh_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_bh_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , bhed *bhdr, int nbytes){
 	daos_handle_t	th = DAOS_TX_NONE;
     daos_oclass_id_t cid = OC_SX;
@@ -328,37 +296,21 @@ int daos_seis_bh_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
     int daos_mode;
 	struct seismic_entry	bh_seismic_entry = {0};
 
-//	daos_mode = get_daos_obj_mode(root_obj->flags);
-
-//	rc = daos_obj_open(dfs->coh, root_obj->oid, daos_mode, &root_obj->oh, NULL);
-//	if (rc) {
-//		D_ERROR("daos_obj_open() Failed (%d)\n", rc);
-//		return daos_der2errno(rc);
-//	}
-
-//	bh_seismic_entry.oid = root_obj->oid;
-//	bh_seismic_entry.dkey_name = dkey_name;
-//	bh_seismic_entry.akey_name = akey_name;
-//	bh_seismic_entry.data = (char *)bhdr;
-//	bh_seismic_entry.size = nbytes;
-
-	rc = prepare_seismic_entry(& bh_seismic_entry, root_obj->oid, dkey_name, akey_name,
+	rc = prepare_seismic_entry(& bh_seismic_entry, root_obj->root_obj->oid, dkey_name, akey_name,
 			(char *)bhdr, nbytes, DAOS_IOD_ARRAY);
 	if(rc !=0){
 		printf("ERROR PREPARING SEISMIC ENTRY IN daos_seis_root_update error = %d \n", rc);
 	}
 
-	rc = daos_seis_obj_update(root_obj->oh, th, bh_seismic_entry);
+	rc = daos_seis_obj_update(root_obj->root_obj->oh, th, bh_seismic_entry);
 	if (rc != 0)
 	{
 		return rc;
 	}
-//	daos_obj_close(root_obj->oh, NULL);
-
 	return rc;
 }
 
-int daos_seis_exth_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name,
+int daos_seis_exth_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *ebcbuf, int index, int nbytes){
 	daos_handle_t	th = DAOS_TX_NONE;
     daos_oclass_id_t cid = OC_SX;
@@ -372,33 +324,16 @@ int daos_seis_exth_update(dfs_t* dfs, segy_root_obj_t* root_obj, char* dkey_name
 	strcat(akey_extended, akey_name);
 	strcat(akey_extended, akey_index);
 
-//	daos_mode = get_daos_obj_mode(root_obj->flags);
-
-//	rc = daos_obj_open(dfs->coh, root_obj->oid, daos_mode, &root_obj->oh, NULL);
-//	if (rc) {
-//		D_ERROR("daos_obj_open() Failed (%d)\n", rc);
-//		return daos_der2errno(rc);
-//	}
-
-//	exth_seismic_entry.oid = root_obj->oid;
-//	exth_seismic_entry.dkey_name = dkey_name;
-//	exth_seismic_entry.akey_name = akey_extended;
-//	exth_seismic_entry.data = ebcbuf;
-//	exth_seismic_entry.size = nbytes;
-
-	rc = prepare_seismic_entry(& exth_seismic_entry, root_obj->oid, dkey_name, akey_extended,
+	rc = prepare_seismic_entry(& exth_seismic_entry, root_obj->root_obj->oid, dkey_name, akey_extended,
 			ebcbuf, nbytes, DAOS_IOD_ARRAY);
 	if(rc !=0){
 		printf("ERROR PREPARING SEISMIC ENTRY IN daos_seis_exth_update error = %d \n", rc);
 	}
 
-	rc = daos_seis_obj_update(root_obj->oh, th, exth_seismic_entry);
+	rc = daos_seis_obj_update(root_obj->root_obj->oh, th, exth_seismic_entry);
 	if(rc != 0){
 		return rc;
 	}
-
-//	daos_obj_close(root_obj->oh, NULL);
-
 	return rc;
 }
 
@@ -436,7 +371,7 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 	}
 }
 
-int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_obj_t *trace_oids_obj, char *dkey_name, char *akey_name){
+int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_array_obj_t *trace_oids_obj, char *dkey_name, char *akey_name){
 	if(head == NULL){
 		printf("NO GATHERS EXIST \n");
 		return 0;
@@ -461,10 +396,8 @@ int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, tr
 				if(rc != 0){
 					printf("ERROR UPDATING %s object TRACE OBJECT IDS ARRAY, error: %d \n",object->name, rc);
 					return rc;
-				}else {
-					printf("SUCCESSFULLY UPDATING TRACE OBJECT IDS ARRAY \n");
 				}
-				rc = update_gather_object(object, gather_dkey_name, "TRACE_OIDS_OBJECT_ID", (char*)&(trace_oids_obj->oid),
+				rc = update_gather_object(object, gather_dkey_name, DS_A_GATHER_TRACE_OIDS, (char*)&(trace_oids_obj->oid),
 						sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 				if(rc != 0){
 					printf("ERROR UPDATING %s object TRACE OBJECT IDS key, error: %d \n",object->name, rc);
@@ -489,10 +422,8 @@ int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, tr
 				if(rc != 0){
 					printf("ERROR UPDATING %s object TRACE OBJECT IDS ARRAY, error: %d \n",object->name, rc);
 					return rc;
-				}else {
-					printf("SUCCESSFULLY UPDATING TRACE OBJECT IDS ARRAY \n");
 				}
-				rc = update_gather_object(object, gather_dkey_name, "TRACE_OIDS_OBJECT_ID", (char*)&trace_oids_obj->oid,
+				rc = update_gather_object(object, gather_dkey_name, DS_A_GATHER_TRACE_OIDS, (char*)&trace_oids_obj->oid,
 						sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 				if(rc != 0){
 					printf("ERROR UPDATING %s object TRACE OBJECT IDS key, error: %d \n",object->name, rc);
@@ -553,18 +484,18 @@ int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, i
 	return exists;
 }
 
-int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t **shot_trace_oids_obj,
-								trace_obj_t **cmp_trace_oids_obj, trace_obj_t **offset_trace_oids_obj){
+int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_array_obj_t **shot_trace_oids_obj,
+							trace_array_obj_t **cmp_trace_oids_obj, trace_array_obj_t **offset_trace_oids_obj){
 
 		int rc;
-		int daos_mode;
+//		int daos_mode;
 		D_ALLOC_PTR(*shot_trace_oids_obj);
 		if (*shot_trace_oids_obj == NULL)
 			return ENOMEM;
-		strncpy((*shot_trace_oids_obj)->name, "shot_gather_trace_OIDS", SEIS_MAX_PATH);
-		(*shot_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
-		(*shot_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
-		(*shot_trace_oids_obj)->flags = O_RDWR;
+//		strncpy((*shot_trace_oids_obj)->name, "shot_gather_trace_OIDS", SEIS_MAX_PATH);
+//		(*shot_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
+//		(*shot_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+//		(*shot_trace_oids_obj)->flags = O_RDWR;
 
 
 
@@ -575,7 +506,7 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t 
 			printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
 		}
 
-		daos_mode = get_daos_obj_mode((*shot_trace_oids_obj)->flags);
+//		daos_mode = get_daos_obj_mode(O_RDWR);
 		/** Open the array object for the gather oids */
 		rc = daos_array_open_with_attr(dfs->coh, (*shot_trace_oids_obj)->oid, DAOS_TX_NONE,
 											DAOS_OO_RW, 1,200*sizeof(daos_obj_id_t), &(*shot_trace_oids_obj)->oh, NULL);
@@ -587,10 +518,10 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t 
 		D_ALLOC_PTR(*cmp_trace_oids_obj);
 		if (*cmp_trace_oids_obj == NULL)
 			return ENOMEM;
-		strncpy((*cmp_trace_oids_obj)->name, "cmp_gather_trace_OIDS", SEIS_MAX_PATH);
-		(*cmp_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
-		(*cmp_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
-		(*cmp_trace_oids_obj)->flags = O_RDWR;
+//		strncpy((*cmp_trace_oids_obj)->name, "cmp_gather_trace_OIDS", SEIS_MAX_PATH);
+//		(*cmp_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
+//		(*cmp_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+//		(*cmp_trace_oids_obj)->flags = O_RDWR;
 
 
 
@@ -601,7 +532,6 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t 
 			printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
 		}
 
-		daos_mode = get_daos_obj_mode((*cmp_trace_oids_obj)->flags);
 		/** Open the array object for the gather oids */
 		rc = daos_array_open_with_attr(dfs->coh, (*cmp_trace_oids_obj)->oid, DAOS_TX_NONE,
 											DAOS_OO_RW, 1,200*sizeof(daos_obj_id_t), &(*cmp_trace_oids_obj)->oh, NULL);
@@ -613,10 +543,10 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t 
 		D_ALLOC_PTR(*offset_trace_oids_obj);
 		if (*offset_trace_oids_obj == NULL)
 			return ENOMEM;
-		strncpy((*offset_trace_oids_obj)->name, "offset_gather_trace_OIDS", SEIS_MAX_PATH);
-		(*offset_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
-		(*offset_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
-		(*offset_trace_oids_obj)->flags = O_RDWR;
+//		strncpy((*offset_trace_oids_obj)->name, "offset_gather_trace_OIDS", SEIS_MAX_PATH);
+//		(*offset_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
+//		(*offset_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+//		(*offset_trace_oids_obj)->flags = O_RDWR;
 
 
 		/** Get new OID for shot object */
@@ -626,7 +556,6 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t 
 			printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
 		}
 
-		daos_mode = get_daos_obj_mode((*offset_trace_oids_obj)->flags);
 		/** Open the array object for the gather oids */
 		rc = daos_array_open_with_attr(dfs->coh, (*offset_trace_oids_obj)->oid, DAOS_TX_NONE,
 											DAOS_OO_RW, 1,200*sizeof(daos_obj_id_t), &(*offset_trace_oids_obj)->oh, NULL);
@@ -638,7 +567,7 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t 
 		return rc;
 }
 
-int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t *parent,
+int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t *parent,
 			seis_obj_t **shot_obj, seis_obj_t **cmp_obj, seis_obj_t **offset_obj){
 	int		rc;
 	int daos_mode;
@@ -651,8 +580,8 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t
 		return ENOMEM;
 	strncpy((*shot_obj)->name, "shot_gather", SEIS_MAX_PATH);
 	(*shot_obj)->name[SEIS_MAX_PATH] = '\0';
-	(*shot_obj)->mode = S_IWUSR | S_IRUSR;
-	(*shot_obj)->flags = O_RDWR;
+//	(*shot_obj)->mode = S_IWUSR | S_IRUSR;
+//	(*shot_obj)->flags = O_RDWR;
 	(*shot_obj)->sequence_number = 0;
 	(*shot_obj)->gathers = NULL;
 	(*shot_obj)->number_of_gathers = 0;
@@ -663,7 +592,7 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t
 		return rc;
 	oid_cp(&parent->shot_oid, (*shot_obj)->oid);
 
-	daos_mode = get_daos_obj_mode((*shot_obj)->flags);
+	daos_mode = get_daos_obj_mode(O_RDWR);
 
 	rc = daos_obj_open(dfs->coh, (*shot_obj)->oid, daos_mode, &(*shot_obj)->oh, NULL);
 	if (rc) {
@@ -679,8 +608,8 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t
 		return ENOMEM;
 	strncpy((*cmp_obj)->name, "cmp_gather", SEIS_MAX_PATH);
 	(*cmp_obj)->name[SEIS_MAX_PATH] = '\0';
-	(*cmp_obj)->mode = S_IWUSR | S_IRUSR;
-	(*cmp_obj)->flags = O_RDWR;
+//	(*cmp_obj)->mode = S_IWUSR | S_IRUSR;
+//	(*cmp_obj)->flags = O_RDWR;
 	(*cmp_obj)->sequence_number = 0;
 	(*cmp_obj)->gathers = NULL;
 	(*cmp_obj)->number_of_gathers = 0;
@@ -691,7 +620,7 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t
 		return rc;
 	oid_cp(&parent->cmp_oid, (*cmp_obj)->oid);
 
-	daos_mode = get_daos_obj_mode((*cmp_obj)->flags);
+	daos_mode = get_daos_obj_mode(O_RDWR);
 
 	rc = daos_obj_open(dfs->coh, (*cmp_obj)->oid, daos_mode, &(*cmp_obj)->oh, NULL);
 	if (rc) {
@@ -708,8 +637,8 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t
 		return ENOMEM;
 	strncpy((*offset_obj)->name, "offset_gather", SEIS_MAX_PATH);
 	(*offset_obj)->name[SEIS_MAX_PATH] = '\0';
-	(*offset_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
-	(*offset_obj)->flags = O_RDWR;
+//	(*offset_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+//	(*offset_obj)->flags = O_RDWR;
 	(*offset_obj)->sequence_number = 0;
 	(*offset_obj)->gathers = NULL;
 	(*offset_obj)->number_of_gathers = 0;
@@ -720,7 +649,7 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t
 		return rc;
 	oid_cp(&parent->offset_oid, (*offset_obj)->oid);
 
-	daos_mode = get_daos_obj_mode((*offset_obj)->flags);
+	daos_mode = get_daos_obj_mode(O_RDWR);
 
 	rc = daos_obj_open(dfs->coh, (*offset_obj)->oid, daos_mode, &(*offset_obj)->oh, NULL);
 	if (rc) {
@@ -864,7 +793,7 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trac
 
 }
 
-int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_obj_t* object, seis_gather_t *gather){
+int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_array_obj_t* object, seis_gather_t *gather){
     int		rc;
     int daos_mode;
 	int data_length = gather->number_of_traces;
@@ -954,8 +883,8 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 
 		strncpy((*trace_hdr_obj)->name, trace_hdr_name, SEIS_MAX_PATH);
 		(*trace_hdr_obj)->name[SEIS_MAX_PATH] = '\0';
-		(*trace_hdr_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
-		(*trace_hdr_obj)->flags = O_RDWR;
+//		(*trace_hdr_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+//		(*trace_hdr_obj)->flags = O_RDWR;
 		(*trace_hdr_obj)->trace = malloc(sizeof(segy));
 
 		/** Get new OID for trace header object */
@@ -965,9 +894,9 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 			return rc;
 		}
 
-		printf("Created TRACE HEADER OID %llu%llu\n", (*trace_hdr_obj)->oid.lo, (*trace_hdr_obj)->oid.hi);
+//		printf("Created TRACE HEADER OID %llu%llu\n", (*trace_hdr_obj)->oid.lo, (*trace_hdr_obj)->oid.hi);
 
-		daos_mode = get_daos_obj_mode((*trace_hdr_obj)->flags);
+		daos_mode = get_daos_obj_mode(O_RDWR);
 		rc = daos_obj_open(dfs->coh, (*trace_hdr_obj)->oid, daos_mode, &(*trace_hdr_obj)->oh, NULL);
 		if (rc) {
 			printf("daos_obj_open() Failed (%d)\n", rc);
@@ -989,8 +918,8 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 
 		strncpy((trace_data_obj)->name, trace_data_name, SEIS_MAX_PATH);
 		(trace_data_obj)->name[SEIS_MAX_PATH] = '\0';
-		(trace_data_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
-		(trace_data_obj)->flags = O_RDWR;
+//		(trace_data_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+//		(trace_data_obj)->flags = O_RDWR;
 		// trace struct here is useless!!
 		(trace_data_obj)->trace = malloc(sizeof(segy));
 
@@ -1109,8 +1038,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 			char trace_akey_name[200] = "";
 
 			prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1, keys, &no_of_traces);
-//			printf("SHOT DKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", shot_dkey_name);
-//			printf("TRACE  AKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", trace_akey_name);
 			rc = update_gather_object(shot_obj, shot_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
 					sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 			if(rc != 0){
@@ -1131,9 +1058,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 				char trace_akey_name[200] = "";
 
 				prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2, keys, &no_of_traces);
-//				printf("CMP DKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", cmp_dkey_name);
-//				printf("TRACE CMP AKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", trace_akey_name);
-
 				rc = update_gather_object(cmp_obj, cmp_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
 						sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 				if(rc != 0){
@@ -1151,9 +1075,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 				char trace_akey_name[200] = "";
 
 				prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2, keys, &no_of_traces);
-//				printf("OFFSET DKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", off_dkey_name);
-//				printf("TRACE OFFSET AKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", trace_akey_name);
-
 				rc = update_gather_object(off_obj, off_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
 						sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 				if(rc != 0){
@@ -1164,7 +1085,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 	/** if shot id, cmp, and offset doesn't already exist */
 	if(!shot_exists){
-		printf("HELLLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO SHOT \n");
 		seis_gather_t shot_gather_data = {0};
 		shot_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
 		char temp[200]="";
@@ -1177,9 +1097,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 		prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1,
 								shot_gather_data.keys, &shot_gather_data.number_of_traces);
-
-//		printf("SHOT DKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", shot_dkey_name);
-//		printf("TRACE  AKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", trace_akey_name);
 
 		rc = update_gather_object(shot_obj, shot_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
 				sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
@@ -1202,7 +1119,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 	}
 
 		if(!cmp_exists){
-			printf("HELLLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO CMP \n");
 			char cmp_dkey_name[200] = "";
 			char temp[200]="";
 			seis_gather_t cmp_gather_data= {0};
@@ -1216,10 +1132,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 			prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2,
 										cmp_gather_data.keys, &cmp_gather_data.number_of_traces);
-//			printf("CMPX>>>> %d \n",cmp_x);
-//			printf("CMPY>>>> %d \n",cmp_y);
-//			printf("CMP DKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", cmp_dkey_name);
-//			printf("TRACE CMP AKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", trace_akey_name);
 
 			rc = update_gather_object(cmp_obj, cmp_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
 					sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
@@ -1244,7 +1156,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 		}
 
 		if(!offset_exists){
-			printf("HELLLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO OFFSET \n");
 			char off_dkey_name[200] = "";
 			char temp[200]="";
 			seis_gather_t off_gather_data= {0};
@@ -1259,11 +1170,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 			prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2,
 									off_gather_data.keys, &off_gather_data.number_of_traces);
-
-//			printf("OFFX>>>> %d \n",off_x);
-//			printf("OFFY>>>> %d \n",off_y);
-//			printf("OFFSET DKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", off_dkey_name);
-//			printf("TRACE OFFSET AKEYNAME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>(%s) \n", trace_akey_name);
 
 			rc = update_gather_object(off_obj, off_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
 					sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);

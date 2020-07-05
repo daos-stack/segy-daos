@@ -22,28 +22,28 @@
 int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root);
 
 /** returns pointer to segy root object */
-segy_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
+seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
 /** returns pointer to segy root object */
-segy_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, const char *root_name);
+seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, const char *root_name);
 
-int daos_seis_close_root(segy_root_obj_t *segy_root_object);
+int daos_seis_close_root(seis_root_obj_t *segy_root_object);
 
 /** Returns number of traces in segyroot file.
  * equivalent to sutrcount command.
  */
-int daos_seis_get_trace_count(segy_root_obj_t *root);
+int daos_seis_get_trace_count(seis_root_obj_t *root);
 
-bhed* daos_seis_read_binary_header(segy_root_obj_t *segy_root_object);
+bhed* daos_seis_read_binary_header(seis_root_obj_t *segy_root_object);
 
-char* daos_seis_read_text_header(segy_root_obj_t *segy_root_object);
+char* daos_seis_read_text_header(seis_root_obj_t *segy_root_object);
 
-int daos_seis_get_cmp_gathers(dfs_t *dfs, segy_root_obj_t *root);
+int daos_seis_get_cmp_gathers(dfs_t *dfs, seis_root_obj_t *root);
 
-int daos_seis_get_shot_gathers(dfs_t *dfs, segy_root_obj_t *root);
+int daos_seis_get_shot_gathers(dfs_t *dfs, seis_root_obj_t *root);
 
-int daos_seis_get_offset_gathers(dfs_t *dfs, segy_root_obj_t *root);
+int daos_seis_get_offset_gathers(dfs_t *dfs, seis_root_obj_t *root);
 
-int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, segy_root_obj_t *segy_root_object, char *name);
+int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *segy_root_object, char *name);
 
 /** Read from SEGY file with offset */
 
