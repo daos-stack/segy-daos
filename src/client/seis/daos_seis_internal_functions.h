@@ -195,10 +195,12 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
 
 int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, int *ntraces);
 
-int update_gather_traces(seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name);
+int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_obj_t *trace_oids_obj, char *dkey_name, char *akey_name);
 
 int update_gather_object(seis_obj_t *shot_obj, char *dkey_name, char *akey_name,
 								char *data, int nbytes, daos_iod_type_t type);
+
+int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_obj_t* object, seis_gather_t *gather);
 
 void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 						char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix);

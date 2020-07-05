@@ -436,7 +436,7 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 	}
 }
 
-int update_gather_traces(seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
+int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_obj_t *trace_oids_obj, char *dkey_name, char *akey_name){
 	if(head == NULL){
 		printf("NO GATHERS EXIST \n");
 		return 0;
@@ -448,14 +448,28 @@ int update_gather_traces(seis_gather_t *head, seis_obj_t *object, char *dkey_nam
 			int nkeys = head->nkeys;
 			char temp[200]="";
 			char gather_dkey_name[200] = "";
-			for(int i=0; i<head->number_of_traces; i++){
-				printf("(%s )OBJECT TRACE NUMBER (%d) OBJECT ID IS ----> %llu%llu\n ",object->name, i, head->oids[i].lo, head->oids[i].hi);
-			}
+//			for(int i=0; i<head->number_of_traces; i++){
+//				printf("(%s )OBJECT TRACE NUMBER (%d) OBJECT ID IS ----> %llu%llu\n ",object->name, i, head->oids[i].lo, head->oids[i].hi);
+//			}
 			if(nkeys == 1){
 				strcat(gather_dkey_name,dkey_name);
 				sprintf(temp, "%d", head->keys[0]);
 				strcat(gather_dkey_name,temp);
+				//insert array object_id in gather object...
 
+				rc = daos_seis_gather_oids_array_update(dfs, trace_oids_obj, head);
+				if(rc != 0){
+					printf("ERROR UPDATING %s object TRACE OBJECT IDS ARRAY, error: %d \n",object->name, rc);
+					return rc;
+				}else {
+					printf("SUCCESSFULLY UPDATING TRACE OBJECT IDS ARRAY \n");
+				}
+				rc = update_gather_object(object, gather_dkey_name, "TRACE_OIDS_OBJECT_ID", (char*)&(trace_oids_obj->oid),
+						sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+				if(rc != 0){
+					printf("ERROR UPDATING %s object TRACE OBJECT IDS key, error: %d \n",object->name, rc);
+					return rc;
+				}
 				rc = update_gather_object(object, gather_dkey_name, akey_name, (char*)&ntraces,
 						sizeof(int), DAOS_IOD_SINGLE);
 				if(rc != 0){
@@ -471,6 +485,19 @@ int update_gather_traces(seis_gather_t *head, seis_obj_t *object, char *dkey_nam
 				sprintf(temp, "%d", head->keys[1]);
 				strcat(gather_dkey_name,temp);
 
+				rc = daos_seis_gather_oids_array_update(dfs, trace_oids_obj, head);
+				if(rc != 0){
+					printf("ERROR UPDATING %s object TRACE OBJECT IDS ARRAY, error: %d \n",object->name, rc);
+					return rc;
+				}else {
+					printf("SUCCESSFULLY UPDATING TRACE OBJECT IDS ARRAY \n");
+				}
+				rc = update_gather_object(object, gather_dkey_name, "TRACE_OIDS_OBJECT_ID", (char*)&trace_oids_obj->oid,
+						sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+				if(rc != 0){
+					printf("ERROR UPDATING %s object TRACE OBJECT IDS key, error: %d \n",object->name, rc);
+					return rc;
+				}
 				rc = update_gather_object(object, gather_dkey_name, akey_name, (char*)&ntraces,
 						sizeof(int), DAOS_IOD_SINGLE);
 				if(rc != 0){
@@ -524,6 +551,91 @@ int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, i
 	}
 	}
 	return exists;
+}
+
+int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,trace_obj_t **shot_trace_oids_obj,
+								trace_obj_t **cmp_trace_oids_obj, trace_obj_t **offset_trace_oids_obj){
+
+		int rc;
+		int daos_mode;
+		D_ALLOC_PTR(*shot_trace_oids_obj);
+		if (*shot_trace_oids_obj == NULL)
+			return ENOMEM;
+		strncpy((*shot_trace_oids_obj)->name, "shot_gather_trace_OIDS", SEIS_MAX_PATH);
+		(*shot_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
+		(*shot_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+		(*shot_trace_oids_obj)->flags = O_RDWR;
+
+
+
+		/** Get new OID for shot object */
+		rc = oid_gen(dfs, cid,true, &(*shot_trace_oids_obj)->oid);
+		if (rc != 0){
+			return rc;
+			printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
+		}
+
+		daos_mode = get_daos_obj_mode((*shot_trace_oids_obj)->flags);
+		/** Open the array object for the gather oids */
+		rc = daos_array_open_with_attr(dfs->coh, (*shot_trace_oids_obj)->oid, DAOS_TX_NONE,
+											DAOS_OO_RW, 1,200*sizeof(daos_obj_id_t), &(*shot_trace_oids_obj)->oh, NULL);
+		if (rc != 0) {
+			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+			return daos_der2errno(rc);
+		}
+
+		D_ALLOC_PTR(*cmp_trace_oids_obj);
+		if (*cmp_trace_oids_obj == NULL)
+			return ENOMEM;
+		strncpy((*cmp_trace_oids_obj)->name, "cmp_gather_trace_OIDS", SEIS_MAX_PATH);
+		(*cmp_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
+		(*cmp_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+		(*cmp_trace_oids_obj)->flags = O_RDWR;
+
+
+
+		/** Get new OID for shot object */
+		rc = oid_gen(dfs, cid,true, &(*cmp_trace_oids_obj)->oid);
+		if (rc != 0){
+			return rc;
+			printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
+		}
+
+		daos_mode = get_daos_obj_mode((*cmp_trace_oids_obj)->flags);
+		/** Open the array object for the gather oids */
+		rc = daos_array_open_with_attr(dfs->coh, (*cmp_trace_oids_obj)->oid, DAOS_TX_NONE,
+											DAOS_OO_RW, 1,200*sizeof(daos_obj_id_t), &(*cmp_trace_oids_obj)->oh, NULL);
+		if (rc != 0) {
+			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+			return daos_der2errno(rc);
+		}
+
+		D_ALLOC_PTR(*offset_trace_oids_obj);
+		if (*offset_trace_oids_obj == NULL)
+			return ENOMEM;
+		strncpy((*offset_trace_oids_obj)->name, "offset_gather_trace_OIDS", SEIS_MAX_PATH);
+		(*offset_trace_oids_obj)->name[SEIS_MAX_PATH] = '\0';
+		(*offset_trace_oids_obj)->mode = S_IFREG | S_IWUSR | S_IRUSR;
+		(*offset_trace_oids_obj)->flags = O_RDWR;
+
+
+		/** Get new OID for shot object */
+		rc = oid_gen(dfs, cid,true, &(*offset_trace_oids_obj)->oid);
+		if (rc != 0){
+			return rc;
+			printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
+		}
+
+		daos_mode = get_daos_obj_mode((*offset_trace_oids_obj)->flags);
+		/** Open the array object for the gather oids */
+		rc = daos_array_open_with_attr(dfs->coh, (*offset_trace_oids_obj)->oid, DAOS_TX_NONE,
+											DAOS_OO_RW, 1,200*sizeof(daos_obj_id_t), &(*offset_trace_oids_obj)->oh, NULL);
+		if (rc != 0) {
+			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+			return daos_der2errno(rc);
+		}
+
+		return rc;
 }
 
 int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, segy_root_obj_t *parent,
@@ -752,6 +864,44 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trac
 
 }
 
+int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_obj_t* object, seis_gather_t *gather){
+    int		rc;
+    int daos_mode;
+	int data_length = gather->number_of_traces;
+	int offset = 0;
+	struct seismic_entry	tr_entry = {0};
+	tr_entry.data = (char*)(gather->oids);
+	daos_array_iod_t iod;
+	daos_range_t		rg;
+	d_sg_list_t sgl;
+
+	sgl.sg_nr = data_length;
+	sgl.sg_nr_out = 0;
+	d_iov_t iov[sgl.sg_nr];
+	int j=0;
+	for(int i=0; i < sgl.sg_nr; i++){
+		d_iov_set(&iov[i], (void*)&(tr_entry.data[j]), sizeof(daos_obj_id_t));
+		j+=sizeof(daos_obj_id_t);
+	}
+
+	sgl.sg_iovs = &iov;
+	iod.arr_nr = 1;
+	rg.rg_len = data_length * sizeof(daos_obj_id_t);
+	rg.rg_idx = offset;
+	iod.arr_rgs = &rg;
+
+	rc = daos_array_write(object->oh, DAOS_TX_NONE, &iod, &sgl, NULL);
+	if(rc!=0){
+		printf("ERROR UPDATING TRACE OBJECT IDS ARRAY----------------- error = %d \n", rc);
+		return rc;
+	}
+//	} else {
+//		printf("SUCCESSFULLY updated trace object ids array \n");
+//	}
+
+	return rc;
+}
+
 daos_obj_id_t get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid){
 	daos_obj_id_t tr_data_oid = *tr_hdr;
 	tr_data_oid.hi++;
@@ -850,6 +1000,7 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 			printf("ERROR GENERATING OBJECT ID for trace data %d \n", rc);
 			return rc;
 		}
+
 //		printf("Created TRACE DATA OID %llu %llu\n", (trace_data_obj)->oid.lo, (trace_data_obj)->oid.hi);
 
 
