@@ -462,7 +462,6 @@ typedef struct {	/* segy - trace identification header */
 
 #ifdef SLTSU_SEGY_H  /* begin Unocal SU segy.h differences */
 
-
 	/* cwp local assignments */
 	float d1;	/* sample spacing for non-seismic data
 			   byte# 181-184

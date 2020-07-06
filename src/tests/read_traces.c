@@ -24,10 +24,11 @@ int main(int argc, char *argv[]){
 	printf(" OPEN SEGY ROOT OBJECT== \n");
 	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEGY_ROOT_OBJECT");
 
-	printf("READING SHOT 610 TRACES==\n");
-	int shot_ = 610;
-	daos_seis_read_shot_traces(get_dfs(), shot_, segy_root_object, "daos_seis_SHOT_610_.su");
+//	printf("READING SHOT 610 TRACES==\n");
+//	int shot_ = 610;
+//	daos_seis_read_shot_traces(get_dfs(), shot_, segy_root_object, "daos_seis_SHOT_610_.su");
 
+//	read_traces *traces = malloc()
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

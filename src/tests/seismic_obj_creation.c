@@ -18,8 +18,8 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-    char pool_id[100]="077f4194-432c-4ad7-be17-e65621f75c21";
-	char container_id[100]="077f4194-432c-4ad7-be17-e65621f75c22";
+    char pool_id[100]="28c64323-1e5e-4faa-a2a2-5f27007e69ff";
+	char container_id[100]="28c64323-1e5e-4faa-a2a2-5f27007e69f1";
 	char svc_list[100]="0";
 
 	printf(" PARSING SEGY FILE == \n");

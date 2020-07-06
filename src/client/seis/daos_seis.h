@@ -28,29 +28,66 @@ seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, const c
 
 int daos_seis_close_root(seis_root_obj_t *segy_root_object);
 
-/** Returns number of traces in segyroot file.
- * equivalent to sutrcount command.
+
+/**
+ * Fetch total number of traces stored under seismic root object.
+ *
+ * \param[in]   root            pointer to root seismic object.
+ * \return      returns the number of traces.
  */
 int daos_seis_get_trace_count(seis_root_obj_t *root);
 
-bhed* daos_seis_read_binary_header(seis_root_obj_t *segy_root_object);
+/**
+ * Fetch binary header data stored under seismic root object.
+ *
+ * \param[in]   root            pointer to root seismic object.
+ * \return      returns pointer to struct holding binary header data.
+ */
+bhed* daos_seis_read_binary_header(seis_root_obj_t *root);
 
-char* daos_seis_read_text_header(seis_root_obj_t *segy_root_object);
+/**
+ * Fetch text header data stored under seismic root object.
+ *
+ * \param[in]   root            pointer to root seismic object.
+ * \return      returns pointer to character array holding text header data.
+ */
+char* daos_seis_read_text_header(seis_root_obj_t *root);
 
+/**
+ * Fetch number of cmp gathers stored under CMP seismic object.
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \return      returns number of cmp gathers.
+ */
 int daos_seis_get_cmp_gathers(dfs_t *dfs, seis_root_obj_t *root);
 
+/**
+ * Fetch number of shot gathers stored under SHOT seismic object.
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \return      returns number of shot gathers.
+ */
 int daos_seis_get_shot_gathers(dfs_t *dfs, seis_root_obj_t *root);
 
+/**
+ * Fetch number of offset gathers stored under OFFSET seismic object.
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \return      returns number of offset gathers.
+ */
 int daos_seis_get_offset_gathers(dfs_t *dfs, seis_root_obj_t *root);
 
-int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *segy_root_object, char *name);
-
-/** Read from SEGY file with offset */
-
-/** Update object Akeys single values*/
-
-/** Update object Akeys array values*/
-
-
+/**
+ * Fetch shot traces
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \param[in]   name           string containing name of file.
+ * \return      returns number of offset gathers.
+ */
+int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, char *name);
 
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */
