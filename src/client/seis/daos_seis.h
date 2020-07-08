@@ -90,4 +90,7 @@ int daos_seis_get_offset_gathers(dfs_t *dfs, seis_root_obj_t *root);
  */
 int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, char *name);
 
+
+read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root);
+
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */

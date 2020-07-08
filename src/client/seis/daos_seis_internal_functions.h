@@ -125,9 +125,6 @@ typedef struct trace_array_obj {
 
 typedef struct trace {
 
-	daos_obj_id_t trace_header_obj;
-
-
 	int tracl;	/* Trace sequence number within line
 			   --numbers continue to increase if the
 			   same line continues across multiple
@@ -604,6 +601,8 @@ typedef struct trace {
 			   byte# 213-240
 			*/
 
+	daos_obj_id_t trace_header_obj;
+
 	float  *data;
 
 }trace_t;
@@ -671,5 +670,7 @@ int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_array_obj_t* object, se
 
 void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 						char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix);
+
+segy* trace_to_segy(trace_t *trace);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

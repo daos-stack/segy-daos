@@ -937,11 +937,12 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 
 	int no_of_traces;
+	keys[0]=shot_id;
+
 	if(check_key_value(keys,shot_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
 		char shot_dkey_name[200] = "";
 		shot_exists=1;
 		char trace_akey_name[200] = "";
-		keys[0]=shot_id;
 
 		prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1, keys, &no_of_traces);
 		rc = update_gather_object(shot_obj, shot_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
@@ -952,13 +953,14 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 		}
 	}
 
+	keys[0]=cmp_x;
+	keys[1] = cmp_y;
 
 	if(check_key_value(keys,cmp_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+
 			char cmp_dkey_name[200] = "";
 			cmp_exists=1;
 			char trace_akey_name[200] = "";
-			keys[0]=cmp_x;
-			keys[1] = cmp_y;
 
 			prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2, keys, &no_of_traces);
 			rc = update_gather_object(cmp_obj, cmp_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
@@ -969,13 +971,14 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 			}
 	}
 
+	keys[0]=off_x;
+	keys[1] =off_y;
 
 	if(check_key_value(keys,off_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+
 		offset_exists=1;
 		char off_dkey_name[200] = "";
 		char trace_akey_name[200] = "";
-		keys[0]=off_x;
-		keys[1] =off_y;
 
 		prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2, keys, &no_of_traces);
 		rc = update_gather_object(off_obj, off_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
@@ -1166,6 +1169,14 @@ int execute_command(char *const argv[], char *write_buffer,
 	}
 	// Return number of bytes actually read from the STDOUT of the subprocess.
 	return total_bytes;
+}
+
+segy* trace_to_segy(trace_t *trace){
+
+	segy *tp = malloc(sizeof(segy));
+	memcpy(tp, trace, HDRBYTES);
+	memcpy(tp->data, trace->data, tp->ns*sizeof(float));
+	return tp;
 }
 
 
