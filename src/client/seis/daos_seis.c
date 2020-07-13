@@ -311,7 +311,8 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 
 		temp.data = shot_obj->gathers->oids;
 		int j=0;
-		for(int i=0; i < sgl.sg_nr; i++){
+		int i;
+		for(i=0; i < sgl.sg_nr; i++){
 			d_iov_set(&iov[i], (void*)&(temp.data[j]), sizeof(daos_obj_id_t));
 			j += sizeof(daos_obj_id_t);
 		}
@@ -335,7 +336,8 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 	}
 
 	if(shot_exists==1){
-		for(int j=0; j < shot_obj->gathers->number_of_traces; j++){
+		int j;
+		for(j=0; j < shot_obj->gathers->number_of_traces; j++){
 			struct seismic_entry trace_gather = {0};
 			//Open trace object
 			trace_obj_t *trace_obj= malloc(sizeof(trace_obj_t));
@@ -399,7 +401,8 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 			d_iov_t iov[sgl.sg_nr];
 
 			int j=0;
-			for(int i=0; i < sgl.sg_nr; i++){
+ 			int i;
+			for(i=0; i < sgl.sg_nr; i++){
 				d_iov_set(&iov[i], (void*)&(trace_data.data[j]), sizeof(float));
 				j += 4;
 			}
@@ -548,7 +551,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		temp.data = shot_obj->gathers->oids;
 		int j=0;
-		for(int i=0; i < sgl.sg_nr; i++){
+		int i;
+		for(i=0; i < sgl.sg_nr; i++){
 			d_iov_set(&iov[i], (void*)&(temp.data[j]), sizeof(daos_obj_id_t));
 			j += sizeof(daos_obj_id_t);
 		}
@@ -576,6 +580,45 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 	if(rc){
 		printf("ERROR INITALIZING EVENT QUEUE LIBRARY ERRNO = %d \n", rc);
 	}
+        trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
+
+//	if(shot_exists==1){
+		int j;
+		for(j=0; j < traces->number_of_traces; j++){
+//			printf("traces->number_of_traces ========== %d \n",traces->number_of_traces);
+
+			struct seismic_entry trace_gather = {0};
+			//Open trace object
+			trace_obj_t *trace_obj= malloc(sizeof(trace_obj_t));
+//			trace_obj_t *trace_data_obj = malloc(sizeof(trace_obj_t));
+
+			trace_obj->oid = shot_obj->gathers->oids[j];
+
+			rc = daos_obj_open(dfs->coh, trace_obj->oid, daos_mode, &trace_obj->oh, NULL);
+			if(rc) {
+				printf("daos_obj_open()__ trace_header_obj Failed (%d)\n", rc);
+				return rc;
+			}
+
+			trace_data_obj->oid = get_tr_data_oid(&(trace_obj->oid),OC_SX);
+
+			/** Open the array object for the file */
+			rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj)->oid, th,
+				DAOS_OO_RW, 1,200*sizeof(float), &(trace_data_obj->oh), NULL);
+			if (rc) {
+				printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+				return rc;
+			}
+
+			char tr_index[50];
+			char trace_name[200] = "Trace_hdr_obj_";
+
+			sprintf(tr_index, "%d",j);
+			strcat(trace_name, tr_index);
+
+			strncpy(trace_obj->name, trace_name, SEIS_MAX_PATH);
+			trace_obj->name[SEIS_MAX_PATH] = '\0';
+//			trace_obj->trace = malloc(sizeof(segy));
 
 	daos_handle_t eqh;
 	rc = daos_eq_create( &eqh);
@@ -650,7 +693,6 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			printf("ERROR CREATING NEW EVENT ERRNO= %d \n", rc);
 		}
 
-
 		rc = daos_array_read(trace_data_obj[j].oh, DAOS_TX_NONE, &iod, &sgl, &events[j]);
 		if(rc) {
 			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
@@ -704,11 +746,11 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			daos_array_close(trace_data_obj[j].oh,NULL);
 			free(trace_obj);
 //			free(trace_data_obj);
-			 bool flag;
-			rc = daos_event_test(&events[j], DAOS_EQ_WAIT, &flag);
-			if(rc){
-				printf("ERROR testing event completion ERRNO = %d \n", rc);
-			}
+//			 bool flag;
+//			rc = daos_event_test(&events[j], DAOS_EQ_WAIT, &flag);
+//			if(rc){
+//				printf("ERROR testing event completion ERRNO = %d \n", rc);
+//			}
 //			printf("FLAG OF TRACE NO = %d is %d \n",j,flag);
 
 		}
@@ -735,7 +777,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		printf("ERRR FINALIZING EVENT QUEUE LIBRARY ERRNO = %d \n", rc);
 	}
 
-//	}
+	}
 	return traces;
 }
 
@@ -1245,6 +1287,7 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 		}
 
 		printf("NUMBER OF SHOT GATHERS ====== %d \n", shot_obj->number_of_gathers);
+
 		rc = update_gather_object(shot_obj, DS_D_NGATHERS, DS_A_NGATHERS,
 				(char*)&shot_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
 		if(rc !=0){

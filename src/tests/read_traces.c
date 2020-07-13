@@ -18,7 +18,8 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-    char pool_id[100]="610396d0-16bc-4875-878c-5235b5fffad8";
+
+        char pool_id[100]="610396d0-16bc-4875-878c-5235b5fffad8";
 	char container_id[100]="610396d0-16bc-4875-878c-5235b5fffad0";
 	char svc_list[100]="0";
 
@@ -28,7 +29,7 @@ int main(int argc, char *argv[]){
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
 	printf(" OPEN SEGY ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEGY_ROOT_OBJECT");
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEIS_ROOT_OBJECT");
 
 //	time(&start);
 //	daos_seis_read_shot_traces(get_dfs(), 610, segy_root_object, "old_daos_seis_SHOT_610_.su");
@@ -41,16 +42,18 @@ int main(int argc, char *argv[]){
 	printf("READING SHOT 610 TRACES==\n");
 	int shot_id = 610;
 
+//	daos_seis_read_shot_traces(get_dfs(), shot_, segy_root_object, "daos_seis_SHOT_610_.su");
+
 	time(&start);
 	read_traces *all_traces = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
 	time(&end);
     time_taken = (double)(end - start);
     printf("TIME TAKEN IN MODIFIED READ FUNCCTION ISSS %f \n", time_taken);
 
-    FILE *fd = fopen("daos_seis_SHOT_610_.su", "w");
+    FILE *fd = fopen("daos_seis_SHOT_610_1.su", "w");
 
-
-    for(int i=0; i < all_traces->number_of_traces; i++){
+	int i;
+    for(i=0; i < all_traces->number_of_traces; i++){
     	segy* tp = trace_to_segy(&(all_traces->traces[i]));
     	fputtr(fd, tp);
     }
