@@ -623,8 +623,8 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trac
 	sgl.sg_nr_out = 0;
 	d_iov_t iov[sgl.sg_nr];
 	int j=0;
-
-	for(int i=0; i < sgl.sg_nr; i++){
+	int i;
+	for(i=0; i < sgl.sg_nr; i++){
 		d_iov_set(&iov[i], (void*)&(tr_entry.data[j]), sizeof(float));
 		j+=4;
 	}
@@ -730,7 +730,8 @@ int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_array_obj_t* object, se
 	sgl.sg_nr_out = 0;
 	d_iov_t iov[sgl.sg_nr];
 	int j=0;
-	for(int i=0; i < sgl.sg_nr; i++){
+	int i;
+	for(i=0; i < sgl.sg_nr; i++){
 		d_iov_set(&iov[i], (void*)&(tr_entry.data[j]), sizeof(daos_obj_id_t));
 		j+=sizeof(daos_obj_id_t);
 	}

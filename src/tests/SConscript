@@ -1,7 +1,8 @@
 Import('env')
 libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
-libraries = libraries + ['dfs','dfs_helper','daos_seis']
+libraries = libraries + ['dfs','dfs_helper','daos_seis', 'su', 'par', 'cwp', 'm', 'gurt']
 libraries_path = ['../../build/dfs_helper_build', '../../build/client/seis_build']
+libraries_path = libraries_path + ['../../build/su_build','../../build/par_build','../../build/cwp_build']
 print("Calling Program('SEISMIC TESTS')")
 env.Program('seismic_obj_creation', 'seismic_obj_creation.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('get_traces_count', 'get_traces_count.c', LIBS=libraries, LIBPATH=libraries_path)

@@ -15,14 +15,14 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-    char pool_id[100]="7d500429-c703-4759-ad63-ce332519c101";
-	char container_id[100]="7d500429-c703-4759-ad63-ce332519c100";
+    char pool_id[100]="0fea7431-a6bf-4ed3-bfb8-8188227f92fb";
+	char container_id[100]="0fea7431-a6bf-4ed3-bfb8-8188227f92f6";
 	char svc_list[100]="0";
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
 	printf(" OPEN SEGY ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEGY_ROOT_OBJECT");
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEIS_ROOT_OBJECT");
 
 	int number_of_traces;
 	number_of_traces = daos_seis_get_trace_count(segy_root_object);

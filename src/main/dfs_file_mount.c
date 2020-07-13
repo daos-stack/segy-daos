@@ -95,7 +95,8 @@ int main(int argc, char *argv[]) {
                 printf("File size read back from Posix is %ld \n", len);
             }
             // Compare byte arrays.
-            for(int i=0 ; i<len; i++){
+            int i;
+            for(i=0 ; i<len; i++){
                 if(ret[i]!=read[i]){
                     printf("Validation fails : bytes mismatch \n");
                     free(read);
@@ -138,7 +139,8 @@ int main(int argc, char *argv[]) {
                 printf("File size read back from DAOS is %ld \n", read_size);
             }
             // Compare byte arrays.
-            for(int i=0 ; i<len; i++){
+            int i;
+            for(i=0 ; i<len; i++){
                 if(ret[i]!=read[i]){
                     printf("Validation fails : bytes mismatch \n");
                     free(read);

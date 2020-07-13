@@ -310,7 +310,8 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 
 		temp.data = shot_obj->gathers->oids;
 		int j=0;
-		for(int i=0; i < sgl.sg_nr; i++){
+		int i;
+		for(i=0; i < sgl.sg_nr; i++){
 			d_iov_set(&iov[i], (void*)&(temp.data[j]), sizeof(daos_obj_id_t));
 			j += sizeof(daos_obj_id_t);
 		}
@@ -334,7 +335,8 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 	}
 
 	if(shot_exists==1){
-		for(int j=0; j < shot_obj->gathers->number_of_traces; j++){
+		int j;
+		for(j=0; j < shot_obj->gathers->number_of_traces; j++){
 			struct seismic_entry trace_gather = {0};
 			//Open trace object
 			trace_obj_t *trace_obj= malloc(sizeof(trace_obj_t));
@@ -398,7 +400,8 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 			d_iov_t iov[sgl.sg_nr];
 
 			int j=0;
-			for(int i=0; i < sgl.sg_nr; i++){
+ 			int i;
+			for(i=0; i < sgl.sg_nr; i++){
 				d_iov_set(&iov[i], (void*)&(trace_data.data[j]), sizeof(float));
 				j += 4;
 			}
@@ -550,7 +553,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		temp.data = shot_obj->gathers->oids;
 		int j=0;
-		for(int i=0; i < sgl.sg_nr; i++){
+		int i;
+		for(i=0; i < sgl.sg_nr; i++){
 			d_iov_set(&iov[i], (void*)&(temp.data[j]), sizeof(daos_obj_id_t));
 			j += sizeof(daos_obj_id_t);
 		}
@@ -577,7 +581,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 	traces->traces = malloc(traces->number_of_traces * sizeof(trace_t));
 
 	if(shot_exists==1){
-		for(int j=0; j < traces->number_of_traces; j++){
+		int j;
+		for(j=0; j < traces->number_of_traces; j++){
 //			printf("traces->number_of_traces ========== %d \n",traces->number_of_traces);
 
 			struct seismic_entry trace_gather = {0};
@@ -657,7 +662,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			trace_data.data = (char*)traces->traces[j].data;
 
 			int u=0;
-			for(int i=0; i < sgl.sg_nr; i++){
+			int i;
+			for(i=0; i < sgl.sg_nr; i++){
 				d_iov_set(&iov[i], (void*)&(trace_data.data[u]), sizeof(float));
 				u += 4;
 			}
@@ -1228,7 +1234,8 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 			return rc;
 		}
 
-printf("NUMBER OF SHOT GATHERS ====== %d \n", shot_obj->number_of_gathers);
+		printf("NUMBER OF SHOT GATHERS ====== %d \n", shot_obj->number_of_gathers);
+			
 		rc = update_gather_object(shot_obj, DS_D_NGATHERS, DS_A_NGATHERS,
 				(char*)&shot_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
 		if(rc !=0){

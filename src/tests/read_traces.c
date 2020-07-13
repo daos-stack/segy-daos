@@ -16,25 +16,25 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-    char pool_id[100]="7d500429-c703-4759-ad63-ce332519c101";
-	char container_id[100]="7d500429-c703-4759-ad63-ce332519c100";
+    char pool_id[100]="0fea7431-a6bf-4ed3-bfb8-8188227f92fb";
+	char container_id[100]="0fea7431-a6bf-4ed3-bfb8-8188227f92f6";
 	char svc_list[100]="0";
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
 	printf(" OPEN SEGY ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEGY_ROOT_OBJECT");
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEIS_ROOT_OBJECT");
 
 	printf("READING SHOT 610 TRACES==\n");
-	int shot_id = 610;
+	int shot_id = 1;
 //	daos_seis_read_shot_traces(get_dfs(), shot_, segy_root_object, "daos_seis_SHOT_610_.su");
 
 	read_traces *all_traces = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
 
-    FILE *fd = fopen("daos_seis_SHOT_610_.su", "w");
+    FILE *fd = fopen("daos_seis_SHOT_610_1.su", "w");
 
-
-    for(int i=0; i < all_traces->number_of_traces; i++){
+	int i;
+    for(i=0; i < all_traces->number_of_traces; i++){
     	segy* tp = trace_to_segy(&(all_traces->traces[i]));
     	fputtr(fd, tp);
     }

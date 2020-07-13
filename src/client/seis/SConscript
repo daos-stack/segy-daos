@@ -6,12 +6,12 @@ libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
 libraries = libraries + ['dfs','dfs_helper','su','par','cwp','m']
 libraries_path = ['../../../build/dfs_helper_build','../../../build/su_build','../../../build/par_build','../../../build/cwp_build']
 env.AppendUnique(CPPPATH=['/home/daos/daos/src/include'])
-env.StaticLibrary('su_helper','su_helpers.c',LIBS=libraries, LIBPATH=libraries_path)
-env.StaticLibrary('dfs_helper_functions','dfs_helpers.c',LIBS=libraries, LIBPATH=libraries_path)
-libraries = libraries + ['su_helper', 'dfs_helper_functions']
-libraries_path = libraries_path + ['../../../build/client/seis_build']
-env.StaticLibrary('daos_seis_internal_functions','daos_seis_internal_functions.c',LIBS=libraries, LIBPATH=libraries_path)
-libraries = libraries + ['daos_seis_internal_functions']
-libraries_path = libraries_path + ['../../../build/client/seis_build']
-env.SharedLibrary('daos_seis','daos_seis.c',LIBS=libraries, LIBPATH=libraries_path)
+#env.StaticLibrary('su_helper','su_helpers.c',LIBS=libraries, LIBPATH=libraries_path)
+#env.StaticLibrary('dfs_helper_functions','dfs_helpers.c',LIBS=libraries, LIBPATH=libraries_path)
+#libraries = libraries + ['su_helper', 'dfs_helper_functions']
+#libraries_path = libraries_path + ['../../../build/client/seis_build']
+#env.StaticLibrary('daos_seis_internal_functions','daos_seis_internal_functions.c',LIBS=libraries, LIBPATH=libraries_path)
+#libraries = libraries + ['daos_seis_internal_functions']
+#libraries_path = libraries_path + ['../../../build/client/seis_build']
+env.StaticLibrary('daos_seis',['su_helpers.c', 'dfs_helpers.c', 'daos_seis_internal_functions.c','daos_seis.c'],LIBS=libraries, LIBPATH=libraries_path)
 
