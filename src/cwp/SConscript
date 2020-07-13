@@ -1,6 +1,6 @@
 Import('env')
 #env = env.Clone()
-env.AppendUnique(PPPATH=['include'])
+env.AppendUnique(CPPPATH=['include'])
 print("Calling Program('CWP')")
 #libraries = ['$LIBS', 'daos_common', 'daos', 'uuid']
 #libraries = libraries + ['dfs','m']

@@ -18,8 +18,8 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-    char pool_id[100]="7d500429-c703-4759-ad63-ce332519c101";
-	char container_id[100]="7d500429-c703-4759-ad63-ce332519c100";
+    char pool_id[100]="610396d0-16bc-4875-878c-5235b5fffad8";
+	char container_id[100]="610396d0-16bc-4875-878c-5235b5fffad0";
 	char svc_list[100]="0";
 
 	printf(" PARSING SEGY FILE == \n");
@@ -43,28 +43,28 @@ int main(int argc, char *argv[]){
 	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
 	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
 
-//	printf("READING SEGY ROOT BINARY HEADER KEY == \n");
-//	bhed *binary_header = malloc(sizeof(bhed));
-//	DAOS_FILE *daos_binary;
-//	char *bfile;		/* name of binary header file	*/
-//	bfile = "daos_seis_binary";
-//	daos_binary = open_dfs_file(bfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-//	binary_header = daos_seis_read_binary_header(segy_root_object);
-//	write_dfs_file(daos_binary, (char *) binary_header, BNYBYTES);
-//	close_dfs_file(daos_binary);
-//	free(binary_header);
-//
-//	printf("READING SEGY ROOT TEXT HEADER KEY == \n");
-//	char *text_header = malloc(EBCBYTES*sizeof(char));
-//    DAOS_FILE *daos_text_header;
-//    char *tfile;		/* name of text header file	*/
-//    int rc;
-//    tfile = "daos_seis_text_header";
-//    daos_text_header = open_dfs_file(tfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-//    text_header = daos_seis_read_text_header(segy_root_object);
-//    write_dfs_file(daos_text_header, text_header, EBCBYTES);
-//    close_dfs_file(daos_text_header);
-//    free(text_header);
+	printf("READING SEGY ROOT BINARY HEADER KEY == \n");
+	bhed *binary_header = malloc(sizeof(bhed));
+	DAOS_FILE *daos_binary;
+	char *bfile;		/* name of binary header file	*/
+	bfile = "daos_seis_binary";
+	daos_binary = open_dfs_file(bfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
+	binary_header = daos_seis_read_binary_header(segy_root_object);
+	write_dfs_file(daos_binary, (char *) binary_header, BNYBYTES);
+	close_dfs_file(daos_binary);
+	free(binary_header);
+
+	printf("READING SEGY ROOT TEXT HEADER KEY == \n");
+	char *text_header = malloc(EBCBYTES*sizeof(char));
+    DAOS_FILE *daos_text_header;
+    char *tfile;		/* name of text header file	*/
+    int rc;
+    tfile = "daos_seis_text_header";
+    daos_text_header = open_dfs_file(tfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
+    text_header = daos_seis_read_text_header(segy_root_object);
+    write_dfs_file(daos_text_header, text_header, EBCBYTES);
+    close_dfs_file(daos_text_header);
+    free(text_header);
 
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");

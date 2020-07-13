@@ -626,6 +626,7 @@ main(int argc, char **argv)
         }
     }
 
+    
     /* Read the traces */
     nsflag = cwp_false;
     itr = 0;
@@ -789,6 +790,7 @@ main(int argc, char **argv)
     free(cmdbuf);
     free(ebcbuf);
     free(key1);
+
 //    finalize_daos_dfs(&poh,&coh,dfs,verbose);
     fini_dfs_api();
     return(CWP_Exit());

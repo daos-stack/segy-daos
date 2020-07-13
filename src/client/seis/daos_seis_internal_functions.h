@@ -116,12 +116,12 @@ typedef struct seismic_entry {
 }seismic_entry_t;
 
 /** object struct that is instantiated for a Seismic trace object */
-typedef struct trace_array_obj {
+typedef struct trace_oid_oh_t {
 	/** DAOS object ID */
 	daos_obj_id_t		oid;
 	/** DAOS object open handle */
 	daos_handle_t		oh;
-}trace_array_obj_t;
+}trace_oid_oh_t;
 
 typedef struct trace {
 
@@ -612,65 +612,132 @@ typedef struct read_traces{
 	trace_t *traces ;
 }read_traces;
 
+/** Function responsible for fetching seismic entry(data stored under specific seismic object) */
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry);
 
-int daos_seis_array_fetch_entry(daos_handle_t oh, daos_handle_t th,int nrecords, struct seismic_entry *entry);
+//int daos_seis_array_fetch_entry(daos_handle_t oh, daos_handle_t th,int nrecords, struct seismic_entry *entry);
+//
+//int daos_seis_array_obj_update(daos_handle_t oh, daos_handle_t th, int nrecords, struct seismic_entry entry);
 
-int daos_seis_array_obj_update(daos_handle_t oh, daos_handle_t th, int nrecords, struct seismic_entry entry);
-
+/** Function responsible for preparing seismic entry with text header data
+ *  It is used to update/insert root seismic text header key
+ */
 int daos_seis_th_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *data, int nbytes);
 
+/** FUnction responsible for creating seismic root object under root dfs or specific dfs object
+ * It is called once at the beginning of the parsing function
+ */
 int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,daos_oclass_id_t cid,
 			char *name, dfs_obj_t *parent);
 
+/** Function responsible for updating seismic objects.
+ * It is called after preparing the seismic entry struct.
+ */
 int daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, struct seismic_entry entry);
 
+/** Function responsible for preparing seismic entry to update keys stored under root seismic object. */
 int daos_seis_root_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char* databuf, int nbytes, daos_iod_type_t iod_type);
 
+/** Function responsible for preparing seismic entry with binary header data.
+ * It is called to update/insert root seismic binary header key
+ */
 int daos_seis_bh_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , bhed *bhdr, int nbytes);
 
+/** Function responsible for preparing seismic entry with extended text header data.
+ *  It is called to update/insert root seismic extended text header key
+ */
 int daos_seis_exth_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *ebcbuf, int index, int nbytes);
 
+/** Function responsible for creating (CMP/SHOTT/OFFSET) gather objects.
+ * Can be extended later to create other gather objects if needed.
+ */
 int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t *parent,
 			seis_obj_t **shot_obj, seis_obj_t **cmp_obj, seis_obj_t **offset_obj);
 
+/** Function responsible for preparing seismic entry with trace header data.
+ *  It is called to update/insert trace header data under specific trace_header_object.
+ */
 int daos_seis_trh_update(dfs_t* dfs, trace_obj_t* tr_obj, segy *tr, int hdrbytes);
 
+/** Function responsible for preparing trace data to be written/stored as DAOS_ARRAY under specific trace data object.
+ *  It is called to update/insert trace data under specific trace_data_object.
+ */
 int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trace);
 
+/** Function responsible for calculating the object id of trace_data_object from object_id of trace_header_object.
+ * It is called before reading from or writing to trace_data_object.
+ */
 daos_obj_id_t get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid);
 
+/** Function responsible for creatng trace_header_object & trace_data_object
+ * It is called once for each trace while parsing the segy_file..
+ */
 int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, segy *trace, int nbytes);
 
+/** Function responsible for preparing the seismic entry.
+ * It is called before reading from or writing to any seismic object.
+ */
 void prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid, char *dkey, char *akey,
 			char *data,int size, daos_iod_type_t iod_type);
 
+/** Function responsible for linking each trace to the available gathers (SHOT/CMP/OFFSET).
+ * It is called once while creating the trace header & data objects.
+ */
 int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 			seis_obj_t *shot_obj, seis_obj_t *cmp_obj, seis_obj_t *off_obj);
 
+/** Function responsible for creating two pipes.
+ * It is called while executing any command to enable reading and writing directly through the pipe
+ * No need to go for Posix system.
+ */
 int pcreate(int fds[2], const char *command, char *const argv[]);
 
+/** Function responsible for executing command passed in argv */
 int execute_command(char *const argv[], char *write_buffer,
 						int write_bytes, char *read_buffer, int read_bytes);
 
+/** Function responsible for adding one more gather to the existing gathers under (SHOT/CMP/OFFSET)_seismic_objects.
+ * Array of gathers is implemented as a linked list.
+ * It is called if the shot_id/ Cmp_Value/Offset_value of any trace doesn't belong to an existing gather.
+ */
 void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
 
+/** Function responsible for checking if specific shot_id/ Cmp_Value/Offset_value of a trace exist in any of the existing gathers under (SHOT/CMP/OFFSET)_seismic_objects.
+ * It is called to check if the target value exists.
+ * If Yes--> number of traces belonging to this gather increases and the trace header object id is also added.
+ * ELSE--> it returns with false
+ */
 int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, int *ntraces);
 
-int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_array_obj_t *trace_oids_obj, char *dkey_name, char *akey_name);
+/** Function responsible for updating gather keys at the end of parsing segy file.
+ * It writes the number_of_traces key(akey) under each gather(dkey).
+ * It writes the object id of the DAOS_ARRAY object holding the traces oids.
+ * Writes the array of OIDS_HDR_traces to the DAOS_ARRAY OBJECT.
+ */
+int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_oid_oh_t *trace_oids_obj, char *dkey_name, char *akey_name);
 
-int update_gather_object(seis_obj_t *shot_obj, char *dkey_name, char *akey_name,
+/** Function responsible for updating any gather object.
+ * It is called mainly at the end of the parsing function while pushing all gather data under specific keys.
+ */
+int update_gather_object(seis_obj_t *gather_obj, char *dkey_name, char *akey_name,
 								char *data, int nbytes, daos_iod_type_t type);
 
-int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_array_obj_t* object, seis_gather_t *gather);
+/** Function responsible for updating gather_TRACE_OIDS object(SHOT/CMP/OFFSET).
+ * It is called mainly at the end of the parsing function and only stores the traces_hdr_oids
+ */
+int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_oid_oh_t* object, seis_gather_t *gather);
 
+/** Function responsible for preparing the akey and dkey before using them
+ * still needs some modification to generalize the function.
+ */
 void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 						char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix);
 
+/** Function responsible for converting the trace struct back to the original segy struct */
 segy* trace_to_segy(trace_t *trace);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

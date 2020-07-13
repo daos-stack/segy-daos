@@ -9,7 +9,7 @@
 #define DAOS_SEIS_DAOS_SEIS_H_
 
 #include <dirent.h>
-#include<string.h>
+#include <string.h>
 
 #include "dfs_helper_api.h"
 #include "su_helpers.h"
@@ -84,13 +84,21 @@ int daos_seis_get_offset_gathers(dfs_t *dfs, seis_root_obj_t *root);
  * Fetch shot traces
  *
  * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   shot_id        shot_id value to lookup and fetch.
  * \param[in]   root           pointer to root seismic object.
  * \param[in]   name           string containing name of file.
  * \return      returns number of offset gathers.
  */
 int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, char *name);
 
-
+/**
+ * Fetch shot traces
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   shot_id        shot_id value to lookup and fetch.
+ * \param[in]   root           pointer to root seismic object.
+ * \return      returns array of traces holding all shot gather traces headers and data.
+ */
 read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root);
 
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */
