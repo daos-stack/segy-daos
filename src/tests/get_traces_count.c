@@ -15,8 +15,8 @@ int main(int argc, char *argv[]){
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
 
-	char pool_id[100]="610396d0-16bc-4875-878c-5235b5fffad8";
-	char container_id[100]="610396d0-16bc-4875-878c-5235b5fffad0";
+	char pool_id[100]="2d41de80-541b-4dc5-8e9e-e9c63ca6ffce";
+	char container_id[100]="2d41de80-541b-4dc5-8e9e-e9c63ca6ffc0";
 
 	char svc_list[100]="0";
 

@@ -483,8 +483,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 	//Open Shot Gather Object
 	rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(shot_obj->oh), NULL);
 	if (rc) {
-			printf("daos_obj_open()__shot_object Failed (%d)\n", rc);
-			return rc;
+		printf("daos_obj_open()__shot_object Failed (%d)\n", rc);
+		return rc;
 	}
 
 	//Fetch Number of Gathers Under Shot Gather object
@@ -507,13 +507,12 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 	prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_SHOT_ID,
 				(char*)&temp_shot_id, sizeof(int), DAOS_IOD_SINGLE);
 	rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry);
-	if(rc){
+	if(rc) {
 		printf("FETCH using this dkey (%s) failed \n", shot_dkey_name);
 		return rc;
 	}
 
 
-	//can insert this if condition in previous else and remove the if condition !!!
 	if(temp_shot_id == shot_id){
 		//Fetch number of traces
 		prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_NTRACES,
@@ -523,7 +522,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		traces->number_of_traces = shot_obj->gathers->number_of_traces;
 
-		shot_obj->gathers->oids = malloc(sizeof(daos_obj_id_t) * shot_obj->gathers->number_of_traces);
+		shot_obj->gathers->oids = malloc(traces->number_of_traces * sizeof(daos_obj_id_t));
 		//Fetch object id of traces object
 		trace_obj_t *trace_oids_obj = malloc(sizeof(trace_obj_t));
 
@@ -536,7 +535,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		}
 
 		rc = daos_array_open_with_attr(dfs->coh, (trace_oids_obj)->oid, th,
-			DAOS_OO_RW, 1,500*sizeof(daos_obj_id_t), &(trace_oids_obj->oh), NULL);
+				DAOS_OO_RW, 1,500*sizeof(daos_obj_id_t), &(trace_oids_obj->oh), NULL);
 		if (rc) {
 			printf("daos_array_open_with_attr()-->>GATHER OIDS object<<-- failed (%d)\n", rc);
 			return rc;
@@ -544,16 +543,15 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		int offset = 0;
 
-		sgl.sg_nr = shot_obj->gathers->number_of_traces;
+		sgl.sg_nr = traces->number_of_traces;
 		sgl.sg_nr_out = 0;
 		d_iov_t iov[sgl.sg_nr];
-		struct seismic_entry temp = {0};
 
-		temp.data = shot_obj->gathers->oids;
+		seismic_entry.data = (char*) shot_obj->gathers->oids;
 		int j=0;
 		int i;
 		for(i=0; i < sgl.sg_nr; i++){
-			d_iov_set(&iov[i], (void*)&(temp.data[j]), sizeof(daos_obj_id_t));
+			d_iov_set(&iov[i], (void*)&(seismic_entry.data[j]), sizeof(daos_obj_id_t));
 			j += sizeof(daos_obj_id_t);
 		}
 
@@ -574,51 +572,15 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		return 0;
 	}
 
+
+
 	traces->traces = malloc(traces->number_of_traces * sizeof(trace_t));
 
 	rc = daos_eq_lib_init();
-	if(rc){
+	if(rc) {
 		printf("ERROR INITALIZING EVENT QUEUE LIBRARY ERRNO = %d \n", rc);
+		return rc;
 	}
-        trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
-
-//	if(shot_exists==1){
-		int j;
-		for(j=0; j < traces->number_of_traces; j++){
-//			printf("traces->number_of_traces ========== %d \n",traces->number_of_traces);
-
-			struct seismic_entry trace_gather = {0};
-			//Open trace object
-			trace_obj_t *trace_obj= malloc(sizeof(trace_obj_t));
-//			trace_obj_t *trace_data_obj = malloc(sizeof(trace_obj_t));
-
-			trace_obj->oid = shot_obj->gathers->oids[j];
-
-			rc = daos_obj_open(dfs->coh, trace_obj->oid, daos_mode, &trace_obj->oh, NULL);
-			if(rc) {
-				printf("daos_obj_open()__ trace_header_obj Failed (%d)\n", rc);
-				return rc;
-			}
-
-			trace_data_obj->oid = get_tr_data_oid(&(trace_obj->oid),OC_SX);
-
-			/** Open the array object for the file */
-			rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj)->oid, th,
-				DAOS_OO_RW, 1,200*sizeof(float), &(trace_data_obj->oh), NULL);
-			if (rc) {
-				printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
-				return rc;
-			}
-
-			char tr_index[50];
-			char trace_name[200] = "Trace_hdr_obj_";
-
-			sprintf(tr_index, "%d",j);
-			strcat(trace_name, tr_index);
-
-			strncpy(trace_obj->name, trace_name, SEIS_MAX_PATH);
-			trace_obj->name[SEIS_MAX_PATH] = '\0';
-//			trace_obj->trace = malloc(sizeof(segy));
 
 	daos_handle_t eqh;
 	rc = daos_eq_create( &eqh);
@@ -629,10 +591,10 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 	daos_event_t *events = malloc(traces->number_of_traces * sizeof(daos_event_t));
 	trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
 
-	for(int j=0; j < traces->number_of_traces; j++){
+	int j;
+	for(j=0; j < traces->number_of_traces; j++){
 		//Open trace object
 		trace_oid_oh_t *trace_obj= malloc(sizeof(trace_oid_oh_t));
-//		trace_oid_oh_t *trace_data_obj = malloc(sizeof(trace_oid_oh_t));
 		trace_obj->oid = shot_obj->gathers->oids[j];
 
 		rc = daos_obj_open(dfs->coh, trace_obj->oid, daos_mode, &trace_obj->oh, NULL);
@@ -644,8 +606,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		trace_data_obj[j].oid = get_tr_data_oid(&(trace_obj->oid),OC_SX);
 
 		/** Open the array object for the trace data */
-		rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj[j]).oid, th,
-			DAOS_OO_RW, 1,200*sizeof(float), &(trace_data_obj[j].oh), NULL);
+		rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj[j]).oid, th, DAOS_OO_RW,
+								1,200*sizeof(float), &(trace_data_obj[j].oh), NULL);
 		if (rc) {
 			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
 			return rc;
@@ -686,8 +648,6 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		rg.rg_idx = offset;
 		iod.arr_rgs = &rg;
 
-
-//		daos_event_t *ev = malloc(sizeof(daos_event_t));
 		rc = daos_event_init( &events[j], eqh, NULL);
 		if(rc){
 			printf("ERROR CREATING NEW EVENT ERRNO= %d \n", rc);
@@ -743,15 +703,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			*/
 
 			daos_obj_close(trace_obj->oh,NULL);
-			daos_array_close(trace_data_obj[j].oh,NULL);
 			free(trace_obj);
-//			free(trace_data_obj);
-//			 bool flag;
-//			rc = daos_event_test(&events[j], DAOS_EQ_WAIT, &flag);
-//			if(rc){
-//				printf("ERROR testing event completion ERRNO = %d \n", rc);
-//			}
-//			printf("FLAG OF TRACE NO = %d is %d \n",j,flag);
 
 		}
 
@@ -761,6 +713,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			if(rc){
 				printf("ERROR testing event completion ERRNO = %d \n", rc);
 			}
+			daos_array_close(trace_data_obj[z].oh,NULL);
 
 		}
 		free(trace_data_obj);
@@ -777,7 +730,6 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		printf("ERRR FINALIZING EVENT QUEUE LIBRARY ERRNO = %d \n", rc);
 	}
 
-	}
 	return traces;
 }
 

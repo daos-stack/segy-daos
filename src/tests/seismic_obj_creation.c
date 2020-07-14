@@ -19,14 +19,14 @@ int main(int argc, char *argv[]){
 
 
 
-	char pool_id[100]="610396d0-16bc-4875-878c-5235b5fffad8";
-	char container_id[100]="610396d0-16bc-4875-878c-5235b5fffad0";
+	char pool_id[100]="2d41de80-541b-4dc5-8e9e-e9c63ca6ffce";
+	char container_id[100]="2d41de80-541b-4dc5-8e9e-e9c63ca6ffc0";
 
 	char svc_list[100]="0";
 
 	printf(" PARSING SEGY FILE == \n");
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
-	DAOS_FILE *segyfile = open_dfs_file("/segy_obj_shots601_800", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
+	DAOS_FILE *segyfile = open_dfs_file("/Test/segyobj", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
 
 	daos_seis_parse_segy(get_dfs(), NULL, "SEIS_ROOT_OBJECT", segyfile->file);
 	close_dfs_file(segyfile);
