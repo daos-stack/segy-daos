@@ -8,7 +8,7 @@
 #include "daos_seis_internal_functions.h"
 
 
-int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry){
+int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev){
 
 	d_sg_list_t	sgl;
 	d_iov_t		sg_iovs;
@@ -39,8 +39,12 @@ int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_ent
 	sgl.sg_nr_out	= 0;
 	sgl.sg_iovs	= &sg_iovs;
 
-	rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, NULL);
-	if (rc != 0) {
+	if(ev){
+		rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, ev);
+	} else {
+		rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, NULL);
+	}
+	if (rc) {
 		printf("Failed to fetch entry %s (%d)\n", entry->dkey_name, rc);
 		return rc;
 	}

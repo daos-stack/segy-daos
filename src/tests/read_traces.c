@@ -19,8 +19,8 @@ int main(int argc, char *argv[]){
 
 
 
-        char pool_id[100]="2d41de80-541b-4dc5-8e9e-e9c63ca6ffce";
-	char container_id[100]="2d41de80-541b-4dc5-8e9e-e9c63ca6ffc0";
+        char pool_id[100]="ec7e4b23-80cf-4d10-a82b-ffd1133235e7";
+	char container_id[100]="ec7e4b23-80cf-4d10-a82b-ffd1133235e0";
 	char svc_list[100]="0";
 
     time_t start, end;
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]){
     time_taken = (double)(end - start);
     printf("TIME TAKEN IN MODIFIED READ FUNCCTION ISSS %f \n", time_taken);
 
-    FILE *fd = fopen("daos_seis_SHOT_610_1.su", "w");
+    FILE *fd = fopen("daos_seis_SHOT_610.su", "w");
 
 	int i;
     for(i=0; i < all_traces->number_of_traces; i++){

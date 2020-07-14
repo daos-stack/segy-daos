@@ -613,7 +613,7 @@ typedef struct read_traces{
 }read_traces;
 
 /** Function responsible for fetching seismic entry(data stored under specific seismic object) */
-int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry);
+int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev);
 
 //int daos_seis_array_fetch_entry(daos_handle_t oh, daos_handle_t th,int nrecords, struct seismic_entry *entry);
 //
