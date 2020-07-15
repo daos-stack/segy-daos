@@ -19,8 +19,8 @@ int main(int argc, char *argv[]){
 
 
 
-	char pool_id[100]="ec7e4b23-80cf-4d10-a82b-ffd1133235e7";
-	char container_id[100]="ec7e4b23-80cf-4d10-a82b-ffd1133235e0";
+	char pool_id[100]="9ed35a7c-2638-440c-b828-c9a30e4f953b";
+	char container_id[100]="9ed35a7c-2638-440c-b828-c9a30e4f953a";
 
 	char svc_list[100]="0";
 
@@ -28,10 +28,10 @@ int main(int argc, char *argv[]){
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 	DAOS_FILE *segyfile = open_dfs_file("/Test/segyobj", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
 
-	daos_seis_parse_segy(get_dfs(), NULL, "SEIS_ROOT_OBJECT", segyfile->file);
+	daos_seis_parse_segy(get_dfs(), NULL, "ALL_NEW_SEIS_ROOT_OBJECT", segyfile->file);
 	close_dfs_file(segyfile);
 	printf(" OPEN SEIS ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEIS_ROOT_OBJECT");
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/ALL_NEW_SEIS_ROOT_OBJECT");
 
 	int cmp_gathers;
 	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);

@@ -19,8 +19,8 @@ int main(int argc, char *argv[]){
 
 
 
-        char pool_id[100]="ec7e4b23-80cf-4d10-a82b-ffd1133235e7";
-	char container_id[100]="ec7e4b23-80cf-4d10-a82b-ffd1133235e0";
+        char pool_id[100]="9ed35a7c-2638-440c-b828-c9a30e4f953b";
+	char container_id[100]="9ed35a7c-2638-440c-b828-c9a30e4f953a";
 	char svc_list[100]="0";
 
     time_t start, end;
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
 	printf(" OPEN SEGY ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SEIS_ROOT_OBJECT");
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/ALL_NEW_SEIS_ROOT_OBJECT");
 
 //	time(&start);
 //	daos_seis_read_shot_traces(get_dfs(), 610, segy_root_object, "old_daos_seis_SHOT_610_.su");
@@ -46,9 +46,6 @@ int main(int argc, char *argv[]){
 
 	time(&start);
 	read_traces *all_traces = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
-	time(&end);
-    time_taken = (double)(end - start);
-    printf("TIME TAKEN IN MODIFIED READ FUNCCTION ISSS %f \n", time_taken);
 
     FILE *fd = fopen("daos_seis_SHOT_610.su", "w");
 
@@ -60,6 +57,9 @@ int main(int argc, char *argv[]){
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);
+	time(&end);
+    time_taken = (double)(end - start);
+    printf("TIME TAKEN IN MODIFIED READ FUNCCTION ISSS %f \n", time_taken);
 
 	printf("FINI DFS API=== \n");
 

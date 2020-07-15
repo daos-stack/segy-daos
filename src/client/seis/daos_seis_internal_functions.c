@@ -41,6 +41,10 @@ int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_ent
 
 	if(ev){
 		rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, ev);
+		if (ev->ev_error) {
+			printf("Failed to fetch entry with event %s (%d)\n", entry->dkey_name, ev->ev_error);
+			return ev->ev_error;
+		}
 	} else {
 		rc = daos_obj_fetch(oh, th, 0, &dkey, 1, &iod, &sgl, NULL, NULL);
 	}
@@ -623,15 +627,15 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trac
 
 	tr_entry.data = (char*)(trace->data);
 
-	sgl.sg_nr = trace->ns;
+	sgl.sg_nr = 1; //trace->ns;
 	sgl.sg_nr_out = 0;
-	d_iov_t iov[sgl.sg_nr];
-	int j=0;
-	int i;
-	for(i=0; i < sgl.sg_nr; i++){
-		d_iov_set(&iov[i], (void*)&(tr_entry.data[j]), sizeof(float));
-		j+=4;
-	}
+	d_iov_t iov; //[sgl.sg_nr];
+//	int j=0;
+//	int i;
+//	for(i=0; i < sgl.sg_nr; i++){
+		d_iov_set(&iov, (void*)(tr_entry.data), trace->ns * sizeof(float));
+//		j+=4;
+//	}
 
 	sgl.sg_iovs = &iov;
 	iod.arr_nr = 1;
@@ -640,7 +644,7 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trac
 	iod.arr_rgs = &rg;
 
 	rc = daos_array_write(trace_data_obj->oh, DAOS_TX_NONE, &iod, &sgl, NULL);
-	if(rc) {
+	if (rc) {
 		printf("ERROR UPDATING TRACE DATA KEY----------------- error = %d \n", rc);
 		return rc;
 	}
@@ -730,15 +734,15 @@ int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_oid_oh_t* object, seis_
 	daos_range_t		rg;
 	d_sg_list_t sgl;
 
-	sgl.sg_nr = gather->number_of_traces;
+	sgl.sg_nr = 1; //gather->number_of_traces;
 	sgl.sg_nr_out = 0;
-	d_iov_t iov[sgl.sg_nr];
-	int j=0;
-	int i;
-	for(i=0; i < sgl.sg_nr; i++){
-		d_iov_set(&iov[i], (void*)&(tr_entry.data[j]), sizeof(daos_obj_id_t));
-		j+=sizeof(daos_obj_id_t);
-	}
+	d_iov_t iov; //[sgl.sg_nr];
+//	int j=0;
+//	int i;
+//	for(i=0; i < sgl.sg_nr; i++){
+		d_iov_set(&iov, (void*)(tr_entry.data), gather->number_of_traces * sizeof(daos_obj_id_t));
+//		j+=sizeof(daos_obj_id_t);
+//	}
 
 	sgl.sg_iovs = &iov;
 	iod.arr_nr = 1;

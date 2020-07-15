@@ -479,6 +479,11 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 	daos_array_iod_t iod;
 	daos_range_t		rg;
 	d_sg_list_t sgl;
+//	daos_handle_t eqh;
+//	rc = daos_eq_create(&eqh);
+//	if(rc){
+//		printf("ERROR CREATING EVENT ERRNO = %d \n", rc);
+//	}
 
     time_t start, end;
     double time_taken;
@@ -492,10 +497,10 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		printf("daos_obj_open()__shot_object Failed (%d)\n", rc);
 		return rc;
 	}
-
 	//Fetch Number of Gathers Under Shot Gather object
 	prepare_seismic_entry(&seismic_entry, shot_obj->oid, DS_D_NGATHERS, DS_A_NGATHERS,
 							(char*)&shot_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+
 	rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry, NULL);
 
 	int i;
@@ -549,17 +554,17 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		int offset = 0;
 
-		sgl.sg_nr = traces->number_of_traces;
+		sgl.sg_nr = 1; //traces->number_of_traces;
 		sgl.sg_nr_out = 0;
-		d_iov_t iov[sgl.sg_nr];
+		d_iov_t iov; //[sgl.sg_nr];
 
 		seismic_entry.data = (char*) shot_obj->gathers->oids;
-		int j=0;
-		int i;
-		for(i=0; i < sgl.sg_nr; i++){
-			d_iov_set(&iov[i], (void*)&(seismic_entry.data[j]), sizeof(daos_obj_id_t));
-			j += sizeof(daos_obj_id_t);
-		}
+//		int j=0;
+//		int i;
+//		for(i=0; i < sgl.sg_nr; i++){
+			d_iov_set(&iov, (void*)(seismic_entry.data), traces->number_of_traces * sizeof(daos_obj_id_t));
+//			j += sizeof(daos_obj_id_t);
+//		}
 
 		sgl.sg_iovs = &iov;
 		iod.arr_nr = 1;
@@ -585,24 +590,15 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 	traces->traces = malloc(traces->number_of_traces * sizeof(trace_t));
 
-	rc = daos_eq_lib_init();
-	if(rc) {
-		printf("ERROR INITALIZING EVENT QUEUE LIBRARY ERRNO = %d \n", rc);
-		return rc;
-	}
 
-	daos_handle_t eqh;
-	rc = daos_eq_create(&eqh);
-	if(rc){
-		printf("ERROR CREATING EVENT ERRNO = %d \n", rc);
-	}
-	daos_event_t *hdr_events = malloc(traces->number_of_traces * sizeof(daos_event_t));
-	daos_event_t *events = malloc(traces->number_of_traces * sizeof(daos_event_t));
+
+//	daos_event_t *hdr_events = malloc(traces->number_of_traces * sizeof(daos_event_t));
+//	daos_event_t *events = malloc(traces->number_of_traces * sizeof(daos_event_t));
 	trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
 	trace_oid_oh_t *trace_hdr_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
 
-//	int j;
-	for(int j=0; j < traces->number_of_traces; j++){
+	int j;
+	for(j=0; j < traces->number_of_traces; j++){
 
 		trace_hdr_obj[j].oid = shot_obj->gathers->oids[j];
 
@@ -620,10 +616,10 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			return rc;
 		}
 
-		rc = daos_event_init( &hdr_events[j], eqh, NULL);
-		if(rc){
-			printf("ERROR CREATING NEW EVENT ERRNO= %d \n", rc);
-		}
+//		rc = daos_event_init( &hdr_events[j], eqh, NULL);
+//		if(rc){
+//			printf("ERROR CREATING NEW EVENT ERRNO= %d \n", rc);
+//		}
 
 		time(&start);
 
@@ -631,12 +627,11 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		prepare_seismic_entry(&seismic_entry, trace_hdr_obj[j].oid, DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
 							(char*)&(traces->traces[j]), 240, DAOS_IOD_ARRAY);
 
-		rc = daos_seis_fetch_entry(trace_hdr_obj[j].oh, th, &seismic_entry, &hdr_events[j]);
+		rc = daos_seis_fetch_entry(trace_hdr_obj[j].oh, th, &seismic_entry, NULL);
 		if (rc) {
 			printf("Error reading trace  %d header error = %d \n", j, rc);
 			exit(0);
 		}
-
 		time(&end);
 	    time_taken = (double)(end - start);
 		total_time_trh += time_taken;
@@ -645,25 +640,25 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		//Read Trace data
 		int offset = 0;
-		rc = daos_event_init( &events[j], eqh, NULL);
-		if(rc){
-			printf("ERROR CREATING NEW EVENT ERRNO= %d \n", rc);
-		}
+//		rc = daos_event_init( &events[j], eqh, NULL);
+//		if(rc){
+//			printf("ERROR CREATING NEW EVENT ERRNO= %d \n", rc);
+//		}
 
 		traces->traces[j].data = malloc(traces->traces[j].ns * sizeof(float));
 
 		time(&start);
-		sgl.sg_nr = traces->traces[j].ns;
+		sgl.sg_nr = 1; // traces->traces[j].ns;
 		sgl.sg_nr_out = 0;
-		d_iov_t iov[sgl.sg_nr];
+		d_iov_t iov;
 
 		seismic_entry.data = (char*)traces->traces[j].data;
 
-		int u=0;
-		for(int i=0; i < sgl.sg_nr; i++){
-			d_iov_set(&iov[i], (void*)&(seismic_entry.data[u]), sizeof(float));
-			u += 4;
-		}
+//		int u=0;
+//		for(int i=0; i < sgl.sg_nr; i++){
+			d_iov_set(&iov, (void*)(seismic_entry.data), traces->traces[j].ns * sizeof(float));
+//			u += 4;
+//		}
 
 		sgl.sg_iovs = &iov;
 		iod.arr_nr = 1;
@@ -671,34 +666,33 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		rg.rg_idx = offset;
 		iod.arr_rgs = &rg;
 
-		rc = daos_array_read(trace_data_obj[j].oh, DAOS_TX_NONE, &iod, &sgl, &events[j]);
+		rc = daos_array_read(trace_data_obj[j].oh, th, &iod, &sgl, NULL);
 		if(rc) {
 			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
 			return rc;
 		}
-
 		time(&end);
 	    time_taken = (double)(end - start);
 		total_time_trd += time_taken;
-		}
+	}
 
-
+/*
 		for (int k=0; k < traces->number_of_traces; k++){
-			printf("HELLOOOOOOOOOOOOOOOO 1 \n");
-			bool *flag;
-			rc = daos_event_test(&hdr_events[k], DAOS_EQ_WAIT, flag);
+			printf("HELLOOOOOOOOOOOOOOOO 1 %d\n", hdr_events[k].ev_error);
+			bool flag = 1;
+			rc = daos_event_test(&hdr_events[k], DAOS_EQ_WAIT, &flag);
 			if(rc || hdr_events[k].ev_error){
 				printf("ERROR testing event completion ERRNO = %d  or event error = %d \n", rc, hdr_events[k].ev_error);
 			}
 			printf("HELLOOOOOOOOOOOOOOOO 2 \n");
 			if(flag){
-//				daos_obj_close(trace_hdr_obj[k].oh,NULL);
-				daos_array_close(trace_data_obj[k].oh,NULL);
+				daos_obj_close(trace_hdr_obj[k].oh,NULL);
+//				daos_array_close(trace_data_obj[k].oh,NULL);
 
 			}
 
-			bool d_flag;
-			rc = daos_event_test(&events[k], DAOS_EQ_WAIT, &d_flag);
+			bool d_flag = 1;
+//			rc = daos_event_test(&events[k], DAOS_EQ_WAIT, &d_flag);
 			if(rc || events[k].ev_error){
 				printf("ERROR testing event completion ERRNO = %d  or event error = %d \n", rc, events[k].ev_error);
 			} else{
@@ -711,24 +705,20 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 			printf("HELLOOOOOOOOOOOOOOOO  3\n");
 		}
-
-		free(events);
-		free(hdr_events);
+*/
+//		free(events);
+//		free(hdr_events);
 		free(trace_data_obj);
 		free(trace_hdr_obj);
 
 	    printf("TIME TAKEN IN SECOND FOR LOOP Reading trace headers ISSS %f \n", total_time_trh);
 	    printf("TIME TAKEN IN SECOND FOR LOOP Reading trace data ISSS %f \n", total_time_trd);
 
-	rc = daos_eq_destroy(eqh, 0);
-	if(rc){
-		printf("ERROR DESTROYING EVENT QUEUE ERRNO = %d \n", rc);
-	}
+//	rc = daos_eq_destroy(eqh, 0);
+//	if(rc){
+//		printf("ERROR DESTROYING EVENT QUEUE ERRNO = %d \n", rc);
+//	}
 
-	rc = daos_eq_lib_fini();
-	if(rc){
-		printf("ERRR FINALIZING EVENT QUEUE LIBRARY ERRNO = %d \n", rc);
-	}
 
 	return traces;
 }

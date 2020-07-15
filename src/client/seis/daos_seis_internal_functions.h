@@ -673,7 +673,7 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trac
  */
 daos_obj_id_t get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid);
 
-/** Function responsible for creatng trace_header_object & trace_data_object
+/** Function responsible for creating trace_header_object & trace_data_object
  * It is called once for each trace while parsing the segy_file..
  */
 int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, segy *trace, int nbytes);
