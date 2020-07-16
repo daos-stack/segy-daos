@@ -19,19 +19,19 @@ int main(int argc, char *argv[]){
 
 
 
-	char pool_id[100]="9ed35a7c-2638-440c-b828-c9a30e4f953b";
-	char container_id[100]="9ed35a7c-2638-440c-b828-c9a30e4f953a";
+	char pool_id[100]="1ee7a898-9f87-4ff6-92fc-8ef43955cdea";
+	char container_id[100]="1ee7a898-9f87-4ff6-92fc-8ef43955cde0";
 
 	char svc_list[100]="0";
 
 	printf(" PARSING SEGY FILE == \n");
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
-	DAOS_FILE *segyfile = open_dfs_file("/Test/segyobj", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
+	DAOS_FILE *segyfile = open_dfs_file("/Test/shot610_700", S_IFREG | S_IWUSR | S_IRUSR, 'r', 0);
 
-	daos_seis_parse_segy(get_dfs(), NULL, "ALL_NEW_SEIS_ROOT_OBJECT", segyfile->file);
+	daos_seis_parse_segy(get_dfs(), NULL, "SHOT_601_700_SEIS_ROOT_OBJECT", segyfile->file);
 	close_dfs_file(segyfile);
 	printf(" OPEN SEIS ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/ALL_NEW_SEIS_ROOT_OBJECT");
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SHOT_601_700_SEIS_ROOT_OBJECT");
 
 	int cmp_gathers;
 	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);

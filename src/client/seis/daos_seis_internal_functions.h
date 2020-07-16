@@ -41,6 +41,14 @@
 
 struct stat *seismic_stat;
 
+/** object struct that is instantiated for a Seismic trace object */
+typedef struct trace_oid_oh_t {
+	/** DAOS object ID */
+	daos_obj_id_t		oid;
+	/** DAOS object open handle */
+	daos_handle_t		oh;
+}trace_oid_oh_t;
+
 typedef struct seis_gather{
 	/** number of traces under specific gather key */
 	int number_of_traces;
@@ -87,6 +95,8 @@ typedef struct seis_obj {
 	int number_of_gathers;
 	/**array of gathers */
 	seis_gather_t *gathers;
+	/** pointer to array of trace_oids objects*/
+	trace_oid_oh_t *seis_gather_trace_oids_obj;
 }seis_obj_t;
 
 /** object struct that is instantiated for a Seismic trace object */
@@ -115,13 +125,6 @@ typedef struct seismic_entry {
 	daos_iod_type_t		iod_type;
 }seismic_entry_t;
 
-/** object struct that is instantiated for a Seismic trace object */
-typedef struct trace_oid_oh_t {
-	/** DAOS object ID */
-	daos_obj_id_t		oid;
-	/** DAOS object open handle */
-	daos_handle_t		oh;
-}trace_oid_oh_t;
 
 typedef struct trace {
 
@@ -718,7 +721,7 @@ int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, i
  * It writes the object id of the DAOS_ARRAY object holding the traces oids.
  * Writes the array of OIDS_HDR_traces to the DAOS_ARRAY OBJECT.
  */
-int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, trace_oid_oh_t *trace_oids_obj, char *dkey_name, char *akey_name);
+int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name);
 
 /** Function responsible for updating any gather object.
  * It is called mainly at the end of the parsing function while pushing all gather data under specific keys.

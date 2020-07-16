@@ -485,7 +485,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 //		printf("ERROR CREATING EVENT ERRNO = %d \n", rc);
 //	}
 
-    time_t start, end;
+	struct timeval  tv1, tv2;
     double time_taken;
 
     double total_time_trh =0;
@@ -523,7 +523,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		return rc;
 	}
 
-	time(&start);
+	gettimeofday(&tv1, NULL);
 	if(temp_shot_id == shot_id){
 		//Fetch number of traces
 		prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_NTRACES,
@@ -583,8 +583,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 		return 0;
 	}
 
-	time(&end);
-    time_taken = (double)(end - start);
+	gettimeofday(&tv2, NULL);
+    time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
     printf("TIME TAKEN IN FIrst FOR LOOP ISSS %f \n", time_taken);
 
 
@@ -621,7 +621,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 //			printf("ERROR CREATING NEW EVENT ERRNO= %d \n", rc);
 //		}
 
-		time(&start);
+		gettimeofday(&tv1, NULL);
 
 		//Read Trace header
 		prepare_seismic_entry(&seismic_entry, trace_hdr_obj[j].oid, DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
@@ -632,8 +632,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			printf("Error reading trace  %d header error = %d \n", j, rc);
 			exit(0);
 		}
-		time(&end);
-	    time_taken = (double)(end - start);
+		gettimeofday(&tv2, NULL);
+	    time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
 		total_time_trh += time_taken;
 
 		traces->traces[j].trace_header_obj = shot_obj->gathers->oids[j];
@@ -647,7 +647,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		traces->traces[j].data = malloc(traces->traces[j].ns * sizeof(float));
 
-		time(&start);
+		gettimeofday(&tv1, NULL);
 		sgl.sg_nr = 1; // traces->traces[j].ns;
 		sgl.sg_nr_out = 0;
 		d_iov_t iov;
@@ -671,8 +671,8 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
 			return rc;
 		}
-		time(&end);
-	    time_taken = (double)(end - start);
+		gettimeofday(&tv2, NULL);
+	    time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
 		total_time_trd += time_taken;
 	}
 
@@ -1220,6 +1220,7 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 				free(trace_obj);
 	        }
 	    }
+	    printf("All trace data written...\n");
 	    rc = daos_seis_root_update(dfs, root_obj,  DS_D_FILE_HEADER, DS_A_NTRACES_HEADER,
 	    			(char*)&(root_obj->number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
 		if (rc != 0)
@@ -1250,39 +1251,56 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 			printf("ERROR adding OFFSET Number of gathers key, error: %d", rc);
 			return rc;
 		}
+		printf("Updated all gathers numbers...\n");
+//		shot_obj->seis_gather_trace_oids_obj = malloc(shot_obj->number_of_gathers * sizeof(trace_oid_oh_t));
+//		trace_oid_oh_t *cmp_trace_oids_obj ;//= malloc(cmp_obj->number_of_gathers * sizeof(trace_oid_oh_t));
+//		trace_oid_oh_t *offset_trace_oids_obj;// = malloc(offset_obj->number_of_gathers * sizeof(trace_oid_oh_t));
 
-		trace_oid_oh_t *shot_trace_oids_obj;
-		trace_oid_oh_t *cmp_trace_oids_obj;
-		trace_oid_oh_t *offset_trace_oids_obj;
-
-		rc = daos_seis_trace_oids_obj_create(dfs,cid, &shot_trace_oids_obj, &cmp_trace_oids_obj, &offset_trace_oids_obj);
+		rc = daos_seis_trace_oids_obj_create(dfs,cid, shot_obj);
 		if (rc != 0)
 		{
-			warn("FAILED TO ARRAY OIDs OBJECT");
+			warn("FAILED TO CREATE ARRAY OIDs OBJECT");
 			return rc;
 		}
 
+		rc = daos_seis_trace_oids_obj_create(dfs,cid, cmp_obj);
+		if (rc != 0)
+		{
+			warn("FAILED TO CREATE ARRAY OIDs OBJECT");
+			return rc;
+		}
 
-		rc = update_gather_traces(dfs, shot_obj->gathers, shot_obj, shot_trace_oids_obj, DS_D_SHOT, DS_A_NTRACES);
+		rc = daos_seis_trace_oids_obj_create(dfs,cid, offset_obj);
+		if (rc != 0)
+		{
+			warn("FAILED TO CREATE ARRAY OIDs OBJECT");
+			return rc;
+		}
+
+		printf("Open all gathers oids arrays...\n");
+
+		rc = update_gather_traces(dfs, shot_obj->gathers, shot_obj, DS_D_SHOT, DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
 		}
 
-		rc = update_gather_traces(dfs, cmp_obj->gathers, cmp_obj, cmp_trace_oids_obj, DS_D_CMP, DS_A_NTRACES);
+		rc = update_gather_traces(dfs, cmp_obj->gathers, cmp_obj, DS_D_CMP, DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING CMP number_of_traces key, error: %d \n", rc);
 		}
 
-		rc = update_gather_traces(dfs, offset_obj->gathers, offset_obj, offset_trace_oids_obj, DS_D_OFFSET, DS_A_NTRACES);
+		rc = update_gather_traces(dfs, offset_obj->gathers, offset_obj, DS_D_OFFSET, DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING OFFSET number_of_traces key, error: %d \n", rc);
 		}
 
-
-		daos_array_close(shot_trace_oids_obj->oh, NULL);
-		daos_array_close(cmp_trace_oids_obj->oh, NULL);
-		daos_array_close(offset_trace_oids_obj->oh, NULL);
-
+		printf("Updated all gathers traces...\n");
+//		daos_array_close(shot_trace_oids_obj->oh, NULL);
+//		daos_array_close(cmp_trace_oids_obj->oh, NULL);
+//		daos_array_close(offset_trace_oids_obj->oh, NULL);
+		free(shot_obj->seis_gather_trace_oids_obj);
+		free(cmp_obj->seis_gather_trace_oids_obj);
+		free(offset_obj->seis_gather_trace_oids_obj);
 		daos_obj_close(root_obj->root_obj->oh, NULL);
 		daos_obj_close(shot_obj->oh, NULL);
 		daos_obj_close(cmp_obj->oh, NULL);
