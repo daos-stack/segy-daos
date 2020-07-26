@@ -20,7 +20,8 @@
 
 /** Parsing segy file and building equivalent daos-seismic graph  */
 int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root);
-
+/** Sort file header */
+read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys);
 /** returns pointer to segy root object */
 seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
 /** returns pointer to segy root object */

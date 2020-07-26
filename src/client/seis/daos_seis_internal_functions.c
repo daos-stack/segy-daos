@@ -323,12 +323,11 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 		memcpy(current->next_gather->oids, new_gather->oids, sizeof(daos_obj_id_t) * 50);
 		current->next_gather->next_gather = NULL;
 	}
-	printf("FINISHED ADDING NEW GATHER \n");
+//	printf("FINISHED ADDING NEW GATHER \n");
 }
 
 int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
 
-	printf("HELLO UPADTE GATHER TRACES........................\n");
 	if(head == NULL){
 		printf("NO GATHERS EXIST \n");
 		return 0;
@@ -353,7 +352,6 @@ int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, ch
 				strcat(gather_dkey_name,temp);
 			}
 			//insert array object_id in gather object...
-
 			rc = daos_seis_gather_oids_array_update(dfs, &(object->seis_gather_trace_oids_obj[z]), head);
 			if(rc != 0) {
 				printf("ERROR UPDATING %s object TRACE OBJECT IDS ARRAY, error: %d \n",object->name, rc);
@@ -449,62 +447,6 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,seis_obj_t *
 		}
 
 	}
-//	D_ALLOC_PTR(*shot_trace_oids_obj);
-//	if (*shot_trace_oids_obj == NULL)
-//		return ENOMEM;
-//
-//	/** Get new OID for shot object */
-//	rc = oid_gen(dfs, cid,true, &(*shot_trace_oids_obj)->oid);
-//	if (rc) {
-//		printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
-//		return rc;
-//	}
-//
-//	/** Open the array object for the gather oids */
-//	rc = daos_array_open_with_attr(dfs->coh, (*shot_trace_oids_obj)->oid, DAOS_TX_NONE,
-//										DAOS_OO_RW, 1,500*sizeof(daos_obj_id_t), &(*shot_trace_oids_obj)->oh, NULL);
-//	if (rc) {
-//		printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
-//		return rc;
-//	}
-//
-//	D_ALLOC_PTR(*cmp_trace_oids_obj);
-//	if (*cmp_trace_oids_obj == NULL)
-//		return ENOMEM;
-//
-//	/** Get new OID for shot object */
-//	rc = oid_gen(dfs, cid,true, &(*cmp_trace_oids_obj)->oid);
-//	if (rc) {
-//		printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
-//		return rc;
-//	}
-//	/** Open the array object for the gather oids */
-//	rc = daos_array_open_with_attr(dfs->coh, (*cmp_trace_oids_obj)->oid, DAOS_TX_NONE,
-//									DAOS_OO_RW, 1,500*sizeof(daos_obj_id_t), &(*cmp_trace_oids_obj)->oh, NULL);
-//	if (rc) {
-//		printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
-//		return rc;
-//	}
-//
-//	D_ALLOC_PTR(*offset_trace_oids_obj);
-//	if (*offset_trace_oids_obj == NULL)
-//		return ENOMEM;
-//
-//	/** Get new OID for shot object */
-//	rc = oid_gen(dfs, cid,true, &(*offset_trace_oids_obj)->oid);
-//	if (rc) {
-//		printf("ERROR GENERATING OBJECT ID for gather trace OIDS %d \n", rc);
-//		return rc;
-//	}
-//
-//	/** Open the array object for the gather oids */
-//	rc = daos_array_open_with_attr(dfs->coh, (*offset_trace_oids_obj)->oid, DAOS_TX_NONE,
-//								DAOS_OO_RW, 1,500*sizeof(daos_obj_id_t), &(*offset_trace_oids_obj)->oh, NULL);
-//	if (rc) {
-//		printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
-//		return rc;
-//	}
-
 	return rc;
 }
 
@@ -959,64 +901,23 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 	int ntraces;
 	int keys[2];
 	struct seismic_entry gather_entry = {0};
-
-
 	int no_of_traces;
+
 	keys[0]=shot_id;
-
 	if(check_key_value(keys,shot_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-//		char shot_dkey_name[200] = "";
 		shot_exists=1;
-//		char trace_akey_name[200] = "";
-
-//		prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1, keys, &no_of_traces);
-//		rc = update_gather_object(shot_obj, shot_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
-//				sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//		if(rc) {
-//			printf("ERROR UPDATING shot trace_OIDS, error: %d \n", rc);
-//			return rc;
-//		}
-//		printf("SHOT GATHER EXIST  \n");
-
 	}
 
 	keys[0]=cmp_x;
 	keys[1] = cmp_y;
-
 	if(check_key_value(keys,cmp_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-
-//			char cmp_dkey_name[200] = "";
 			cmp_exists=1;
-//			char trace_akey_name[200] = "";
-//
-//			prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2, keys, &no_of_traces);
-//			rc = update_gather_object(cmp_obj, cmp_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
-//					sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//			if(rc) {
-//				printf("ERROR UPDATING Cmp trace_OIDS, error: %d", rc);
-//				return rc;
-//			}
-//			printf("CMP GATHER EXIST  \n");
-
 	}
 
 	keys[0]=off_x;
 	keys[1] =off_y;
-
 	if(check_key_value(keys,off_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-
 		offset_exists=1;
-//		char off_dkey_name[200] = "";
-//		char trace_akey_name[200] = "";
-//
-//		prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2, keys, &no_of_traces);
-//		rc = update_gather_object(off_obj, off_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
-//				sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//		if(rc) {
-//			printf("ERROR UPDATING OFFSET trace_OIDS, error: %d", rc);
-//			return rc;
-//		}
-//		printf("OFFSET GATHER EXIST  \n");
 	}
 
 	/** if shot id, cmp, and offset doesn't already exist */
@@ -1033,13 +934,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 		prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1,
 								shot_gather_data.keys, &shot_gather_data.number_of_traces);
-//
-//		rc = update_gather_object(shot_obj, shot_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
-//							sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//		if(rc) {
-//			printf("ERROR adding shot array_of_traces key, error: %d", rc);
-//			return rc;
-//		}
 
 		rc = update_gather_object(shot_obj, shot_dkey_name, DS_A_SHOT_ID, (char*)&shot_id,
 							sizeof(int), DAOS_IOD_SINGLE);
@@ -1047,13 +941,10 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 			printf("ERROR adding shot shot_id key, error: %d", rc);
 			return rc;
 		}
-
 		add_gather(&(shot_obj->gathers), &shot_gather_data);
-
 		shot_obj->sequence_number++;
 		shot_obj->number_of_gathers++;
 		free(shot_gather_data.oids);
-//		printf("SHOT GATHER DOESN'T EXIST  \n");
 	}
 
 	if(!cmp_exists){
@@ -1070,14 +961,6 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 		prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2,
 								cmp_gather_data.keys, &cmp_gather_data.number_of_traces);
-//
-//		rc = update_gather_object(cmp_obj, cmp_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
-//							sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//		if(rc) {
-//			printf("ERROR adding cmp array_of_traces key, error: %d", rc);
-//			return rc;
-//		}
-
 
 		rc = update_gather_object(cmp_obj, cmp_dkey_name, DS_A_CMP_VAL, (char*)cmp_gather_data.keys,
 							sizeof(int)*2, DAOS_IOD_ARRAY);
@@ -1085,13 +968,10 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 			printf("ERROR adding cmp value key, error: %d", rc);
 			return rc;
 		}
-
 		add_gather(&(cmp_obj->gathers), &cmp_gather_data);
-
 		cmp_obj->sequence_number++;
 		cmp_obj->number_of_gathers++;
 		free(cmp_gather_data.oids);
-//		printf("CMP GATHER DOESN'T EXIST  \n");
 	}
 
 	if(!offset_exists){
@@ -1109,27 +989,16 @@ int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
 
 		prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2,
 								off_gather_data.keys, &off_gather_data.number_of_traces);
-//
-//		rc = update_gather_object(off_obj, off_dkey_name, trace_akey_name, (char*)&trace_obj->oid,
-//						sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//		if(rc) {
-//			printf("ERROR adding offset trace_oid key, error: %d", rc);
-//			return rc;
-//		}
-
 		rc = update_gather_object(off_obj, off_dkey_name, DS_A_OFF_VAL, (char*)off_gather_data.keys,
 							sizeof(int)*2, DAOS_IOD_ARRAY);
 		if(rc){
 			printf("ERROR adding gather value key, error: %d", rc);
 			return rc;
 		}
-
 		add_gather(&(off_obj->gathers), &off_gather_data);
-
 		off_obj->sequence_number++;
 		off_obj->number_of_gathers++;
 		free(off_gather_data.oids);
-//		printf("OFFSET GATHER DOESN'T EXIST  \n");
 	}
 	return rc;
 }
@@ -1214,4 +1083,628 @@ segy* trace_to_segy(trace_t *trace){
 	return tp;
 }
 
+void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
 
+	trace_oid_oh_t *trace_hdr_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
+
+	int i;
+	int rc;
+	struct seismic_entry seismic_entry = {0};
+	for (i=0; i < traces->number_of_traces; i++){
+		trace_hdr_obj[i].oid = oids[i];
+		rc = daos_obj_open(dfs->coh, trace_hdr_obj[i].oid, daos_mode, &trace_hdr_obj[i].oh, NULL);
+		if(rc) {
+			printf("daos_obj_open()__ trace_header_obj Failed (%d)\n", rc);
+			exit(rc);
+		}
+		//Read Trace header
+		prepare_seismic_entry(&seismic_entry, trace_hdr_obj[i].oid, DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
+							(char*)&(traces->traces[i]), HDRBYTES, DAOS_IOD_ARRAY);
+
+		rc = daos_seis_fetch_entry(trace_hdr_obj[i].oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if (rc) {
+			printf("Error reading trace  %d header error = %d \n", i, rc);
+			exit(rc);
+		}
+		daos_obj_close(trace_hdr_obj[i].oh,NULL);
+
+		traces->traces[i].trace_header_obj = oids[i];
+	}
+	free(trace_hdr_obj);
+}
+
+void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
+
+	trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
+	int i;
+	int rc;
+	daos_array_iod_t iod;
+	daos_range_t		rg;
+	d_sg_list_t sgl;
+	struct seismic_entry seismic_entry = {0};
+	for(i=0 ; i< traces->number_of_traces; i++){
+		trace_data_obj[i].oid = get_tr_data_oid(&(traces->traces[i].trace_header_obj),OC_SX);
+
+		rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj[i]).oid, DAOS_TX_NONE, DAOS_OO_RW,
+								1,200*sizeof(float), &(trace_data_obj[i].oh), NULL);
+		if (rc) {
+			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+			exit(rc);
+		}
+		traces->traces[i].data = malloc(traces->traces[i].ns * sizeof(float));
+		sgl.sg_nr = 1; // traces->traces[j].ns;
+		sgl.sg_nr_out = 0;
+		d_iov_t iov;
+
+		seismic_entry.data = (char*)traces->traces[i].data;
+
+		d_iov_set(&iov, (void*)(seismic_entry.data), traces->traces[i].ns * sizeof(float));
+
+		sgl.sg_iovs = &iov;
+		iod.arr_nr = 1;
+		rg.rg_len = traces->traces[i].ns * sizeof(float);
+		rg.rg_idx = 0;
+		iod.arr_rgs = &rg;
+
+		rc = daos_array_read(trace_data_obj[i].oh, DAOS_TX_NONE, &iod, &sgl, NULL);
+		if(rc) {
+			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
+			exit(rc);
+		}
+		daos_array_close(trace_data_obj[i].oh,NULL);
+	}
+	free(trace_data_obj);
+
+}
+
+void sort_dkeys_list(int *first_array, int number_of_gathers, char** unique_keys, int direction){
+
+    const char *sep = "_";
+    char *token;
+    int i;
+
+
+
+    char new_temp[4096];
+    int *positive = malloc(number_of_gathers * sizeof(int));
+    char **sorted_keys = malloc(number_of_gathers * sizeof(char *));
+    int j=0;
+    for(i=0;i< number_of_gathers;i++){
+        strcpy(new_temp, unique_keys[j]);
+        token = strtok(new_temp, sep);
+      	sorted_keys[j] = malloc((strlen(token) + 1) * sizeof(char));
+        while( token != NULL ) {
+        	token = strtok(NULL, sep);
+        	if(token == NULL)
+        		break;
+        	if(token[0]== '-'){
+				positive[j]= 0;
+	            strcpy(sorted_keys[j], &token[1]);
+        	}else{
+				positive[j]=1;
+	            strcpy(sorted_keys[j], token);
+			}
+        	first_array[j] = atoi(sorted_keys[j]);
+        }
+        j++;
+    }
+
+    int temp2;
+    if(direction==1){
+        for (i = 0; i < number_of_gathers; i++)
+            {
+                for (j = 0; j < number_of_gathers - i - 1; j++)
+                {
+                    if (first_array[j] > first_array[j + 1])
+                    {
+                        temp2 = first_array[j];
+                        first_array[j] = first_array[j + 1];
+                        first_array[j + 1] = temp2;
+                    }
+                }
+            }
+    } else {
+        for (i = 0; i < number_of_gathers ; ++i)
+        {
+            for (j = i + 1; j < number_of_gathers; ++j)
+            {
+                if (first_array[i] < first_array[j])
+                {
+                	temp2 = first_array[i];
+                    first_array[i] = first_array[j];
+                    first_array[j] = temp2;
+                }
+            }
+        }
+
+    }
+
+
+ }
+
+void sort_headers(read_traces *gather_traces, char *sort_key, int direction){
+	int i;
+	int j;
+	trace_t temp;
+	if(strcmp(sort_key,"cdp")==0){
+		for(i=0; i< gather_traces->number_of_traces;i++){
+			gather_traces->traces[i].cdp =(gather_traces->traces[i].sx + gather_traces->traces[i].gx)/2;
+		}
+	} else if(strcmp(sort_key,"offset")==0){
+		for(i=0; i< gather_traces->number_of_traces;i++){
+			gather_traces->traces[i].offset =(gather_traces->traces[i].sx - gather_traces->traces[i].gx)/2;
+		}
+	}
+
+	MergeSort(gather_traces->traces, 0, gather_traces->number_of_traces-1, sort_key, direction);
+
+//	for (i = 1; i < gather_traces->number_of_traces; i++){
+//		for (j = 0; j < gather_traces->number_of_traces - i; j++) {
+//			if (gather_traces->traces[j].cdp > gather_traces->traces[j+1]	.cdp) {
+//				temp = gather_traces->traces[j];
+//				gather_traces->traces[j] = gather_traces->traces[j+1];
+//				gather_traces->traces[j+1] = temp;
+//			 }
+//		}
+//	}
+//	printf("AfTER SORTING BASED ON CDP ============================================= \n");
+//	for(int i=0; i<gather_traces->number_of_traces; i++){
+//		printf("CDP OF TRACE %d issssss %d \n", i, gather_traces->traces[i].cdp);
+//	}
+}
+
+void Merge(trace_t *arr, int low, int mid, int high, char *sort_key, int direction)
+{
+    int mergedSize = high - low + 1;
+    trace_t *temp = (trace_t *)malloc(mergedSize * sizeof(trace_t));
+    int mergePos = 0;
+    int leftPos = low;
+    int rightPos = mid + 1;
+
+    while (leftPos <= mid && rightPos <= high)
+    {
+        if (check_sorting_key(arr[leftPos], arr[rightPos], sort_key) && direction==1)
+        {
+            temp[mergePos++] = arr[leftPos++];
+        }
+        else if (check_sorting_key(arr[leftPos], arr[rightPos], sort_key) && direction==0)
+        {
+            temp[mergePos++] = arr[rightPos++];
+        }
+    }
+
+    while (leftPos <= mid)
+    {
+        temp[mergePos++] = arr[leftPos++];
+    }
+
+    while (rightPos <= high)
+    {
+        temp[mergePos++] = arr[rightPos++];
+    }
+
+    assert(mergePos == mergedSize);
+
+    for (mergePos = 0; mergePos < mergedSize; ++mergePos)
+        arr[low + mergePos] = temp[mergePos];
+
+    free(temp);
+}
+
+void MergeSort(trace_t *arr, int low, int high, char *sort_key, int direction)
+{
+    if (low < high)
+    {
+        int mid = (low + high) / 2;
+        //printf("-->> %s: lo = %d, md = %d, hi = %d\n", __func__, low, mid, high);
+
+        MergeSort(arr, low, mid, sort_key, direction);
+        MergeSort(arr, mid + 1, high, sort_key, direction);
+
+        Merge(arr, low, mid, high, sort_key, direction);
+        //printf("<<-- %s: lo = %d, md = %d, hi = %d\n", __func__, low, mid, high);
+    }
+}
+
+int check_sorting_key(trace_t leftPos, trace_t rightPos, char *sort_key){
+
+	if(strcmp(sort_key, "tracl") == 0){
+		if(leftPos.tracl < rightPos.tracl){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"tracr")==0){
+		if(leftPos.tracr < rightPos.tracr){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"fldr")==0){
+		if(leftPos.fldr < rightPos.fldr){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"tracf")==0){
+		if(leftPos.tracf < rightPos.tracf){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"ep")==0){
+		if(leftPos.ep < rightPos.ep){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"cdp")==0){
+		if(leftPos.cdp < rightPos.cdp){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"cdpt")==0){
+		if(leftPos.cdpt < rightPos.cdpt){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"nvs")==0){
+		if(leftPos.nvs < rightPos.nvs){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"nhs")==0){
+		if(leftPos.nhs < rightPos.nhs){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"offset")==0){
+		if(leftPos.offset < rightPos.offset){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"gelev")==0){
+		if(leftPos.gelev < rightPos.gelev){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"selev")==0){
+		if(leftPos.selev < rightPos.selev){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"sdepth")==0){
+		if(leftPos.sdepth < rightPos.sdepth){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"gdel")==0){
+		if(leftPos.gdel < rightPos.gdel){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"sdel")==0){
+		if(leftPos.sdel < rightPos.sdel){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"swdep")==0){
+		if(leftPos.swdep < rightPos.swdep){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(sort_key,"gwdep")==0){
+		if(leftPos.gwdep < rightPos.gwdep){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"scalel")==0){
+		if(leftPos.scalel < rightPos.scalel){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"scalco")==0){
+		if(leftPos.scalco < rightPos.scalco){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"sx")==0){
+		if(leftPos.sx < rightPos.sx){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"sy")==0){
+		if(leftPos.sy < rightPos.sy){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"gx")==0){
+		if(leftPos.gx < rightPos.gx){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"gy")==0){
+		if(leftPos.gy < rightPos.gy){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"wevel")==0){
+		if(leftPos.wevel < rightPos.wevel){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"swevel")==0){
+		if(leftPos.swevel < rightPos.swevel){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"sut")==0){
+		if(leftPos.sut < rightPos.sut){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"gut")==0){
+		if(leftPos.gut < rightPos.gut){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"sstat")==0){
+		if(leftPos.sstat < rightPos.sstat){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"gstat")==0){
+		if(leftPos.gstat < rightPos.gstat){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"tstat")==0){
+		if(leftPos.tstat < rightPos.tstat){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"laga")==0){
+		if(leftPos.laga < rightPos.laga){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"lagb")==0){
+		if(leftPos.lagb < rightPos.lagb){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"delrt")==0){
+		if(leftPos.delrt < rightPos.delrt){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"muts")==0){
+		if(leftPos.muts < rightPos.muts){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"mute")==0){
+		if(leftPos.mute < rightPos.mute){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"ns")==0){
+		if(leftPos.ns < rightPos.ns){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"dt")==0){
+		if(leftPos.dt < rightPos.dt){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"gain")==0){
+		if(leftPos.gain < rightPos.gain){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"igc")==0){
+		if(leftPos.igc < rightPos.igc){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"igi")==0){
+		if(leftPos.igi < rightPos.igi){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"corr")==0){
+		if(leftPos.corr < rightPos.corr){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"sfs")==0){
+		if(leftPos.sfs < rightPos.sfs){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"sfe")==0){
+		if(leftPos.sfe < rightPos.sfe){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"slen")==0){
+		if(leftPos.slen < rightPos.slen){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"styp")==0){
+		if(leftPos.styp < rightPos.styp){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"stas")==0){
+		if(leftPos.stas < rightPos.stas){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"stae")==0){
+		if(leftPos.stae < rightPos.stae){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"tatyp")==0){
+		if(leftPos.tatyp < rightPos.tatyp){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"afilf")==0){
+		if(leftPos.afilf < rightPos.afilf){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"afils")==0){
+		if(leftPos.afils < rightPos.afils){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"nofilf")==0){
+		if(leftPos.nofilf < rightPos.nofilf){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"nofils")==0){
+		if(leftPos.nofils < rightPos.nofils){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"lcf")==0){
+		if(leftPos.lcf < rightPos.lcf){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"hcf")==0){
+		if(leftPos.hcf < rightPos.hcf){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"lcs")==0){
+		if(leftPos.lcs < rightPos.lcs){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"hcs")==0){
+		if(leftPos.hcs < rightPos.hcs){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"grnors")==0){
+		if(leftPos.grnors < rightPos.grnors){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"grnofr")==0){
+		if(leftPos.grnofr < rightPos.grnofr){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"grnlof")==0){
+		if(leftPos.grnlof < rightPos.grnlof){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"gaps")==0){
+		if(leftPos.gaps < rightPos.gaps){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"d1")==0){
+		if(leftPos.d1 < rightPos.d1){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"f1")==0){
+		if(leftPos.f1 < rightPos.f1){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"d2")==0){
+		if(leftPos.d2 < rightPos.d2){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"f2")==0){
+		if(leftPos.f2 < rightPos.f2){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"sfs")==0){
+		if(leftPos.sfs < rightPos.sfs){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(sort_key,"ntr")==0){
+		if(leftPos.ntr < rightPos.ntr){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else {
+		return -1;
+	}
+}

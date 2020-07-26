@@ -743,4 +743,8 @@ void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 /** Function responsible for converting the trace struct back to the original segy struct */
 segy* trace_to_segy(trace_t *trace);
 
+void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode);
+
+void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode);
+
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */
