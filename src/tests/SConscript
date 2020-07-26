@@ -8,3 +8,4 @@ env.Program('seismic_obj_creation', 'seismic_obj_creation.c', LIBS=libraries, LI
 env.Program('get_traces_count', 'get_traces_count.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('read_traces', 'read_traces.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('sort_traces', 'sort_traces.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('window_traces', 'window_traces.c', LIBS=libraries, LIBPATH=libraries_path)

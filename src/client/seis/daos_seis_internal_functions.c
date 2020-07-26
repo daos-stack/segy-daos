@@ -1708,3 +1708,438 @@ int check_sorting_key(trace_t leftPos, trace_t rightPos, char *sort_key){
 		return -1;
 	}
 }
+
+void window_headers(read_traces *window_traces, read_traces *gather_traces, daos_obj_id_t *oids, char *key, long min, long max){
+
+	int i;
+	int k;
+	int temp = gather_traces->number_of_traces;
+	window_traces->number_of_traces = 0;
+	daos_obj_id_t *temp_oids = malloc(gather_traces->number_of_traces * sizeof(daos_obj_id_t));
+	memcpy(temp_oids, oids,gather_traces->number_of_traces * sizeof(daos_obj_id_t));
+
+	memset(oids,0,gather_traces->number_of_traces * sizeof(daos_obj_id_t));
+	printf("number of traces before = %d \n", window_traces->number_of_traces);
+
+	for(i=0; i < temp ;i++){
+//		printf("i = %d \n", i);
+		if(check_windowing_key(gather_traces->traces[i], key, min, max) == 0){
+//			for(k=i; k < gather_traces->number_of_traces ; k++){
+//				memcpy(&oids[k],&oids[k+1], sizeof(daos_obj_id_t));
+//				memcpy(&gather_traces->traces[k], &gather_traces->traces[k+1], sizeof(trace_t));
+//			}
+//			gather_traces->number_of_traces--;
+		} else {
+			memcpy(&window_traces->traces[i], &gather_traces->traces[i], sizeof(trace_t));
+			memcpy(&oids[i], &temp_oids[i],sizeof(daos_obj_id_t));
+			window_traces->number_of_traces ++;
+		}
+//		printf("number of traces in loop = %d \n", gather_traces->number_of_traces);
+	}
+
+	printf("number of traces after = %d \n", window_traces->number_of_traces);
+
+}
+
+int check_windowing_key(trace_t trace, char *wind_key, long min, long max){
+	if(strcmp(wind_key, "tracl") == 0){
+		if((trace.tracl >= min) && (trace.tracl <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"tracr")==0){
+		if((trace.tracr >= min) && (trace.tracr <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"fldr")==0){
+		if((trace.fldr >= min) && (trace.fldr <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"tracf")==0){
+		if((trace.tracf >= min) && (trace.tracf <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"ep")==0){
+		if((trace.ep >= min) && (trace.ep <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"cdp")==0){
+		if((trace.cdp >= min) && (trace.cdp <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"cdpt")==0){
+		if((trace.cdpt >= min) && (trace.cdpt <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"nvs")==0){
+		if((trace.nvs >= min) && (trace.nvs <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"nhs")==0){
+		if((trace.nhs >= min) && (trace.nhs <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"offset")==0){
+		if((trace.offset >= min) && (trace.offset <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"gelev")==0){
+		if((trace.gelev >= min) && (trace.gelev <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"selev")==0){
+		if((trace.selev >= min) && (trace.selev <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"sdepth")==0){
+		if((trace.sdepth >= min) && (trace.sdepth <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"gdel")==0){
+		if((trace.gdel >= min) && (trace.gdel <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"sdel")==0){
+		if((trace.sdel >= min) && (trace.sdel <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"swdep")==0){
+		if((trace.swdep >= min) && (trace.swdep <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	}  else if(strcmp(wind_key,"gwdep")==0){
+		if((trace.gwdep >= min) && (trace.gwdep <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"scalel")==0){
+		if((trace.scalel >= min) && (trace.scalel <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"scalco")==0){
+		if((trace.scalco >= min) && (trace.scalco <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"sx")==0){
+		if((trace.sx >= min) && (trace.sx <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"sy")==0){
+		if((trace.sy >= min) && (trace.sy <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"gx")==0){
+		if((trace.gx >= min) && (trace.gx <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"gy")==0){
+		if((trace.gy >= min) && (trace.gy <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"wevel")==0){
+		if((trace.wevel >= min) && (trace.wevel <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"swevel")==0){
+		if((trace.swevel >= min) && (trace.swevel <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"sut")==0){
+		if((trace.sut >= min) && (trace.sut <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"gut")==0){
+		if((trace.gut >= min) && (trace.gut <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"sstat")==0){
+		if((trace.sstat >= min) && (trace.sstat <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"gstat")==0){
+		if((trace.gstat >= min) && (trace.gstat <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"tstat")==0){
+		if((trace.tstat >= min) && (trace.tstat <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"laga")==0){
+		if((trace.laga >= min) && (trace.laga <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"lagb")==0){
+		if((trace.lagb >= min) && (trace.lagb <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"delrt")==0){
+		if((trace.delrt >= min) && (trace.delrt <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"muts")==0){
+		if((trace.muts >= min) && (trace.muts <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"mute")==0){
+		if((trace.mute >= min) && (trace.mute <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"ns")==0){
+		if((trace.ns >= min) && (trace.ns <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"dt")==0){
+		if((trace.dt >= min) && (trace.dt <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"gain")==0){
+		if((trace.gain >= min) && (trace.gain <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"igc")==0){
+		if((trace.igc >= min) && (trace.igc <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"igi")==0){
+		if((trace.igi >= min) && (trace.igi <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"corr")==0){
+		if((trace.corr >= min) && (trace.corr <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"sfs")==0){
+		if((trace.sfs >= min) && (trace.sfs <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"sfe")==0){
+		if((trace.sfe >= min) && (trace.sfe <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"slen")==0){
+		if((trace.slen >= min) && (trace.slen <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"styp")==0){
+		if((trace.styp >= min) && (trace.styp <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"stas")==0){
+		if((trace.stas >= min) && (trace.stas <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"stae")==0){
+		if((trace.stae >= min) && (trace.stae <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"tatyp")==0){
+		if((trace.tatyp >= min) && (trace.tatyp <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"afilf")==0){
+		if((trace.afilf >= min) && (trace.afilf <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"afils")==0){
+		if((trace.afils >= min) && (trace.afils <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"nofilf")==0){
+		if((trace.nofilf >= min) && (trace.nofilf <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"nofils")==0){
+		if((trace.nofils >= min) && (trace.nofils <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"lcf")==0){
+		if((trace.lcf >= min) && (trace.lcf <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"hcf")==0){
+		if((trace.hcf >= min) && (trace.hcf <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"lcs")==0){
+		if((trace.lcs >= min) && (trace.lcs <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"hcs")==0){
+		if((trace.hcs >= min) && (trace.hcs <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"grnors")==0){
+		if((trace.grnors >= min) && (trace.grnors <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"grnofr")==0){
+		if((trace.grnofr >= min) && (trace.grnofr <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"grnlof")==0){
+		if((trace.grnlof >= min) && (trace.grnlof <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"gaps")==0){
+		if((trace.gaps >= min) && (trace.gaps <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"d1")==0){
+		if((trace.d1 >= min) && (trace.d1 <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"f1")==0){
+		if((trace.f1 >= min) && (trace.f1 <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"d2")==0){
+		if((trace.d2 >= min) && (trace.d2 <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"f2")==0){
+		if((trace.f2 >= min) && (trace.f2 <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"sfs")==0){
+		if((trace.sfs >= min) && (trace.sfs <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else if(strcmp(wind_key,"ntr")==0){
+		if((trace.ntr >= min) && (trace.ntr <= max)){
+			return 1;
+		} else {
+			return 0;
+		}
+	} else {
+		return -1;
+	}
+
+}
