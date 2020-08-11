@@ -24,8 +24,6 @@
 #define err3(x,y,z) fprintf(stderr,x,y,z);exit(0)
 #define err4(x,y,z,u) fprintf(stderr,x,y,z,u);exit(0)
 
-
-
 int daos_seis_close_root(seis_root_obj_t *segy_root_object){
 
 	int rc;
@@ -467,11 +465,10 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 	return rc;
 }
 
-read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root){
+traces_headers_t* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root){
 
 	int rc;
 	int daos_mode;
-	read_traces *traces = malloc(sizeof(read_traces));
 	daos_handle_t	th = DAOS_TX_NONE;
 	struct seismic_entry seismic_entry = {0};
 	seis_obj_t *shot_obj = 	malloc(sizeof(seis_obj_t));
@@ -480,6 +477,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 	daos_range_t		rg;
 	d_sg_list_t sgl;
 
+	traces_headers_t *traces_head = NULL;
 
 	struct timeval  tv1, tv2;
     double time_taken;
@@ -505,13 +503,14 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 	char temp[200]="";
 	char shot_dkey_name[200] = "";
-	strcat(shot_dkey_name,DS_D_SHOT);
+	strcat(shot_dkey_name,"fldr_");
 	sprintf(temp, "%d", shot_id);
 	strcat(shot_dkey_name,temp);
+	printf("LOOKING FOR %s \n",shot_dkey_name);
 	int temp_shot_id;
 
 	//Fetch shot id
-	prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_SHOT_ID,
+	prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_UNIQUE_VAL,
 				(char*)&temp_shot_id, sizeof(int), DAOS_IOD_SINGLE);
 	rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry, NULL);
 	if(rc) {
@@ -526,10 +525,7 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 						(char*)&(shot_obj->gathers->number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
 		rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry, NULL);
 
-
-		traces->number_of_traces = shot_obj->gathers->number_of_traces;
-
-		shot_obj->gathers->oids = malloc(traces->number_of_traces * sizeof(daos_obj_id_t));
+		shot_obj->gathers->oids = malloc(shot_obj->gathers->number_of_traces * sizeof(daos_obj_id_t));
 		//Fetch object id of traces object
 		trace_obj_t *trace_oids_obj = malloc(sizeof(trace_obj_t));
 
@@ -550,16 +546,15 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
 
 		int offset = 0;
 
-		sgl.sg_nr = 1; //traces->number_of_traces;
+		sgl.sg_nr = 1;
 		sgl.sg_nr_out = 0;
-		d_iov_t iov; //[sgl.sg_nr];
-
+		d_iov_t iov;
 		seismic_entry.data = (char*) shot_obj->gathers->oids;
-		d_iov_set(&iov, (void*)(seismic_entry.data), traces->number_of_traces * sizeof(daos_obj_id_t));
+		d_iov_set(&iov, (void*)(seismic_entry.data), shot_obj->gathers->number_of_traces * sizeof(daos_obj_id_t));
 
 		sgl.sg_iovs = &iov;
 		iod.arr_nr = 1;
-		rg.rg_len = traces->number_of_traces * sizeof(daos_obj_id_t);
+		rg.rg_len = shot_obj->gathers->number_of_traces * sizeof(daos_obj_id_t);
 		rg.rg_idx = offset;
 		iod.arr_rgs = &rg;
 
@@ -578,25 +573,22 @@ read_traces* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_o
     time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
     printf("TIME TAKEN IN FIrst FOR LOOP ISSS %f \n", time_taken);
 
-
-	traces->traces = malloc(traces->number_of_traces * sizeof(trace_t));
-
 	// Read Traces header
 	gettimeofday(&tv1, NULL);
-	fetch_traces_header(dfs, shot_obj->gathers->oids, traces,daos_mode);
+	new_fetch_traces_header(dfs,shot_obj->gathers->oids,&traces_head,daos_mode,shot_obj->gathers->number_of_traces);
 	gettimeofday(&tv2, NULL);
 	total_time_trh = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
 
 	//Read Traces data
 	gettimeofday(&tv1, NULL);
-	fetch_traces_data(dfs, shot_obj->gathers->oids, traces,daos_mode);
+	new_fetch_traces_data(dfs,&traces_head,daos_mode);
 	gettimeofday(&tv2, NULL);
 	total_time_trd = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
 	total_time_trd += time_taken;
 
 	printf("TIME TAKEN IN Reading trace headers ISSS %f \n", total_time_trh);
 	printf("TIME TAKEN IN Reading trace data ISSS %f \n", total_time_trd);
-	return traces;
+	return traces_head;
 }
 
 int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root){
@@ -1080,12 +1072,27 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 						printf("ERROR creating and updating trace object, error number = %d  \n", rc);
 						return rc;
 	            	}
-	        	rc = daos_seis_tr_linking(dfs, trace_obj, &tr, shot_obj, cmp_obj, offset_obj);
-	            if(rc!=0)
-	            	{
-	            		printf("ERROR LINKING TRACE TO MULTIPLE GATHER OBJECTS, err number= %d \n",rc);
-	            		return rc;
-	            	}
+//	        	rc = daos_seis_tr_linking(dfs, trace_obj, &tr, shot_obj, cmp_obj, offset_obj);
+	        rc = new_daos_seis_tr_linking(dfs, trace_obj, shot_obj, "fldr");
+			if(rc!=0)
+				{
+					printf("ERROR LINKING TRACE TO SHOT GATHER OBJECT, err number= %d \n",rc);
+					return rc;
+				}
+	        rc = new_daos_seis_tr_linking(dfs, trace_obj, cmp_obj, "cdp");
+			if(rc!=0)
+				{
+					printf("ERROR LINKING TRACE TO CMP GATHER OBJECT, err number= %d \n",rc);
+					return rc;
+				}
+
+	        rc = new_daos_seis_tr_linking(dfs, trace_obj, offset_obj, "offset");
+			if(rc!=0)
+				{
+					printf("ERROR LINKING TRACE TO OFFSET GATHER OBJECT, err number= %d \n",rc);
+					return rc;
+				}
+
 				/* Echo under verbose option */
 			 if (verbose && (itr % vblock) == 0)
 	            {
@@ -1152,17 +1159,17 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 
 		printf("Open all gathers oids arrays...\n");
 
-		rc = update_gather_traces(dfs, shot_obj->gathers, shot_obj, DS_D_SHOT, DS_A_NTRACES);
+		rc = new_update_gather_traces(dfs, shot_obj->gathers, shot_obj, "fldr_", DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
 		}
 
-		rc = update_gather_traces(dfs, cmp_obj->gathers, cmp_obj, DS_D_CMP, DS_A_NTRACES);
+		rc = new_update_gather_traces(dfs, cmp_obj->gathers, cmp_obj, "cdp_", DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING CMP number_of_traces key, error: %d \n", rc);
 		}
 
-		rc = update_gather_traces(dfs, offset_obj->gathers, offset_obj, DS_D_OFFSET, DS_A_NTRACES);
+		rc = new_update_gather_traces(dfs, offset_obj->gathers, offset_obj, "offset_", DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING OFFSET number_of_traces key, error: %d \n", rc);
 		}
@@ -1180,7 +1187,7 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 	return rc;
 }
 
-read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys){
+read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys, int *ngathers){
 
     char temp[4096];
     int number_of_keys = 0;
@@ -1215,7 +1222,7 @@ read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *arr
         	if(token[0]== '-'){
         		directions[i]= 0;
         		strcpy(sort_keys[i], &token[1]);
-        	}else if (token[0]== '+'){
+        	} else if (token[0]== '+'){
         		directions[i]=1;
         		strcpy(sort_keys[i], &token[1]);
         	} else {
@@ -1240,22 +1247,22 @@ read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *arr
 	seismic_entry_t seismic_entry = {0};
 	seis_obj_t *seismic_object = malloc(sizeof(seis_obj_t));
 
-
 	if(strcmp(sort_keys[0], "cdp") == 0){
 		//Open CMP Gather Object
 		cmp_obj = 1;
 		seismic_object->oid = root->cmp_oid;
 		rc = daos_obj_open(dfs->coh, root->cmp_oid, daos_mode, &(seismic_object->oh), NULL);
 		printf("OPENED CMP OBJECT \n");
-	} else if(strcmp(&sort_keys[0],"offset") == 0){
+	} else if(strcmp(sort_keys[0],"offset") == 0){
 		//Open OFFSET Gather Object
 		offset_obj = 1;
 		seismic_object->oid = root->offset_oid;
 		rc = daos_obj_open(dfs->coh, root->offset_oid, daos_mode, &(seismic_object->oh), NULL);
 		printf("OPENED OFFSET OBJECT \n");
 	} else {
-	    //Open Shot Gather Object
-		shot_obj = 1;
+		if(strcmp(sort_keys[0],"fldr") == 0){
+			shot_obj = 1;
+		}
 		seismic_object->oid = root->shot_oid;
 		rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(seismic_object->oh), NULL);
 		printf("OPENED SHOT OBJECT \n");
@@ -1276,90 +1283,52 @@ read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *arr
 	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
 	//Fetch list of dkeys under seimsic_object
 
-	uint32_t nr = seismic_object->number_of_gathers +1;
-	d_sg_list_t sglo;
-	sglo.sg_nr_out = sglo.sg_nr = 1;
-	d_iov_t iov_temp;
-	char *temp_array = malloc(4096 * sizeof(char));
-	d_iov_set(&iov_temp, temp_array, 4096);
-	sglo.sg_iovs = &iov_temp;
-	daos_anchor_t	anchor = { 0 };
-	daos_key_desc_t  *kds= malloc((seismic_object->number_of_gathers + 1) * sizeof(daos_key_desc_t));
-	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
-	if(rc){
-		printf(" LIST DKEY FAILED \n");
+	char ** unique_keys;
+	if(shot_obj == 1){
+		unique_keys = daos_seis_fetch_dkeys(seismic_object,1, shot_obj, cmp_obj, offset_obj, directions[0]);
+	} else{
+		unique_keys = daos_seis_fetch_dkeys(seismic_object,0, shot_obj, cmp_obj, offset_obj, directions[0]);
 	}
 
-	char **dkeys_list = malloc((seismic_object->number_of_gathers +1) * sizeof(char*));
-	int off=0;
 
-	char **unique_keys = malloc(seismic_object->number_of_gathers * sizeof(char *));
-	int u=0;
 	int z;
-	for( z=0; z< seismic_object->number_of_gathers +1; z++ ){
-    	dkeys_list[z] = malloc(kds[z].kd_key_len +1 * sizeof(char));
-		strncpy(dkeys_list[z],&temp_array[off], kds[z].kd_key_len);
-		dkeys_list[z][kds[z].kd_key_len] = '\0';
-		off += kds[z].kd_key_len;
-		for (int k=0; k< strlen(dkeys_list[z])+1;k++){
-			if(isdigit(dkeys_list[z][k])){
-				unique_keys[u]=malloc(kds[z].kd_key_len * sizeof(char));
-				unique_keys[u]= dkeys_list[z];
-				u++;
-				break;
-			} else {
-				continue;
-			}
-		}
-	}
-
-   int *first_array = malloc(seismic_object->number_of_gathers * sizeof(int));
-   sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys,directions[0]);
-
-   char **dkeys_sorted_list = malloc((seismic_object->number_of_gathers) * sizeof(char*));
-   int m;
-	for(m=0;m< seismic_object->number_of_gathers; m++){
-		dkeys_sorted_list[m]=malloc(kds[z].kd_key_len *sizeof(char));
-		char dkey_name[200] = "";
-		char temp_st[200]="";
-		if(shot_obj){
-			strcat(dkey_name,DS_D_SHOT);
-		}
-		seismic_object->gathers[m].keys[0] = first_array[m];
-		sprintf(temp_st, "%d", first_array[m]);
-		strcat(dkey_name,temp_st);
-		strcpy(dkeys_sorted_list[m], dkey_name);
-	}
-
 	for(z=0;z<seismic_object->number_of_gathers;z++){
-		printf("dkeys list %s \n", dkeys_sorted_list[z]);
-		printf("KEY value %d \n", seismic_object->gathers[z].keys[0]);
+		printf("dkeys list %s \n", unique_keys[z]);
+//		printf("KEY value %d \n", seismic_object->gathers[z].keys[0]);
 	}
 
-	free(unique_keys);
-	free(first_array);
-	free(temp_array);
-	free(dkeys_list);
+//	free(unique_keys);
+//	free(first_array);
+//	free(temp_array);
+//	free(dkeys_list);
 
 //fetch data from each gather and push into seis_gather linked list.
 	read_traces *gather_traces = malloc(seismic_object->number_of_gathers * sizeof(read_traces));
-
+	*ngathers = seismic_object->number_of_gathers;
+	int temp_number_of_keys;
  	for(i=0; i< seismic_object->number_of_gathers; i++){
-
+ 		temp_number_of_keys = number_of_keys;
 //		//Fetch number of traces
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid, dkeys_sorted_list[i], DS_A_NTRACES,
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_NTRACES,
 								(char*)&seismic_object->gathers[i].number_of_traces, sizeof(int), DAOS_IOD_SINGLE);
 		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
-
+		if (rc) {
+			printf("fetch number of traces failed (%d)\n", rc);
+			return rc;
+		}
 //		//Fetch trace headers oid.
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid, dkeys_sorted_list[i], DS_A_GATHER_TRACE_OIDS,
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_GATHER_TRACE_OIDS,
 								(char*)&seismic_object->seis_gather_trace_oids_obj[i].oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if (rc) {
+			printf("Fetch trace header oids failed (%d)\n", rc);
+			return rc;
+		}
 
 //Allocate oids array , size = number of traces
 		seismic_object->gathers[i].oids = malloc(seismic_object->gathers[i].number_of_traces * sizeof(daos_obj_id_t));
 //Fetch array of trace headers oids..
-
+//		printf("ARRAY OID IS %lu%lu\n", seismic_object->seis_gather_trace_oids_obj[i].oid.lo, seismic_object->seis_gather_trace_oids_obj[i].oid.hi);
 		// open array object
 		rc = daos_array_open_with_attr(dfs->coh, seismic_object->seis_gather_trace_oids_obj[i].oid, DAOS_TX_NONE,
 				DAOS_OO_RW, 1, 500*sizeof(daos_obj_id_t), &(seismic_object->seis_gather_trace_oids_obj[i].oh), NULL);
@@ -1399,22 +1368,447 @@ read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *arr
 
 		fetch_traces_header(dfs, seismic_object->gathers[i].oids, &gather_traces[i], daos_mode);
 
-	 	int z=1;
-	 	while(z < number_of_keys ){
-	 		sort_headers(&gather_traces[i], sort_keys[z], directions[z]);
-	 		z++;
-	 	}
+//		int z;
+		if(shot_obj || cmp_obj || offset_obj ){
+			temp_number_of_keys --;
+		}
+//			z=0;
+//		}
+//		printf("Z=== %d \n",number_of_keys);
+//	 	while(z < number_of_keys ){
+			if(temp_number_of_keys >0){
+		 		sort_headers(&gather_traces[i], sort_keys, directions, temp_number_of_keys);
+			}
+//	 		z++;
+//	 	}
 
 	 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
  	}
+
 	return gather_traces;
 }
+
+read_traces* new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys, int *ngathers){
+
+    char temp[4096];
+    int number_of_keys = 0;
+    strcpy(temp, array_keys);
+    const char *sep = ",";
+    char *token = strtok(temp, sep);
+    while( token != NULL ) {
+    	number_of_keys++;
+        token = strtok(NULL, sep);
+    }
+    int *directions;
+    char **sort_keys;
+    int i;
+    if(number_of_keys == 0){
+    	number_of_keys = 1;
+        directions = malloc(number_of_keys * sizeof(int));
+        sort_keys = malloc(number_of_keys * sizeof(char *));
+    	sort_keys[0] = malloc((strlen("CDP") + 1) * sizeof(char));
+		directions[0]=1;
+		strcpy(sort_keys[0], "CDP");
+		printf("DEFAULT SORTING KEY IS CDP \n");
+    } else {
+        //array of keys
+        directions = malloc(number_of_keys * sizeof(int));
+        sort_keys = malloc(number_of_keys * sizeof(char *));
+        strcpy(temp, array_keys);
+        token = strtok(temp, sep);
+
+        i = 0;
+        while( token != NULL ) {
+        	sort_keys[i] = malloc((strlen(token) + 1) * sizeof(char));
+        	if(token[0]== '-'){
+        		directions[i]= 0;
+        		strcpy(sort_keys[i], &token[1]);
+        	} else if (token[0]== '+'){
+        		directions[i]=1;
+        		strcpy(sort_keys[i], &token[1]);
+        	} else {
+        		directions[i]=1;
+    			strcpy(sort_keys[i], token);
+        	}
+            token = strtok(NULL, sep);
+            i++;
+        }
+    }
+
+    for(int k=0; k<number_of_keys;k++){
+    	printf("direction = %d \n",directions[k]);
+    	printf("key = %s \n",sort_keys[k]);
+    }
+
+	int rc;
+	int shot_obj = 0;
+	int cmp_obj = 0;
+	int offset_obj = 0;
+	int daos_mode = get_daos_obj_mode(O_RDWR);
+	seismic_entry_t seismic_entry = {0};
+	seis_obj_t *seismic_object = malloc(sizeof(seis_obj_t));
+
+	if(strcmp(sort_keys[0], "cdp") == 0){
+		//Open CMP Gather Object
+		cmp_obj = 1;
+		seismic_object->oid = root->cmp_oid;
+		rc = daos_obj_open(dfs->coh, root->cmp_oid, daos_mode, &(seismic_object->oh), NULL);
+		printf("OPENED CMP OBJECT \n");
+	} else if(strcmp(sort_keys[0],"offset") == 0){
+		//Open OFFSET Gather Object
+		offset_obj = 1;
+		seismic_object->oid = root->offset_oid;
+		rc = daos_obj_open(dfs->coh, root->offset_oid, daos_mode, &(seismic_object->oh), NULL);
+		printf("OPENED OFFSET OBJECT \n");
+	} else {
+		if(strcmp(sort_keys[0],"fldr") == 0){
+			shot_obj = 1;
+		}
+		seismic_object->oid = root->shot_oid;
+		rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(seismic_object->oh), NULL);
+		printf("OPENED SHOT OBJECT \n");
+	}
+	if (rc) {
+		printf("daos_obj_open()__ seismic _object Failed (%d)\n", rc);
+		return rc;
+	}
+
+	//Fetch Number of Gathers Under opened Gather object
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid, DS_D_NGATHERS, DS_A_NGATHERS,
+				(char*)&seismic_object->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+
+	seismic_object->sequence_number = 0;
+	seismic_object->gathers = malloc(seismic_object->number_of_gathers * sizeof(seis_gather_t));
+	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
+	//Fetch list of dkeys under seimsic_object
+
+	char ** unique_keys;
+	if(shot_obj == 1){
+		unique_keys = daos_seis_fetch_dkeys(seismic_object,1, shot_obj, cmp_obj, offset_obj, directions[0]);
+	} else{
+		unique_keys = daos_seis_fetch_dkeys(seismic_object,0, shot_obj, cmp_obj, offset_obj, directions[0]);
+	}
+
+
+	int z;
+	for(z=0;z<seismic_object->number_of_gathers;z++){
+		printf("dkeys list %s \n", unique_keys[z]);
+//		printf("KEY value %d \n", seismic_object->gathers[z].keys[0]);
+	}
+
+//	free(unique_keys);
+//	free(first_array);
+//	free(temp_array);
+//	free(dkeys_list);
+
+//fetch data from each gather and push into seis_gather linked list.
+	read_traces *gather_traces = malloc(seismic_object->number_of_gathers * sizeof(read_traces));
+	*ngathers = seismic_object->number_of_gathers;
+	int temp_number_of_keys;
+ 	for(i=0; i< seismic_object->number_of_gathers; i++){
+ 		temp_number_of_keys = number_of_keys;
+//		//Fetch number of traces
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_NTRACES,
+								(char*)&seismic_object->gathers[i].number_of_traces, sizeof(int), DAOS_IOD_SINGLE);
+		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if (rc) {
+			printf("fetch number of traces failed (%d)\n", rc);
+			return rc;
+		}
+//		//Fetch trace headers oid.
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_GATHER_TRACE_OIDS,
+								(char*)&seismic_object->seis_gather_trace_oids_obj[i].oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if (rc) {
+			printf("Fetch trace header oids failed (%d)\n", rc);
+			return rc;
+		}
+
+//Allocate oids array , size = number of traces
+		seismic_object->gathers[i].oids = malloc(seismic_object->gathers[i].number_of_traces * sizeof(daos_obj_id_t));
+//Fetch array of trace headers oids..
+//		printf("ARRAY OID IS %lu%lu\n", seismic_object->seis_gather_trace_oids_obj[i].oid.lo, seismic_object->seis_gather_trace_oids_obj[i].oid.hi);
+		// open array object
+		rc = daos_array_open_with_attr(dfs->coh, seismic_object->seis_gather_trace_oids_obj[i].oid, DAOS_TX_NONE,
+				DAOS_OO_RW, 1, 500*sizeof(daos_obj_id_t), &(seismic_object->seis_gather_trace_oids_obj[i].oh), NULL);
+
+		if (rc) {
+			printf("daos_array_open_with_attr()-->>GATHER OIDS object<<-- failed (%d)\n", rc);
+			return rc;
+		}
+
+		daos_array_iod_t iod;
+		daos_range_t rg;
+		d_sg_list_t sgl;
+		int offset = 0;
+
+		sgl.sg_nr = 1;
+		sgl.sg_nr_out = 0;
+		d_iov_t iov;
+
+		seismic_entry.data = (char*) seismic_object->gathers[i].oids;
+		d_iov_set(&iov, (void*)(seismic_entry.data), seismic_object->gathers[i].number_of_traces * sizeof(daos_obj_id_t));
+
+		sgl.sg_iovs = &iov;
+		iod.arr_nr = 1;
+		rg.rg_len = seismic_object->gathers[i].number_of_traces * sizeof(daos_obj_id_t);
+		rg.rg_idx = offset;
+		iod.arr_rgs = &rg;
+
+		rc = daos_array_read(seismic_object->seis_gather_trace_oids_obj[i].oh, DAOS_TX_NONE, &iod, &sgl, NULL);
+		if(rc){
+			printf("ERROR READING GATHER OIDS----------------- error = %d  \n", rc);
+			return rc;
+		}
+
+		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
+		gather_traces[i].number_of_traces = seismic_object->gathers[i].number_of_traces;
+		gather_traces[i].traces = malloc(gather_traces[i].number_of_traces * sizeof(trace_t));
+
+		fetch_traces_header(dfs, seismic_object->gathers[i].oids, &gather_traces[i], daos_mode);
+
+//		int z;
+		if(shot_obj || cmp_obj || offset_obj ){
+			temp_number_of_keys --;
+		}
+//			z=0;
+//		}
+//		printf("Z=== %d \n",number_of_keys);
+//	 	while(z < number_of_keys ){
+			if(temp_number_of_keys > 0){
+		 		sort_headers(&gather_traces[i], sort_keys, directions, temp_number_of_keys);
+			}
+//	 		z++;
+//	 	}
+
+	 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
+ 	}
+
+	return gather_traces;
+}
+
+traces_headers_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys){
+
+    traces_headers_t *headers = NULL;
+	char temp[4096];
+    int number_of_keys = 0;
+    strcpy(temp, array_keys);
+    const char *sep = ",";
+    char *token = strtok(temp, sep);
+    while( token != NULL ) {
+    	number_of_keys++;
+        token = strtok(NULL, sep);
+    }
+    int *directions;
+    char **sort_keys;
+    int i;
+    if(number_of_keys == 0){
+    	number_of_keys = 1;
+        directions = malloc(number_of_keys * sizeof(int));
+        sort_keys = malloc(number_of_keys * sizeof(char *));
+    	sort_keys[0] = malloc((strlen("CDP") + 1) * sizeof(char));
+		directions[0]=1;
+		strcpy(sort_keys[0], "CDP");
+		printf("DEFAULT SORTING KEY IS CDP \n");
+    } else {
+        //array of keys
+        directions = malloc(number_of_keys * sizeof(int));
+        sort_keys = malloc(number_of_keys * sizeof(char *));
+        strcpy(temp, array_keys);
+        token = strtok(temp, sep);
+
+        i = 0;
+        while( token != NULL ) {
+        	sort_keys[i] = malloc((strlen(token) + 1) * sizeof(char));
+        	if(token[0]== '-'){
+        		directions[i]= 0;
+        		strcpy(sort_keys[i], &token[1]);
+        	} else if (token[0]== '+'){
+        		directions[i]=1;
+        		strcpy(sort_keys[i], &token[1]);
+        	} else {
+        		directions[i]=1;
+    			strcpy(sort_keys[i], token);
+        	}
+            token = strtok(NULL, sep);
+            i++;
+        }
+    }
+
+    for(int k=0; k<number_of_keys;k++){
+    	printf("direction = %d \n",directions[k]);
+    	printf("key = %s \n",sort_keys[k]);
+    }
+
+	int rc;
+	int shot_obj = 0;
+	int cmp_obj = 0;
+	int offset_obj = 0;
+	int daos_mode = get_daos_obj_mode(O_RDWR);
+	seismic_entry_t seismic_entry = {0};
+	seis_obj_t *seismic_object = malloc(sizeof(seis_obj_t));
+
+	if(!strcmp(sort_keys[0], "cdp")){
+		//Open CMP Gather Object
+		cmp_obj = 1;
+		seismic_object->oid = root->cmp_oid;
+		rc = daos_obj_open(dfs->coh, root->cmp_oid, daos_mode, &(seismic_object->oh), NULL);
+		printf("OPENED CMP OBJECT \n");
+	} else if(!strcmp(sort_keys[0],"offset")){
+		//Open OFFSET Gather Object
+		offset_obj = 1;
+		seismic_object->oid = root->offset_oid;
+		rc = daos_obj_open(dfs->coh, root->offset_oid, daos_mode, &(seismic_object->oh), NULL);
+		printf("OPENED OFFSET OBJECT \n");
+	} else {
+		if(!strcmp(sort_keys[0],"fldr")){
+			shot_obj = 1;
+		}
+		seismic_object->oid = root->shot_oid;
+		rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(seismic_object->oh), NULL);
+		printf("OPENED SHOT OBJECT \n");
+	}
+	if (rc) {
+		printf("daos_obj_open()__ seismic _object Failed (%d)\n", rc);
+		return rc;
+	}
+
+	//Fetch Number of Gathers Under opened Gather object
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid, DS_D_NGATHERS, DS_A_NGATHERS,
+				(char*)&seismic_object->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+
+	seismic_object->sequence_number = 0;
+	seismic_object->gathers = malloc(seismic_object->number_of_gathers * sizeof(seis_gather_t));
+	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
+	//Fetch list of dkeys under seimsic_object
+
+
+	//please consider cmp and offset object flags in fetch dkeys.
+	char ** unique_keys;
+	if(shot_obj == 1){
+		unique_keys = daos_seis_fetch_dkeys(seismic_object,1, shot_obj, cmp_obj, offset_obj, directions[0]);
+	} else{
+		unique_keys = daos_seis_fetch_dkeys(seismic_object,0, shot_obj, cmp_obj, offset_obj, directions[0]);
+	}
+
+
+	int z;
+	for(z=0;z<seismic_object->number_of_gathers;z++){
+		printf("dkeys list %s \n", unique_keys[z]);
+//		printf("KEY value %d \n", seismic_object->gathers[z].keys[0]);
+	}
+
+//	free(unique_keys);
+//	free(first_array);
+//	free(temp_array);
+//	free(dkeys_list);
+
+	read_traces *gather_traces = malloc(seismic_object->number_of_gathers * sizeof(read_traces));
+	int temp_number_of_keys;
+ 	for(i=0; i< seismic_object->number_of_gathers; i++){
+ 		temp_number_of_keys = number_of_keys;
+//		//Fetch number of traces
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_NTRACES,
+								(char*)&gather_traces[i].number_of_traces, sizeof(int), DAOS_IOD_SINGLE);
+		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if (rc) {
+			printf("fetch number of traces failed (%d)\n", rc);
+			return rc;
+		}
+//		//Fetch trace headers oid.
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_GATHER_TRACE_OIDS,
+								(char*)&seismic_object->seis_gather_trace_oids_obj[i].oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if (rc) {
+			printf("Fetch trace header oids failed (%d)\n", rc);
+			return rc;
+		}
+
+//Allocate oids array , size = number of traces
+		seismic_object->gathers[i].oids = malloc(gather_traces[i].number_of_traces * sizeof(daos_obj_id_t));
+//Fetch array of trace headers oids..
+//		printf("ARRAY OID IS %lu%lu\n", seismic_object->seis_gather_trace_oids_obj[i].oid.lo, seismic_object->seis_gather_trace_oids_obj[i].oid.hi);
+		// open array object
+		rc = daos_array_open_with_attr(dfs->coh, seismic_object->seis_gather_trace_oids_obj[i].oid, DAOS_TX_NONE,
+				DAOS_OO_RW, 1, 500*sizeof(daos_obj_id_t), &(seismic_object->seis_gather_trace_oids_obj[i].oh), NULL);
+
+		if (rc) {
+			printf("daos_array_open_with_attr()-->>GATHER OIDS object<<-- failed (%d)\n", rc);
+			return rc;
+		}
+
+		daos_array_iod_t iod;
+		daos_range_t rg;
+		d_sg_list_t sgl;
+		int offset = 0;
+
+		sgl.sg_nr = 1;
+		sgl.sg_nr_out = 0;
+		d_iov_t iov;
+
+		seismic_entry.data = (char*) seismic_object->gathers[i].oids;
+		d_iov_set(&iov, (void*)(seismic_entry.data), gather_traces[i].number_of_traces * sizeof(daos_obj_id_t));
+
+		sgl.sg_iovs = &iov;
+		iod.arr_nr = 1;
+		rg.rg_len = gather_traces[i].number_of_traces * sizeof(daos_obj_id_t);
+		rg.rg_idx = offset;
+		iod.arr_rgs = &rg;
+
+		rc = daos_array_read(seismic_object->seis_gather_trace_oids_obj[i].oh, DAOS_TX_NONE, &iod, &sgl, NULL);
+		if(rc){
+			printf("ERROR READING GATHER OIDS----------------- error = %d  \n", rc);
+			return rc;
+		}
+
+		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
+		gather_traces[i].traces = malloc(gather_traces[i].number_of_traces * sizeof(trace_t));
+
+		fetch_traces_header(dfs, seismic_object->gathers[i].oids, &gather_traces[i], daos_mode);
+
+//		int z;
+		if(shot_obj || cmp_obj || offset_obj ){
+			temp_number_of_keys --;
+		}
+//			z=0;
+//		}
+//		printf("Z=== %d \n",number_of_keys);
+//	 	while(z < number_of_keys ){
+			if(temp_number_of_keys > 0){
+		 		sort_headers(&gather_traces[i], sort_keys, directions, temp_number_of_keys);
+			}
+//	 		z++;
+//	 	}
+		int k;
+		// create list
+		traces_headers_t *gather_headers = NULL;
+		for(k=0;k<gather_traces[i].number_of_traces;k++){
+			add_trace_header(&(gather_traces[i].traces[k]), &gather_headers);
+		}
+//	 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
+		new_fetch_traces_data(dfs, &gather_headers,daos_mode);
+
+		merge_trace_lists(&headers,gather_headers);
+ 	}
+
+	return headers;
+}
+
+
+
+
+
 
 read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, long min, long max, int *ngathers){
 
 	int daos_mode = get_daos_obj_mode(O_RDWR);
 	seismic_entry_t seismic_entry = {0};
 	seis_obj_t *seismic_object = malloc(sizeof(seis_obj_t));
+	traces_headers_t *traces_headers_head = NULL;
 	seismic_object->oid = root->shot_oid;
 	int rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(seismic_object->oh), NULL);
 	printf("OPENED SHOT OBJECT \n");
@@ -1433,51 +1827,14 @@ read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key,
 	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
 
 	//Fetch list of dkeys under seimsic_object
-
-	uint32_t nr = seismic_object->number_of_gathers +1;
-	d_sg_list_t sglo;
-	sglo.sg_nr_out = sglo.sg_nr = 1;
-	d_iov_t iov_temp;
-	char *temp_array = malloc(4096 * sizeof(char));
-	d_iov_set(&iov_temp, temp_array, 4096);
-	sglo.sg_iovs = &iov_temp;
-	daos_anchor_t	anchor = { 0 };
-	daos_key_desc_t  *kds= malloc((seismic_object->number_of_gathers + 1) * sizeof(daos_key_desc_t));
-	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
-	if(rc){
-		printf(" LIST DKEY FAILED \n");
-	}
-
-	char **dkeys_list = malloc((seismic_object->number_of_gathers +1) * sizeof(char*));
-	int off=0;
-
-	char **unique_keys = malloc(seismic_object->number_of_gathers * sizeof(char *));
-	int u=0;
-	int z;
-	for( z=0; z< seismic_object->number_of_gathers +1; z++ ){
-    	dkeys_list[z] = malloc(kds[z].kd_key_len +1 * sizeof(char));
-		strncpy(dkeys_list[z],&temp_array[off], kds[z].kd_key_len);
-		dkeys_list[z][kds[z].kd_key_len] = '\0';
-		off += kds[z].kd_key_len;
-		for (int k=0; k< strlen(dkeys_list[z])+1;k++){
-			if(isdigit(dkeys_list[z][k])){
-				unique_keys[u]=malloc(kds[z].kd_key_len * sizeof(char));
-				unique_keys[u]= dkeys_list[z];
-				u++;
-				break;
-			} else {
-				continue;
-			}
-		}
-	}
+	char ** unique_keys = daos_seis_fetch_dkeys(seismic_object, 0, 0, 0, 0, 0);
 
 	//fetch data from each gather and push into seis_gather linked list.
 	read_traces *gather_traces = malloc(seismic_object->number_of_gathers * sizeof(read_traces));
 	read_traces *window_traces = malloc(seismic_object->number_of_gathers * sizeof(read_traces));
-	* ngathers = seismic_object->number_of_gathers;
+	*ngathers = seismic_object->number_of_gathers;
 	int i;
  	for(i=0; i< seismic_object->number_of_gathers; i++){
- 		printf("DKEY FOR I = %d IS >> %s \n", i, unique_keys[i]);
 //		//Fetch number of traces
 		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_NTRACES,
 								(char*)&seismic_object->gathers[i].number_of_traces, sizeof(int), DAOS_IOD_SINGLE);
@@ -1491,6 +1848,8 @@ read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key,
 //Allocate oids array , size = number of traces
 		seismic_object->gathers[i].oids = malloc(seismic_object->gathers[i].number_of_traces * sizeof(daos_obj_id_t));
 //Fetch array of trace headers oids..
+
+//		printf("ARRAY OID IS %lu%lu\n", seismic_object->seis_gather_trace_oids_obj[i].oid.lo, seismic_object->seis_gather_trace_oids_obj[i].oid.hi);
 
 		// open array object
 		rc = daos_array_open_with_attr(dfs->coh, seismic_object->seis_gather_trace_oids_obj[i].oid, DAOS_TX_NONE,
@@ -1532,21 +1891,148 @@ read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key,
 		window_traces[i].traces = malloc(window_traces[i].number_of_traces * sizeof(trace_t));
 
 		fetch_traces_header(dfs, seismic_object->gathers[i].oids, &gather_traces[i], daos_mode);
-
+//		new_fetch_traces_header(dfs,seismic_object->gathers[i].oids, traces_headers_head,daos_mode,seismic_object->gathers[i].number_of_traces);
 //		printf("NUMBER OF TRACES BEfORE WINdOWING IS %d \n", gather_traces[i].number_of_traces);
 		window_headers(&window_traces[i], &gather_traces[i], seismic_object->gathers[i].oids, key, min, max);
+//		new_window_headers(traces_headers_head,key,min,max);
 //		printf("NUMBER OF TRACES AFTER WINdOWING IS %d \n", gather_traces[i].number_of_traces);
-		if(window_traces[i].number_of_traces > 0){
-			printf("HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO  %d \n", window_traces[i].number_of_traces);
-		 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
+		if(window_traces[i].number_of_traces > 0) {
+		 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&window_traces[i],daos_mode);
 		}
-
  	}
-	free(unique_keys);
-	free(temp_array);
 	free(gather_traces);
 
 	return window_traces;
-
 }
 
+traces_headers_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max){
+
+	int daos_mode = get_daos_obj_mode(O_RDWR);
+	seismic_entry_t seismic_entry = {0};
+	seis_obj_t *seismic_object = malloc(sizeof(seis_obj_t));
+	traces_headers_t *traces_headers_head = NULL;
+	seismic_object->oid = root->shot_oid;
+	int rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(seismic_object->oh), NULL);
+	printf("OPENED SHOT OBJECT \n");
+	if (rc) {
+		printf("daos_obj_open()__ seismic _object Failed (%d)\n", rc);
+		return rc;
+	}
+	//Fetch Number of Gathers Under opened Gather object
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid, DS_D_NGATHERS, DS_A_NGATHERS,
+				(char*)&seismic_object->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+
+	seismic_object->sequence_number = 0;
+	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
+
+	//Fetch list of dkeys under seimsic_object
+	char **unique_keys = daos_seis_fetch_dkeys(seismic_object, 1, 1, 0, 0, 1);
+	char temp[4096];
+	int number_of_keys = 0;
+	strcpy(temp, key);
+	const char *sep = ",";
+	char *token = strtok(temp, sep);
+	while( token != NULL ) {
+		number_of_keys++;
+		token = strtok(NULL, sep);
+	}
+	printf("NUMBER OF KEYS === %d \n",number_of_keys);
+	char **window_keys = malloc(number_of_keys * sizeof(char*));
+	long *min_keys = malloc(number_of_keys * sizeof(long));
+	long *max_keys = malloc(number_of_keys * sizeof(long));
+	tokenize_str(window_keys,",", key, 0);
+	tokenize_str(&min_keys,",", min, 1);
+	tokenize_str(&max_keys,",", max, 1);
+
+
+	long *first_array = malloc(seismic_object->number_of_gathers * sizeof(long));
+
+	sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys, 1);
+	int fldr_key=0;
+	if(!strcmp(window_keys[0],"fldr")){
+		fldr_key=1;
+	}
+
+	int i;
+	int number_of_traces = 0;
+ 	for(i=0; i< seismic_object->number_of_gathers; i++){
+		// Check bool and shot id number out of range --> continue.
+ 		if(fldr_key && (first_array[i]< min_keys[0] || first_array[i] >max_keys[0])){
+ 			printf("key is out of range \n");
+ 			continue;
+ 		}
+ 		//Fetch number of traces
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_NTRACES,
+								(char*)&number_of_traces, sizeof(int), DAOS_IOD_SINGLE);
+		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+
+		//Fetch trace headers object id.
+		prepare_seismic_entry(&seismic_entry, seismic_object->oid, unique_keys[i], DS_A_GATHER_TRACE_OIDS,
+								(char*)&seismic_object->seis_gather_trace_oids_obj[i].oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+		rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+
+//Allocate oids array , size = number of traces
+		daos_obj_id_t *oids = malloc(number_of_traces * sizeof(daos_obj_id_t));
+//Fetch array of trace headers oids..
+		// open array object
+		rc = daos_array_open_with_attr(dfs->coh, seismic_object->seis_gather_trace_oids_obj[i].oid, DAOS_TX_NONE,
+				DAOS_OO_RW, 1, 500*sizeof(daos_obj_id_t), &(seismic_object->seis_gather_trace_oids_obj[i].oh), NULL);
+
+		if (rc) {
+			printf("daos_array_open_with_attr()-->>GATHER OIDS object<<-- failed (%d)\n", rc);
+			return rc;
+		}
+
+		daos_array_iod_t iod;
+		daos_range_t rg;
+		d_sg_list_t sgl;
+		int offset = 0;
+
+		sgl.sg_nr = 1;
+		sgl.sg_nr_out = 0;
+		d_iov_t iov;
+
+		seismic_entry.data = (char*) oids;
+		d_iov_set(&iov, (void*)(seismic_entry.data), number_of_traces * sizeof(daos_obj_id_t));
+
+		sgl.sg_iovs = &iov;
+		iod.arr_nr = 1;
+		rg.rg_len = number_of_traces * sizeof(daos_obj_id_t);
+		rg.rg_idx = offset;
+		iod.arr_rgs = &rg;
+
+		rc = daos_array_read(seismic_object->seis_gather_trace_oids_obj[i].oh, DAOS_TX_NONE, &iod, &sgl, NULL);
+		if(rc){
+			printf("ERROR READING GATHER OIDS----------------- error = %d  \n", rc);
+			return rc;
+		}
+
+		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
+
+		new_fetch_traces_header(dfs, oids, &traces_headers_head,daos_mode,number_of_traces);
+		free(oids);
+ 	}
+
+	new_window_headers(&traces_headers_head,key,min,max);
+
+//	printf("AFTER WINDOW \n");
+//
+//	traces_headers_t *temp = traces_headers_head;
+//
+// 	int y=0;
+// 	if(temp == NULL){
+// 		printf("FAILURE FAILURE \n");
+// 	}
+// 	while(temp != NULL){
+// 		printf("AFTER WINDOW TRACE Y = %d HAS tracl = %d and fldr = %d \n", y, temp->trace.tracl, temp->trace.fldr);
+// 		y++;
+//		temp = temp->next_trace;
+// 	}
+// 	free(temp);
+
+	new_fetch_traces_data(dfs, &traces_headers_head, daos_mode);
+
+	return traces_headers_head;
+}

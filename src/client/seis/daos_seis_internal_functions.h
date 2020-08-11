@@ -37,6 +37,7 @@
 #define DS_A_NTRACES "Number_of_traces"
 #define DS_A_CMP_VAL "Cmp_value"
 #define DS_A_OFF_VAL "Offset_value"
+#define DS_A_UNIQUE_VAL "Unique_value"
 #define DS_A_GATHER_TRACE_OIDS "TRACE_OIDS_OBJECT_ID"
 
 struct stat *seismic_stat;
@@ -54,13 +55,13 @@ typedef struct seis_gather{
 	int number_of_traces;
 	/** array of object ids under specific gather key*/
 	daos_obj_id_t *oids;
-	/** number of keys
-	 * =1 if its shot gather
-	 * =2 if its cmp or offset gather
-	 */
-	int nkeys;
+//	/** number of keys
+//	 * =1 if its shot gather
+//	 * =2 if its cmp or offset gather
+//	 */
+//	int nkeys;
 	/** gather unique info */
-	int keys[2];
+	long unique_key;
 	/** pointer to the next gather */
 	struct seis_gather *next_gather;
 }seis_gather_t;
@@ -99,18 +100,6 @@ typedef struct seis_obj {
 	trace_oid_oh_t *seis_gather_trace_oids_obj;
 }seis_obj_t;
 
-/** object struct that is instantiated for a Seismic trace object */
-typedef struct trace_obj {
-	/** DAOS object ID */
-	daos_obj_id_t		oid;
-	/** DAOS object open handle */
-	daos_handle_t		oh;
-	/** entry name of the object */
-	char			name[SEIS_MAX_PATH + 1];
-	/**trace header */
-	segy *trace;
-}trace_obj_t;
-
 typedef struct seismic_entry {
 	char 		*dkey_name;
 
@@ -124,7 +113,6 @@ typedef struct seismic_entry {
 
 	daos_iod_type_t		iod_type;
 }seismic_entry_t;
-
 
 typedef struct trace {
 
@@ -606,14 +594,34 @@ typedef struct trace {
 
 	daos_obj_id_t trace_header_obj;
 
+//	trace_t *next_trace;
 	float  *data;
 
 }trace_t;
+
+/** object struct that is instantiated for a Seismic trace object */
+typedef struct trace_obj {
+	/** DAOS object ID */
+	daos_obj_id_t		oid;
+	/** DAOS object open handle */
+	daos_handle_t		oh;
+	/** entry name of the object */
+	char			name[SEIS_MAX_PATH + 1];
+	/**trace header */
+//	segy *trace;
+	trace_t *trace;
+}trace_obj_t;
 
 typedef struct read_traces{
 	int number_of_traces;
 	trace_t *traces ;
 }read_traces;
+
+typedef struct traces_headers{
+	trace_t trace;
+	struct traces_headers *next_trace;
+}traces_headers_t;
+
 
 /** Function responsible for fetching seismic entry(data stored under specific seismic object) */
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev);
@@ -669,8 +677,7 @@ int daos_seis_trh_update(dfs_t* dfs, trace_obj_t* tr_obj, segy *tr, int hdrbytes
 /** Function responsible for preparing trace data to be written/stored as DAOS_ARRAY under specific trace data object.
  *  It is called to update/insert trace data under specific trace_data_object.
  */
-int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trace);
-
+int daos_seis_tr_data_update(dfs_t* dfs, trace_oid_oh_t* trace_data_obj, segy *trace);
 /** Function responsible for calculating the object id of trace_data_object from object_id of trace_header_object.
  * It is called before reading from or writing to trace_data_object.
  */
@@ -716,12 +723,15 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
  */
 int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, int *ntraces);
 
+int new_check_key_value(long target,seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces);
 /** Function responsible for updating gather keys at the end of parsing segy file.
  * It writes the number_of_traces key(akey) under each gather(dkey).
  * It writes the object id of the DAOS_ARRAY object holding the traces oids.
  * Writes the array of OIDS_HDR_traces to the DAOS_ARRAY OBJECT.
  */
 int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name);
+
+int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name);
 
 /** Function responsible for updating any gather object.
  * It is called mainly at the end of the parsing function while pushing all gather data under specific keys.
@@ -747,4 +757,31 @@ void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, i
 
 void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode);
 
+void new_fetch_traces_data(dfs_t *dfs, traces_headers_t **head_traces, int daos_mode);
+
+void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_headers_t **head_traces, int daos_mode, int number_of_traces);
+
+void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_keys, int direction);
+
+void sort_headers(read_traces *gather_traces, char **sort_key, int *direction, int number_of_keys);
+
+void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direction, int number_of_keys);
+
+void MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction, int number_of_keys);
+
+long get_header_value(trace_t trace, char *sort_key);
+
+void window_headers(read_traces *window_traces, read_traces *gather_traces, daos_obj_id_t *oids, char *key, long min, long max);
+
+int check_windowing_key(trace_t trace, char *wind_key, long min, long max);
+
+char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,
+																int cmp_obj, int off_obj, int direction);
+void new_window_headers(traces_headers_t **head, char *key, char *min, char *max);
+
+void add_trace_header(trace_t *trace, traces_headers_t **head);
+
+void tokenize_str(void **str, char *sep, char *string, int type);
+
+void merge_trace_lists(traces_headers_t **headers,traces_headers_t *gather_headers);
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

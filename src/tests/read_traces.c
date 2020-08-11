@@ -19,8 +19,8 @@ int main(int argc, char *argv[]){
 
 
 
-	char pool_id[100]="ea561332-a4d4-4c86-9dae-40189ccf3cfa";
-	char container_id[100]="ea561332-a4d4-4c86-9dae-40189ccf3cf1";
+	char pool_id[100]="f3580d48-c945-4094-826d-2ef436fc1443";
+	char container_id[100]="f3580d48-c945-4094-826d-2ef436fc1441";
 	char svc_list[100]="0";
 
     struct timeval tv1, tv2;
@@ -29,34 +29,24 @@ int main(int argc, char *argv[]){
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
 	printf(" OPEN SEGY ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SHOT_601_615_SEIS_ROOT_OBJECT");
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SHOTS_601_610_SEIS_ROOT_OBJECT");
 
-//	time(&start);
-//	daos_seis_read_shot_traces(get_dfs(), 610, segy_root_object, "old_daos_seis_SHOT_610_.su");
-//    time(&end);
-//
-//    time_taken = (double)(end - start);
-//    printf("TIME TAKEN IN ORIGINAL READ FUNCCTION ISSS %f \n", time_taken);
-
-	read_traces *traces = new_daos_seis_read_shot_traces(get_dfs(), 600, segy_root_object);
-	printf("READING SHOT 610 TRACES==\n");
-	int shot_id = 610;
-
-//	daos_seis_read_shot_traces(get_dfs(), shot_, segy_root_object, "daos_seis_SHOT_610_.su");
+	printf("READING SHOT 609 TRACES==\n");
+	int shot_id = 609;
 
 	gettimeofday(&tv1, NULL);
-	read_traces *all_traces = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
-	if (all_traces == 0) {
-		printf("Couldn't open shot 610, test FAILED\n");
-		return 0;
-	}
-    FILE *fd = fopen("daos_seis_SHOT_610_15_SHOT.su", "w");
+	traces_headers_t *head = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
+    FILE *fd = fopen("daos_seis_SHOT_609_10_SHOT.su", "w");
 
-	int i;
-    for(i=0; i < all_traces->number_of_traces; i++){
-    	segy* tp = trace_to_segy(&(all_traces->traces[i]));
-    	fputtr(fd, tp);
+    if(head==NULL){
+    	printf("LINKED LIST EMPTY \n");
+    	return 0;
     }
+	while(head!=NULL){
+    	segy* tp = trace_to_segy(&(head->trace));
+    	fputtr(fd, tp);
+    	head=head->next_trace;
+	}
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

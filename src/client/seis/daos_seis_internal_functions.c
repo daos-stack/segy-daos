@@ -297,11 +297,7 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 	if((*head) == NULL){
 		(*head) = (seis_gather_t *) malloc(sizeof(seis_gather_t));
 		(*head)->oids = (daos_obj_id_t *) malloc(50 * sizeof(daos_obj_id_t));
-		(*head)->nkeys = new_gather->nkeys;
-		(*head)->keys[0] = new_gather->keys[0];
-		if((*head)->nkeys == 2 ) {
-			(*head)->keys[1] = new_gather->keys[1];
-		}
+		(*head)->unique_key = new_gather->unique_key;
 		(*head)->number_of_traces = new_gather->number_of_traces;
 //		(*head)->oids = new_gather->oids;
 		memcpy((*head)->oids, new_gather->oids, sizeof(daos_obj_id_t) * 50);
@@ -313,11 +309,7 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 		}
 		current->next_gather = (seis_gather_t *) malloc(sizeof(seis_gather_t));
 		current->next_gather->oids = (daos_obj_id_t *) malloc(50 * sizeof(daos_obj_id_t));
-		current->next_gather->nkeys = new_gather->nkeys;
-		current->next_gather->keys[0] = new_gather->keys[0];
-		if(current->next_gather->nkeys == 2 ) {
-			current->next_gather->keys[1] = new_gather->keys[1];
-		}
+		current->next_gather->unique_key = new_gather->unique_key;
 		current->next_gather->number_of_traces = new_gather->number_of_traces;
 //		current->next_gather->oids = new_gather->oids;
 		memcpy(current->next_gather->oids, new_gather->oids, sizeof(daos_obj_id_t) * 50);
@@ -326,7 +318,106 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 //	printf("FINISHED ADDING NEW GATHER \n");
 }
 
-int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
+void merge_trace_lists(traces_headers_t **headers,traces_headers_t *gather_headers){
+
+	traces_headers_t *temp = *headers;
+	if(*headers == NULL){
+		*headers = gather_headers;
+	} else {
+		while(temp->next_trace != NULL){
+			temp = temp->next_trace;
+		}
+		temp->next_trace = gather_headers;
+	}
+}
+
+void add_trace_header(trace_t *trace, traces_headers_t **head){
+//	printf("ADDING NEW TRACE HEADER \n");
+	traces_headers_t *new_node = (traces_headers_t *) malloc(sizeof(traces_headers_t));
+	new_node->trace = *trace;
+	new_node->next_trace = NULL;
+	traces_headers_t *last = *head;
+	if((*head) == NULL){
+		(*head)= new_node;
+		return;
+//		printf("AFTER ADDING NEW TRACE HEADER L.L was EMPTY\n");
+	}
+	while (last->next_trace != NULL) {
+		last = last->next_trace;
+	}
+	last->next_trace = new_node;
+//	printf("AFTER ADDING NEW TRACE HEADER L.L wasNOT EMPTY\n");
+
+}
+
+add_trace_data(trace_t trace, traces_headers_t *head){
+	if((head) == NULL){
+		(head) = (traces_headers_t *) malloc(sizeof(traces_headers_t));
+		(head)->trace.data = trace.data;
+		(head)->next_trace = NULL;
+	} else {
+		traces_headers_t *current = (head);
+		while (current->next_trace != NULL) {
+			current = current->next_trace;
+		}
+		current->next_trace = (traces_headers_t *) malloc(sizeof(traces_headers_t));
+		current->next_trace->trace.data = trace.data;
+		current->next_trace->next_trace = NULL;
+	}
+}
+
+//int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
+//
+//	if(head == NULL){
+//		printf("NO GATHERS EXIST \n");
+//		return 0;
+//	} else {
+//		int z = 0;
+//		while(head != NULL){
+//			int ntraces = head->number_of_traces;
+//			int rc;
+//			int nkeys = head->nkeys;
+//			char temp[200]="";
+//			char gather_dkey_name[200] = "";
+//			if(nkeys==1){
+//				strcat(gather_dkey_name,dkey_name);
+//				sprintf(temp, "%d", head->keys[0]);
+//				strcat(gather_dkey_name,temp);
+//			} else if(nkeys ==2){
+//				strcat(gather_dkey_name,dkey_name);
+//				sprintf(temp, "%d", head->keys[0]);
+//				strcat(gather_dkey_name,temp);
+//				strcat(gather_dkey_name,"_");
+//				sprintf(temp, "%d", head->keys[1]);
+//				strcat(gather_dkey_name,temp);
+//			}
+//			//insert array object_id in gather object...
+//			rc = daos_seis_gather_oids_array_update(dfs, &(object->seis_gather_trace_oids_obj[z]), head);
+//			if(rc != 0) {
+//				printf("ERROR UPDATING %s object TRACE OBJECT IDS ARRAY, error: %d \n",object->name, rc);
+//				return rc;
+//			}
+//			rc = update_gather_object(object, gather_dkey_name, DS_A_GATHER_TRACE_OIDS, (char*)&((object->seis_gather_trace_oids_obj[z]).oid),
+//								sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+//			if(rc != 0) {
+//				printf("ERROR UPDATING %s object TRACE OBJECT IDS key, error: %d \n",object->name, rc);
+//				return rc;
+//			}
+//			rc = update_gather_object(object, gather_dkey_name, akey_name, (char*)&ntraces,
+//								sizeof(int), DAOS_IOD_SINGLE);
+//			if(rc != 0) {
+//				printf("ERROR UPDATING %s object number_of_traces key, error: %d \n",object->name, rc);
+//				return rc;
+//			}
+//
+//			head = head->next_gather;
+//			z++;
+//		}
+//	}
+//	return 0;
+//}
+
+int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
 
 	if(head == NULL){
 		printf("NO GATHERS EXIST \n");
@@ -336,21 +427,11 @@ int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, ch
 		while(head != NULL){
 			int ntraces = head->number_of_traces;
 			int rc;
-			int nkeys = head->nkeys;
 			char temp[200]="";
 			char gather_dkey_name[200] = "";
-			if(nkeys==1){
-				strcat(gather_dkey_name,dkey_name);
-				sprintf(temp, "%d", head->keys[0]);
-				strcat(gather_dkey_name,temp);
-			} else if(nkeys ==2){
-				strcat(gather_dkey_name,dkey_name);
-				sprintf(temp, "%d", head->keys[0]);
-				strcat(gather_dkey_name,temp);
-				strcat(gather_dkey_name,"_");
-				sprintf(temp, "%d", head->keys[1]);
-				strcat(gather_dkey_name,temp);
-			}
+			strcat(gather_dkey_name,dkey_name);
+			sprintf(temp, "%d", head->unique_key);
+			strcat(gather_dkey_name,temp);
 			//insert array object_id in gather object...
 			rc = daos_seis_gather_oids_array_update(dfs, &(object->seis_gather_trace_oids_obj[z]), head);
 			if(rc != 0) {
@@ -377,7 +458,50 @@ int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, ch
 	return 0;
 }
 
-int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
+//int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
+//
+//	int exists = 0;
+//	if(head == NULL) {
+//		printf("NO GATHERS EXIST \n");
+//		exists =0;
+//		return exists;
+//	} else {
+//		if(head->nkeys == 1) {
+//			while(head != NULL) {
+//				if(head->keys[0] == targets[0]) {
+//					head->oids[head->number_of_traces] = trace_obj_id;
+//					head->number_of_traces++;
+//					*ntraces = head->number_of_traces;
+//					exists = 1;
+//					if(head->number_of_traces % 50 == 0) {
+//						head->oids = (daos_obj_id_t *)realloc(head->oids, (head->number_of_traces + 50) * sizeof(daos_obj_id_t));
+//					}
+//					return exists;
+//				} else {
+//					head = head->next_gather;
+//				}
+//			}
+//		} else {
+//			while(head != NULL){
+//					if(head->keys[0] == targets[0] && head->keys[1] == targets[1]){
+//						head->oids[head->number_of_traces] = trace_obj_id;
+//						head->number_of_traces++;
+//						*ntraces = head->number_of_traces;
+//						exists = 1;
+//						if(head->number_of_traces % 50 == 0) {
+//							   head->oids = (daos_obj_id_t *)realloc(head->oids, (head->number_of_traces + 50) * sizeof(daos_obj_id_t));
+//						}
+//						return exists;
+//				} else {
+//					head = head->next_gather;
+//				}
+//			}
+//		}
+//	}
+//	return exists;
+//}
+
+int new_check_key_value(long target,seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
 
 	int exists = 0;
 	if(head == NULL) {
@@ -385,35 +509,18 @@ int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj_id
 		exists =0;
 		return exists;
 	} else {
-		if(head->nkeys == 1) {
-			while(head != NULL) {
-				if(head->keys[0] == targets[0]) {
-					head->oids[head->number_of_traces] = trace_obj_id;
-					head->number_of_traces++;
-					*ntraces = head->number_of_traces;
-					exists = 1;
-					if(head->number_of_traces % 50 == 0) {
-						head->oids = (daos_obj_id_t *)realloc(head->oids, (head->number_of_traces + 50) * sizeof(daos_obj_id_t));
-					}
-					return exists;
-				} else {
-					head = head->next_gather;
+		while(head != NULL) {
+			if(head->unique_key == target) {
+				head->oids[head->number_of_traces] = trace_obj_id;
+				head->number_of_traces++;
+				*ntraces = head->number_of_traces;
+				exists = 1;
+				if(head->number_of_traces % 50 == 0) {
+					head->oids = (daos_obj_id_t *)realloc(head->oids, (head->number_of_traces + 50) * sizeof(daos_obj_id_t));
 				}
-			}
-		} else {
-			while(head != NULL){
-					if(head->keys[0] == targets[0] && head->keys[1] == targets[1]){
-						head->oids[head->number_of_traces] = trace_obj_id;
-						head->number_of_traces++;
-						*ntraces = head->number_of_traces;
-						exists = 1;
-						if(head->number_of_traces % 50 == 0) {
-							   head->oids = (daos_obj_id_t *)realloc(head->oids, (head->number_of_traces + 50) * sizeof(daos_obj_id_t));
-						}
-						return exists;
-				} else {
-					head = head->next_gather;
-				}
+				return exists;
+			} else {
+				head = head->next_gather;
 			}
 		}
 	}
@@ -572,7 +679,7 @@ int daos_seis_trh_update(dfs_t* dfs, trace_obj_t* tr_obj, segy *tr, int hdrbytes
 	return rc;
 }
 
-int daos_seis_tr_data_update(dfs_t* dfs, trace_obj_t* trace_data_obj, segy *trace){
+int daos_seis_tr_data_update(dfs_t* dfs, trace_oid_oh_t* trace_data_obj, segy *trace){
 
 	int		rc;
 	int offset = 0;
@@ -757,7 +864,8 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 	char tr_index[50];
 	char trace_hdr_name[200] = "Trace_hdr_obj_";
 	char trace_data_name[200] = "Trace_data_obj_";
-	trace_obj_t *trace_data_obj;
+//	trace_obj_t *trace_data_obj;
+	trace_oid_oh_t *trace_data_obj;
 
 	/*Allocate object pointer */
 	D_ALLOC_PTR(*trace_hdr_obj);
@@ -769,7 +877,8 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 
 	strncpy((*trace_hdr_obj)->name, trace_hdr_name, SEIS_MAX_PATH);
 	(*trace_hdr_obj)->name[SEIS_MAX_PATH] = '\0';
-	(*trace_hdr_obj)->trace = malloc(sizeof(segy));
+	(*trace_hdr_obj)->trace = malloc(sizeof(trace_t));
+	memcpy((*trace_hdr_obj)->trace,trace, 240);
 
 	/** Get new OID for trace header object */
 	rc = oid_gen(dfs, cid,false, &(*trace_hdr_obj)->oid);
@@ -777,7 +886,7 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 		printf("ERROR GENERATING OBJECT ID for trace header %d \n", rc);
 		return rc;
 	}
-
+	(*trace_hdr_obj)->trace->trace_header_obj = (*trace_hdr_obj)->oid;
 	daos_mode = get_daos_obj_mode(O_RDWR);
 	rc = daos_obj_open(dfs->coh, (*trace_hdr_obj)->oid, daos_mode, &(*trace_hdr_obj)->oh, NULL);
 	if (rc) {
@@ -796,11 +905,11 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 	if ((trace_data_obj) == NULL)
 		return ENOMEM;
 
-	strcat(trace_data_name, tr_index);
+//	strcat(trace_data_name, tr_index);
 
-	strncpy((trace_data_obj)->name, trace_data_name, SEIS_MAX_PATH);
-	(trace_data_obj)->name[SEIS_MAX_PATH] = '\0';
-	(trace_data_obj)->trace = malloc(sizeof(segy));
+//	strncpy((trace_data_obj)->name, trace_data_name, SEIS_MAX_PATH);
+//	(trace_data_obj)->name[SEIS_MAX_PATH] = '\0';
+//	(trace_data_obj)->trace = malloc(sizeof(trace_t));
 
 	/** Get new OID for trace data object */
 	rc = oid_gen(dfs, cid,true, &(trace_data_obj)->oid);
@@ -809,8 +918,8 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 		return rc;
 	}
 
-	daos_obj_id_t temp_oid;
-	temp_oid = get_tr_data_oid(&(*trace_hdr_obj)->oid,cid);
+//	daos_obj_id_t temp_oid;
+//	temp_oid = get_tr_data_oid(&(*trace_hdr_obj)->oid,cid);
 
 	/** Open the array object for the file */
 	rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj)->oid, DAOS_TX_NONE,
@@ -831,7 +940,7 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 		printf("ERROR Closing trace data object \n");
 		return rc;
 	}
-	free((trace_data_obj)->trace);
+//	free((trace_data_obj)->trace);
 	D_FREE_PTR(trace_data_obj);
 	return rc;
 }
@@ -882,124 +991,191 @@ void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 	}
 }
 
-int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
-									seis_obj_t *shot_obj, seis_obj_t *cmp_obj, seis_obj_t *off_obj){
+//void new_prepare_keys(char *dkey_name, char *akey_name, char *key, long unique_value,
+//								char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix){
+//
+//	new_prepare_keys(dkey_name, akey_name,key, unique_value, &new_gather_data.number_of_traces);
+//
+//	char temp[200]="";
+//	strcat(dkey_name,dkey_prefix);
+//	if(dkey_suffix != NULL) {
+//		sprintf(temp, "%d", dkey_suffix[0]);
+//		strcat(dkey_name,temp);
+//		if(nkeys==2) {
+//			strcat(dkey_name,"_");
+//			sprintf(temp, "%d", dkey_suffix[1]);
+//			strcat(dkey_name,temp);
+//		}
+//	}
+//	strcat(akey_name, akey_prefix);
+//	if(akey_suffix != NULL) {
+//		sprintf(temp, "%d", *akey_suffix);
+//		strcat(akey_name,temp);
+//	}
+//}
+
+//int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
+//									seis_obj_t *shot_obj, seis_obj_t *cmp_obj, seis_obj_t *off_obj){
+//
+//	int rc = 0;
+//	int shot_id = trace->fldr;
+//	int s_x = trace->sx;
+//	int s_y = trace->sy;
+//	int r_x = trace->gx;
+//	int r_y = trace->gy;
+//	int cmp_x = (s_x + r_x)/2;
+//	int cmp_y = (s_y + r_y)/2;
+//	int off_x = (r_x - s_x)/2;
+//	int off_y = (r_y - s_y)/2;
+//	int shot_exists=0;
+//	int cmp_exists=0;
+//	int offset_exists=0;
+//	int ntraces;
+//	int keys[2];
+//	struct seismic_entry gather_entry = {0};
+//	int no_of_traces;
+//
+//	keys[0]=shot_id;
+//	if(check_key_value(keys,shot_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+//		shot_exists=1;
+//	}
+//
+//	keys[0]=cmp_x;
+//	keys[1] = cmp_y;
+//	if(check_key_value(keys,cmp_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+//			cmp_exists=1;
+//	}
+//
+//	keys[0]=off_x;
+//	keys[1] =off_y;
+//	if(check_key_value(keys,off_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+//		offset_exists=1;
+//	}
+//
+//	/** if shot id, cmp, and offset doesn't already exist */
+//	if(!shot_exists){
+//		seis_gather_t shot_gather_data = {0};
+//		shot_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
+//		char temp[200]="";
+//		shot_gather_data.oids[0] = trace_obj->oid;
+//		shot_gather_data.number_of_traces = 1;
+//		shot_gather_data.nkeys = 1;
+//		shot_gather_data.keys[0] = shot_id;
+//		char shot_dkey_name[200] = "";
+//		char trace_akey_name[200] = "";
+//
+//		prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1,
+//								shot_gather_data.keys, &shot_gather_data.number_of_traces);
+//
+//		rc = update_gather_object(shot_obj, shot_dkey_name, DS_A_SHOT_ID, (char*)&shot_id,
+//							sizeof(int), DAOS_IOD_SINGLE);
+//		if(rc) {
+//			printf("ERROR adding shot shot_id key, error: %d", rc);
+//			return rc;
+//		}
+//		add_gather(&(shot_obj->gathers), &shot_gather_data);
+//		shot_obj->sequence_number++;
+//		shot_obj->number_of_gathers++;
+//		free(shot_gather_data.oids);
+//	}
+//
+//	if(!cmp_exists){
+//		char cmp_dkey_name[200] = "";
+//		char temp[200]="";
+//		seis_gather_t cmp_gather_data= {0};
+//		cmp_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
+//		cmp_gather_data.oids[0] = trace_obj->oid;
+//		cmp_gather_data.number_of_traces=1;
+//		cmp_gather_data.nkeys=2;
+//		cmp_gather_data.keys[0] = cmp_x;
+//		cmp_gather_data.keys[1] = cmp_y;
+//		char trace_akey_name[200] = "";
+//
+//		prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2,
+//								cmp_gather_data.keys, &cmp_gather_data.number_of_traces);
+//
+//		rc = update_gather_object(cmp_obj, cmp_dkey_name, DS_A_CMP_VAL, (char*)cmp_gather_data.keys,
+//							sizeof(int)*2, DAOS_IOD_ARRAY);
+//		if(rc){
+//			printf("ERROR adding cmp value key, error: %d", rc);
+//			return rc;
+//		}
+//		add_gather(&(cmp_obj->gathers), &cmp_gather_data);
+//		cmp_obj->sequence_number++;
+//		cmp_obj->number_of_gathers++;
+//		free(cmp_gather_data.oids);
+//	}
+//
+//	if(!offset_exists){
+//		char off_dkey_name[200] = "";
+//		char temp[200]="";
+//		seis_gather_t off_gather_data= {0};
+//		off_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
+//		off_gather_data.oids[0] = trace_obj->oid;
+//		off_gather_data.number_of_traces = 1;
+//		off_gather_data.nkeys = 2;
+//		off_gather_data.keys[0] = off_x;
+//		off_gather_data.keys[1] = off_y;
+//
+//		char trace_akey_name[200] = "";
+//
+//		prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2,
+//								off_gather_data.keys, &off_gather_data.number_of_traces);
+//		rc = update_gather_object(off_obj, off_dkey_name, DS_A_OFF_VAL, (char*)off_gather_data.keys,
+//							sizeof(int)*2, DAOS_IOD_ARRAY);
+//		if(rc){
+//			printf("ERROR adding gather value key, error: %d", rc);
+//			return rc;
+//		}
+//		add_gather(&(off_obj->gathers), &off_gather_data);
+//		off_obj->sequence_number++;
+//		off_obj->number_of_gathers++;
+//		free(off_gather_data.oids);
+//	}
+//	return rc;
+//}
+
+int new_daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key){
 
 	int rc = 0;
-	int shot_id = trace->fldr;
-	int s_x = trace->sx;
-	int s_y = trace->sy;
-	int r_x = trace->gx;
-	int r_y = trace->gy;
-	int cmp_x = (s_x + r_x)/2;
-	int cmp_y = (s_y + r_y)/2;
-	int off_x = (r_x - s_x)/2;
-	int off_y = (r_y - s_y)/2;
-	int shot_exists=0;
-	int cmp_exists=0;
-	int offset_exists=0;
+	long unique_value = get_header_value(*(trace_obj->trace),key);
+
+	int key_exists=0;
 	int ntraces;
-	int keys[2];
 	struct seismic_entry gather_entry = {0};
 	int no_of_traces;
 
-	keys[0]=shot_id;
-	if(check_key_value(keys,shot_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-		shot_exists=1;
+	if(new_check_key_value(unique_value,seis_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+		key_exists=1;
 	}
 
-	keys[0]=cmp_x;
-	keys[1] = cmp_y;
-	if(check_key_value(keys,cmp_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-			cmp_exists=1;
-	}
-
-	keys[0]=off_x;
-	keys[1] =off_y;
-	if(check_key_value(keys,off_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-		offset_exists=1;
-	}
-
-	/** if shot id, cmp, and offset doesn't already exist */
-	if(!shot_exists){
-		seis_gather_t shot_gather_data = {0};
-		shot_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
+/** if shot id, cmp, and offset doesn't already exist */
+	if(!key_exists){
+		seis_gather_t new_gather_data = {0};
+		new_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
 		char temp[200]="";
-		shot_gather_data.oids[0] = trace_obj->oid;
-		shot_gather_data.number_of_traces = 1;
-		shot_gather_data.nkeys = 1;
-		shot_gather_data.keys[0] = shot_id;
-		char shot_dkey_name[200] = "";
-		char trace_akey_name[200] = "";
+		new_gather_data.oids[0] = trace_obj->oid;
+		new_gather_data.number_of_traces = 1;
+//		new_gather_data.nkeys = 1;
+		new_gather_data.unique_key = unique_value;
+		char dkey_name[200] = "";
+		strcat(dkey_name, key);
+		strcat(dkey_name,"_");
+		sprintf(temp, "%d", unique_value);
+		strcat(dkey_name,temp);
 
-		prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1,
-								shot_gather_data.keys, &shot_gather_data.number_of_traces);
-
-		rc = update_gather_object(shot_obj, shot_dkey_name, DS_A_SHOT_ID, (char*)&shot_id,
+		rc = update_gather_object(seis_obj, dkey_name, DS_A_UNIQUE_VAL, (char*)&new_gather_data.unique_key,
 							sizeof(int), DAOS_IOD_SINGLE);
 		if(rc) {
-			printf("ERROR adding shot shot_id key, error: %d", rc);
+			printf("ERROR adding Seismic object unique value key , error: %d", rc);
 			return rc;
 		}
-		add_gather(&(shot_obj->gathers), &shot_gather_data);
-		shot_obj->sequence_number++;
-		shot_obj->number_of_gathers++;
-		free(shot_gather_data.oids);
+		add_gather(&(seis_obj->gathers), &new_gather_data);
+		seis_obj->sequence_number++;
+		seis_obj->number_of_gathers++;
+		free(new_gather_data.oids);
 	}
 
-	if(!cmp_exists){
-		char cmp_dkey_name[200] = "";
-		char temp[200]="";
-		seis_gather_t cmp_gather_data= {0};
-		cmp_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
-		cmp_gather_data.oids[0] = trace_obj->oid;
-		cmp_gather_data.number_of_traces=1;
-		cmp_gather_data.nkeys=2;
-		cmp_gather_data.keys[0] = cmp_x;
-		cmp_gather_data.keys[1] = cmp_y;
-		char trace_akey_name[200] = "";
-
-		prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2,
-								cmp_gather_data.keys, &cmp_gather_data.number_of_traces);
-
-		rc = update_gather_object(cmp_obj, cmp_dkey_name, DS_A_CMP_VAL, (char*)cmp_gather_data.keys,
-							sizeof(int)*2, DAOS_IOD_ARRAY);
-		if(rc){
-			printf("ERROR adding cmp value key, error: %d", rc);
-			return rc;
-		}
-		add_gather(&(cmp_obj->gathers), &cmp_gather_data);
-		cmp_obj->sequence_number++;
-		cmp_obj->number_of_gathers++;
-		free(cmp_gather_data.oids);
-	}
-
-	if(!offset_exists){
-		char off_dkey_name[200] = "";
-		char temp[200]="";
-		seis_gather_t off_gather_data= {0};
-		off_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
-		off_gather_data.oids[0] = trace_obj->oid;
-		off_gather_data.number_of_traces = 1;
-		off_gather_data.nkeys = 2;
-		off_gather_data.keys[0] = off_x;
-		off_gather_data.keys[1] = off_y;
-
-		char trace_akey_name[200] = "";
-
-		prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2,
-								off_gather_data.keys, &off_gather_data.number_of_traces);
-		rc = update_gather_object(off_obj, off_dkey_name, DS_A_OFF_VAL, (char*)off_gather_data.keys,
-							sizeof(int)*2, DAOS_IOD_ARRAY);
-		if(rc){
-			printf("ERROR adding gather value key, error: %d", rc);
-			return rc;
-		}
-		add_gather(&(off_obj->gathers), &off_gather_data);
-		off_obj->sequence_number++;
-		off_obj->number_of_gathers++;
-		free(off_gather_data.oids);
-	}
 	return rc;
 }
 
@@ -1113,6 +1289,37 @@ void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, i
 	free(trace_hdr_obj);
 }
 
+void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_headers_t **head_traces, int daos_mode, int number_of_traces){
+
+	trace_oid_oh_t *trace_hdr_obj = malloc( number_of_traces * sizeof(trace_oid_oh_t));
+	int i;
+	int rc;
+	struct seismic_entry seismic_entry = {0};
+	trace_t *temp = malloc(sizeof(trace_t));
+	for (i=0; i < number_of_traces; i++){
+		trace_hdr_obj[i].oid = oids[i];
+		rc = daos_obj_open(dfs->coh, trace_hdr_obj[i].oid, daos_mode, &trace_hdr_obj[i].oh, NULL);
+		if(rc) {
+			printf("daos_obj_open()__ trace_header_obj Failed (%d)\n", rc);
+			exit(rc);
+		}
+		//Read Trace header
+		prepare_seismic_entry(&seismic_entry, trace_hdr_obj[i].oid, DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
+							(char*)&(temp), HDRBYTES, DAOS_IOD_ARRAY);
+
+		rc = daos_seis_fetch_entry(trace_hdr_obj[i].oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if (rc) {
+			printf("Error reading trace  %d header error = %d \n", i, rc);
+			exit(rc);
+		}
+		daos_obj_close(trace_hdr_obj[i].oh,NULL);
+		temp->trace_header_obj = oids[i];
+		add_trace_header(temp, head_traces);
+	}
+	free(temp);
+	free(trace_hdr_obj);
+}
+
 void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
 
 	trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
@@ -1157,13 +1364,66 @@ void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int
 
 }
 
-void sort_dkeys_list(int *first_array, int number_of_gathers, char** unique_keys, int direction){
+void new_fetch_traces_data(dfs_t *dfs, traces_headers_t **head_traces, int daos_mode){
+
+//	trace_oid_oh_t *trace_data_obj = malloc( number_of_traces * sizeof(trace_oid_oh_t));
+
+	traces_headers_t *current = (*head_traces);
+	if(current == NULL){
+		printf("LINKED LIST EMPTY \n");
+		return;
+	}
+
+	int i;
+	int rc;
+	daos_array_iod_t iod;
+	daos_range_t		rg;
+	d_sg_list_t sgl;
+//	trace_t temp;
+	struct seismic_entry seismic_entry = {0};
+	trace_oid_oh_t trace_data_obj;
+	while(current!=NULL){
+		trace_data_obj.oid = get_tr_data_oid(&(current->trace.trace_header_obj),OC_SX);
+
+		rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj).oid, DAOS_TX_NONE, DAOS_OO_RW,
+								1,200*sizeof(float), &(trace_data_obj.oh), NULL);
+		if (rc) {
+			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+			exit(rc);
+		}
+//		temp.data = malloc((*head_traces)->trace.ns * sizeof(float));
+		sgl.sg_nr = 1; // traces->traces[j].ns;
+		sgl.sg_nr_out = 0;
+		d_iov_t iov;
+		current->trace.data = malloc(current->trace.ns * sizeof(float));
+		seismic_entry.data = (char*)current->trace.data;
+//printf("HELLO HELLO HELLLOOOOOOO \n");
+		d_iov_set(&iov, (void*)(seismic_entry.data), current->trace.ns * sizeof(float));
+
+		sgl.sg_iovs = &iov;
+		iod.arr_nr = 1;
+		rg.rg_len = current->trace.ns * sizeof(float);
+		rg.rg_idx = 0;
+		iod.arr_rgs = &rg;
+
+		rc = daos_array_read(trace_data_obj.oh, DAOS_TX_NONE, &iod, &sgl, NULL);
+		if(rc) {
+			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
+			exit(rc);
+		}
+		daos_array_close(trace_data_obj.oh,NULL);
+//		add_trace_data(temp,head_traces);
+		current = current->next_trace;
+	}
+	free(current);
+//	free(trace_data_obj);
+}
+
+void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_keys, int direction){
 
     const char *sep = "_";
     char *token;
     int i;
-
-
 
     char new_temp[4096];
     int *positive = malloc(number_of_gathers * sizeof(int));
@@ -1189,14 +1449,11 @@ void sort_dkeys_list(int *first_array, int number_of_gathers, char** unique_keys
         j++;
     }
 
-    int temp2;
+    long temp2;
     if(direction==1){
-        for (i = 0; i < number_of_gathers; i++)
-            {
-                for (j = 0; j < number_of_gathers - i - 1; j++)
-                {
-                    if (first_array[j] > first_array[j + 1])
-                    {
+        for (i = 0; i < number_of_gathers; i++) {
+                for (j = 0; j < number_of_gathers - i - 1; j++) {
+                    if (first_array[j] > first_array[j + 1]) {
                         temp2 = first_array[j];
                         first_array[j] = first_array[j + 1];
                         first_array[j + 1] = temp2;
@@ -1204,12 +1461,9 @@ void sort_dkeys_list(int *first_array, int number_of_gathers, char** unique_keys
                 }
             }
     } else {
-        for (i = 0; i < number_of_gathers ; ++i)
-        {
-            for (j = i + 1; j < number_of_gathers; ++j)
-            {
-                if (first_array[i] < first_array[j])
-                {
+        for (i = 0; i < number_of_gathers ; ++i) {
+            for (j = i + 1; j < number_of_gathers; ++j) {
+                if (first_array[i] < first_array[j]) {
                 	temp2 = first_array[i];
                     first_array[i] = first_array[j];
                     first_array[j] = temp2;
@@ -1218,25 +1472,33 @@ void sort_dkeys_list(int *first_array, int number_of_gathers, char** unique_keys
         }
 
     }
-
-
  }
 
-void sort_headers(read_traces *gather_traces, char *sort_key, int direction){
+void sort_headers(read_traces *gather_traces, char **sort_key, int *direction, int number_of_keys){
 	int i;
 	int j;
 	trace_t temp;
-	if(strcmp(sort_key,"cdp")==0){
-		for(i=0; i< gather_traces->number_of_traces;i++){
-			gather_traces->traces[i].cdp =(gather_traces->traces[i].sx + gather_traces->traces[i].gx)/2;
-		}
-	} else if(strcmp(sort_key,"offset")==0){
-		for(i=0; i< gather_traces->number_of_traces;i++){
-			gather_traces->traces[i].offset =(gather_traces->traces[i].sx - gather_traces->traces[i].gx)/2;
-		}
-	}
+//	if(strcmp(sort_key,"cdp")==0){
+//		for(i=0; i< gather_traces->number_of_traces;i++){
+//			gather_traces->traces[i].cdp =(gather_traces->traces[i].sx + gather_traces->traces[i].gx)/2;
+//		}
+//	} else if(strcmp(sort_key,"offset")==0){
+//		for(i=0; i< gather_traces->number_of_traces;i++){
+//			gather_traces->traces[i].offset =(gather_traces->traces[i].sx - gather_traces->traces[i].gx)/2;
+//		}
+//	}
+//
+//	printf("BEFORE SORTING BASED ON SX ============================================= \n");
+//	for(i=0; i<gather_traces->number_of_traces; i++){
+//		printf("SX OF TRACE %d issssss %d \n", i, gather_traces->traces[i].gx);
+//	}
 
-	MergeSort(gather_traces->traces, 0, gather_traces->number_of_traces-1, sort_key, direction);
+
+//	printf("NUMBER OF KEYS ==== %d \n", number_of_keys);
+//	for(int i =1; i <= number_of_keys; i++){
+//		printf("KEY IS ============== %s \n", sort_key[i]);
+//	}
+	MergeSort(gather_traces->traces, 0, gather_traces->number_of_traces-1, sort_key, direction, number_of_keys);
 
 //	for (i = 1; i < gather_traces->number_of_traces; i++){
 //		for (j = 0; j < gather_traces->number_of_traces - i; j++) {
@@ -1247,30 +1509,64 @@ void sort_headers(read_traces *gather_traces, char *sort_key, int direction){
 //			 }
 //		}
 //	}
-//	printf("AfTER SORTING BASED ON CDP ============================================= \n");
-//	for(int i=0; i<gather_traces->number_of_traces; i++){
-//		printf("CDP OF TRACE %d issssss %d \n", i, gather_traces->traces[i].cdp);
+//	printf("AfTER SORTING BASED ON SX ============================================= \n");
+//	for(i=0; i<gather_traces->number_of_traces; i++){
+//		printf("SX OF TRACE %d issssss %d \n", i, gather_traces->traces[i].gx);
 //	}
 }
 
-void Merge(trace_t *arr, int low, int mid, int high, char *sort_key, int direction)
+void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direction, int number_of_keys)
 {
     int mergedSize = high - low + 1;
     trace_t *temp = (trace_t *)malloc(mergedSize * sizeof(trace_t));
     int mergePos = 0;
     int leftPos = low;
     int rightPos = mid + 1;
-
+    int z=1;
+//    printf("SORTKEY IS %s direction is %d \n", sort_key[z], direction[z]);
     while (leftPos <= mid && rightPos <= high)
     {
-        if (check_sorting_key(arr[leftPos], arr[rightPos], sort_key) && direction==1)
-        {
-            temp[mergePos++] = arr[leftPos++];
-        }
-        else if (check_sorting_key(arr[leftPos], arr[rightPos], sort_key) && direction==0)
-        {
-            temp[mergePos++] = arr[rightPos++];
-        }
+    	while(z <= number_of_keys){
+			if(get_header_value(arr[leftPos],sort_key[z]) < get_header_value(arr[rightPos], sort_key[z])) {
+				if(direction[z] == 1){
+//					printf("ONE \n");
+					temp[mergePos++] = arr[leftPos++];
+				} else {
+//					printf("TWO \n");
+					temp[mergePos++] = arr[rightPos++];
+				}
+				break;
+			} else if(get_header_value(arr[leftPos],sort_key[z]) > get_header_value(arr[rightPos], sort_key[z])){
+				if(direction[z] == 1){
+//					printf("THREE \n");
+					temp[mergePos++] = arr[rightPos++];
+				} else {
+//					printf("FOUR \n");
+					temp[mergePos++] = arr[leftPos++];
+				}
+				break;
+			} else {
+				z++;
+			}
+    	}
+
+//        if (check_sorting_key(arr[leftPos], arr[rightPos], sort_key)){
+//        	if(direction == 1){
+////            	printf("ONE \n");
+//                temp[mergePos++] = arr[leftPos++];
+//        	} else{
+////            	printf("THREE \n");
+//                temp[mergePos++] = arr[rightPos++];
+//        	}
+//        } else {
+//        	if(direction == 1) {
+////            	printf("two \n");
+//                temp[mergePos++] = arr[rightPos++];
+//        	} else {
+////            	printf("FOUR \n");
+//                temp[mergePos++] = arr[leftPos++];
+//        	}
+//        }
     }
 
     while (leftPos <= mid)
@@ -1283,427 +1579,301 @@ void Merge(trace_t *arr, int low, int mid, int high, char *sort_key, int directi
         temp[mergePos++] = arr[rightPos++];
     }
 
-    assert(mergePos == mergedSize);
+//    assert(mergePos == mergedSize);
 
-    for (mergePos = 0; mergePos < mergedSize; ++mergePos)
+    for (mergePos = 0; mergePos < mergedSize; ++mergePos){
         arr[low + mergePos] = temp[mergePos];
+    }
 
     free(temp);
 }
 
-void MergeSort(trace_t *arr, int low, int high, char *sort_key, int direction)
+void MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction, int number_of_keys)
 {
     if (low < high)
     {
         int mid = (low + high) / 2;
-        //printf("-->> %s: lo = %d, md = %d, hi = %d\n", __func__, low, mid, high);
 
-        MergeSort(arr, low, mid, sort_key, direction);
-        MergeSort(arr, mid + 1, high, sort_key, direction);
+        MergeSort(arr, low, mid, sort_key, direction, number_of_keys);
+        MergeSort(arr, mid + 1, high, sort_key, direction, number_of_keys);
 
-        Merge(arr, low, mid, high, sort_key, direction);
-        //printf("<<-- %s: lo = %d, md = %d, hi = %d\n", __func__, low, mid, high);
+        Merge(arr, low, mid, high, sort_key, direction, number_of_keys);
     }
 }
 
-int check_sorting_key(trace_t leftPos, trace_t rightPos, char *sort_key){
+long get_header_value(trace_t trace, char *sort_key){
 
 	if(strcmp(sort_key, "tracl") == 0){
-		if(leftPos.tracl < rightPos.tracl){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.tracl;
 	} else if(strcmp(sort_key,"tracr")==0){
-		if(leftPos.tracr < rightPos.tracr){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"fldr")==0){
-		if(leftPos.fldr < rightPos.fldr){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"tracf")==0){
-		if(leftPos.tracf < rightPos.tracf){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"ep")==0){
-		if(leftPos.ep < rightPos.ep){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"cdp")==0){
-		if(leftPos.cdp < rightPos.cdp){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"cdpt")==0){
-		if(leftPos.cdpt < rightPos.cdpt){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"nvs")==0){
-		if(leftPos.nvs < rightPos.nvs){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"nhs")==0){
-		if(leftPos.nhs < rightPos.nhs){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"offset")==0){
-		if(leftPos.offset < rightPos.offset){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"gelev")==0){
-		if(leftPos.gelev < rightPos.gelev){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"selev")==0){
-		if(leftPos.selev < rightPos.selev){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"sdepth")==0){
-		if(leftPos.sdepth < rightPos.sdepth){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"gdel")==0){
-		if(leftPos.gdel < rightPos.gdel){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"sdel")==0){
-		if(leftPos.sdel < rightPos.sdel){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"swdep")==0){
-		if(leftPos.swdep < rightPos.swdep){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(sort_key,"gwdep")==0){
-		if(leftPos.gwdep < rightPos.gwdep){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.tracr;
+	} else if(strcmp(sort_key,"fldr")==0){
+		return trace.fldr;
+	} else if(strcmp(sort_key,"tracf")==0){
+		return trace.tracf;
+	} else if(strcmp(sort_key,"ep")==0){
+		return trace.ep;
+	} else if(strcmp(sort_key,"cdp")==0){
+		return trace.cdp;
+	} else if(strcmp(sort_key,"cdpt")==0){
+		return trace.cdpt;
+	} else if(strcmp(sort_key,"nvs")==0){
+		return trace.nvs;
+	} else if(strcmp(sort_key,"nhs")==0){
+		return trace.nhs;
+	} else if(strcmp(sort_key,"offset")==0){
+		return trace.offset;
+	} else if(strcmp(sort_key,"gelev")==0){
+		return trace.gelev;
+	} else if(strcmp(sort_key,"selev")==0){
+		return trace.selev;
+	} else if(strcmp(sort_key,"sdepth")==0){
+		return trace.sdepth;
+	} else if(strcmp(sort_key,"gdel")==0){
+		return trace.gdel;
+	} else if(strcmp(sort_key,"sdel")==0){
+		return trace.sdel;
+	} else if(strcmp(sort_key,"swdep")==0){
+		return trace.swdep;
+	} else if(strcmp(sort_key,"gwdep")==0){
+		return trace.gwdep;
 	} else if(strcmp(sort_key,"scalel")==0){
-		if(leftPos.scalel < rightPos.scalel){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.scalel;
 	} else if(strcmp(sort_key,"scalco")==0){
-		if(leftPos.scalco < rightPos.scalco){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.scalco;
 	} else if(strcmp(sort_key,"sx")==0){
-		if(leftPos.sx < rightPos.sx){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.sx;
 	} else if(strcmp(sort_key,"sy")==0){
-		if(leftPos.sy < rightPos.sy){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.sy;
 	} else if(strcmp(sort_key,"gx")==0){
-		if(leftPos.gx < rightPos.gx){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.gx;
 	} else if(strcmp(sort_key,"gy")==0){
-		if(leftPos.gy < rightPos.gy){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.gy;
 	} else if(strcmp(sort_key,"wevel")==0){
-		if(leftPos.wevel < rightPos.wevel){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.wevel;
 	} else if(strcmp(sort_key,"swevel")==0){
-		if(leftPos.swevel < rightPos.swevel){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.swevel;
 	} else if(strcmp(sort_key,"sut")==0){
-		if(leftPos.sut < rightPos.sut){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.sut;
 	} else if(strcmp(sort_key,"gut")==0){
-		if(leftPos.gut < rightPos.gut){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.gut;
 	} else if(strcmp(sort_key,"sstat")==0){
-		if(leftPos.sstat < rightPos.sstat){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.sstat;
 	} else if(strcmp(sort_key,"gstat")==0){
-		if(leftPos.gstat < rightPos.gstat){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.gstat;
 	} else if(strcmp(sort_key,"tstat")==0){
-		if(leftPos.tstat < rightPos.tstat){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.tstat;
 	} else if(strcmp(sort_key,"laga")==0){
-		if(leftPos.laga < rightPos.laga){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.laga;
 	} else if(strcmp(sort_key,"lagb")==0){
-		if(leftPos.lagb < rightPos.lagb){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.lagb;
 	} else if(strcmp(sort_key,"delrt")==0){
-		if(leftPos.delrt < rightPos.delrt){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.delrt;
 	} else if(strcmp(sort_key,"muts")==0){
-		if(leftPos.muts < rightPos.muts){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.muts;
 	} else if(strcmp(sort_key,"mute")==0){
-		if(leftPos.mute < rightPos.mute){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.mute;
 	} else if(strcmp(sort_key,"ns")==0){
-		if(leftPos.ns < rightPos.ns){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.ns;
 	} else if(strcmp(sort_key,"dt")==0){
-		if(leftPos.dt < rightPos.dt){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.dt;
 	} else if(strcmp(sort_key,"gain")==0){
-		if(leftPos.gain < rightPos.gain){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.gain;
 	} else if(strcmp(sort_key,"igc")==0){
-		if(leftPos.igc < rightPos.igc){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.igc;
 	} else if(strcmp(sort_key,"igi")==0){
-		if(leftPos.igi < rightPos.igi){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.igi;
 	} else if(strcmp(sort_key,"corr")==0){
-		if(leftPos.corr < rightPos.corr){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.corr;
 	} else if(strcmp(sort_key,"sfs")==0){
-		if(leftPos.sfs < rightPos.sfs){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.sfs;
 	} else if(strcmp(sort_key,"sfe")==0){
-		if(leftPos.sfe < rightPos.sfe){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.sfe;
 	} else if(strcmp(sort_key,"slen")==0){
-		if(leftPos.slen < rightPos.slen){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.slen;
 	} else if(strcmp(sort_key,"styp")==0){
-		if(leftPos.styp < rightPos.styp){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.styp;
 	} else if(strcmp(sort_key,"stas")==0){
-		if(leftPos.stas < rightPos.stas){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.stas;
 	} else if(strcmp(sort_key,"stae")==0){
-		if(leftPos.stae < rightPos.stae){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.stae;
 	} else if(strcmp(sort_key,"tatyp")==0){
-		if(leftPos.tatyp < rightPos.tatyp){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.tatyp;
 	} else if(strcmp(sort_key,"afilf")==0){
-		if(leftPos.afilf < rightPos.afilf){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.afilf;
 	} else if(strcmp(sort_key,"afils")==0){
-		if(leftPos.afils < rightPos.afils){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.afils;
 	} else if(strcmp(sort_key,"nofilf")==0){
-		if(leftPos.nofilf < rightPos.nofilf){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.nofilf;
 	} else if(strcmp(sort_key,"nofils")==0){
-		if(leftPos.nofils < rightPos.nofils){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.nofils;
 	} else if(strcmp(sort_key,"lcf")==0){
-		if(leftPos.lcf < rightPos.lcf){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.lcf;
 	} else if(strcmp(sort_key,"hcf")==0){
-		if(leftPos.hcf < rightPos.hcf){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.hcf;
 	} else if(strcmp(sort_key,"lcs")==0){
-		if(leftPos.lcs < rightPos.lcs){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.lcs;
 	} else if(strcmp(sort_key,"hcs")==0){
-		if(leftPos.hcs < rightPos.hcs){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.hcs;
 	} else if(strcmp(sort_key,"grnors")==0){
-		if(leftPos.grnors < rightPos.grnors){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.grnors;
 	} else if(strcmp(sort_key,"grnofr")==0){
-		if(leftPos.grnofr < rightPos.grnofr){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.grnofr;
 	} else if(strcmp(sort_key,"grnlof")==0){
-		if(leftPos.grnlof < rightPos.grnlof){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.grnlof;
 	} else if(strcmp(sort_key,"gaps")==0){
-		if(leftPos.gaps < rightPos.gaps){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.gaps;
 	} else if(strcmp(sort_key,"d1")==0){
-		if(leftPos.d1 < rightPos.d1){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.d1;
 	} else if(strcmp(sort_key,"f1")==0){
-		if(leftPos.f1 < rightPos.f1){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.f1;
 	} else if(strcmp(sort_key,"d2")==0){
-		if(leftPos.d2 < rightPos.d2){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.d2;
 	} else if(strcmp(sort_key,"f2")==0){
-		if(leftPos.f2 < rightPos.f2){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.f2;
 	} else if(strcmp(sort_key,"sfs")==0){
-		if(leftPos.sfs < rightPos.sfs){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.sfs;
 	} else if(strcmp(sort_key,"ntr")==0){
-		if(leftPos.ntr < rightPos.ntr){
-			return 1;
-		} else {
-			return 0;
-		}
+		return trace.ntr;
+	} else {
+		return -1;
+	}
+}
+
+char* get_dkey(char *key){
+
+	if(strcmp(key, "tracl") == 0){
+		return "Tracl_";
+	} else if(strcmp(key,"tracr")==0){
+		return "Tracr_";
+	} else if(strcmp(key,"fldr")==0){
+		return "Shot_";
+	} else if(strcmp(key,"tracf")==0){
+		return "Tracf_";
+	} else if(strcmp(key,"ep")==0){
+		return "Ep_";
+	} else if(strcmp(key,"cdp")==0){
+		return "Cdp_";
+	} else if(strcmp(key,"cdpt")==0){
+		return "Cdpt_";
+	} else if(strcmp(key,"nvs")==0){
+		return "Nvs_";
+	} else if(strcmp(key,"nhs")==0){
+		return "Nhs_";
+	} else if(strcmp(key,"offset")==0){
+		return "Offset_";
+	} else if(strcmp(key,"gelev")==0){
+		return "Gelev_";
+	} else if(strcmp(key,"selev")==0){
+		return "Selev_";
+	} else if(strcmp(key,"sdepth")==0){
+		return "Sdepth_";
+	} else if(strcmp(key,"gdel")==0){
+		return "Gdel_";
+	} else if(strcmp(key,"sdel")==0){
+		return "Sdel_";
+	} else if(strcmp(key,"swdep")==0){
+		return "Swdep_";
+	} else if(strcmp(key,"gwdep")==0){
+		return "Gwdep_";
+	} else if(strcmp(key,"scalel")==0){
+		return "Scalel_";
+	} else if(strcmp(key,"scalco")==0){
+		return "Scalco_";
+	} else if(strcmp(key,"sx")==0){
+		return "Sx_";
+	} else if(strcmp(key,"sy")==0){
+		return "Sy_";
+	} else if(strcmp(key,"gx")==0){
+		return "Gx_";
+	} else if(strcmp(key,"gy")==0){
+		return "Gy_";
+	} else if(strcmp(key,"wevel")==0){
+		return "Wevel_";
+	} else if(strcmp(key,"swevel")==0){
+		return "Swevel_";
+	} else if(strcmp(key,"sut")==0){
+		return "Sut_";
+	} else if(strcmp(key,"gut")==0){
+		return "Gut_";
+	} else if(strcmp(key,"sstat")==0){
+		return "Sstat_";
+	} else if(strcmp(key,"gstat")==0){
+		return "Gstat_";
+	} else if(strcmp(key,"tstat")==0){
+		return "Tstat_";
+	} else if(strcmp(key,"laga")==0){
+		return "Laga_";
+	} else if(strcmp(key,"lagb")==0){
+		return "Lagb_";
+	} else if(strcmp(key,"delrt")==0){
+		return "Delrt_";
+	} else if(strcmp(key,"muts")==0){
+		return "Muts_";
+	} else if(strcmp(key,"mute")==0){
+		return "Mute_";
+	} else if(strcmp(key,"ns")==0){
+		return "Ns_";
+	} else if(strcmp(key,"dt")==0){
+		return "Dt_";
+	} else if(strcmp(key,"gain")==0){
+		return "Gain_";
+	} else if(strcmp(key,"igc")==0){
+		return "Igc_";
+	} else if(strcmp(key,"igi")==0){
+		return "Igi_";
+	} else if(strcmp(key,"corr")==0){
+		return "Corr_";
+	} else if(strcmp(key,"sfs")==0){
+		return "Sfs_";
+	} else if(strcmp(key,"sfe")==0){
+		return "Sfe_";
+	} else if(strcmp(key,"slen")==0){
+		return "Slen_";
+	} else if(strcmp(key,"styp")==0){
+		return "Styp_";
+	} else if(strcmp(key,"stas")==0){
+		return "Stas_";
+	} else if(strcmp(key,"stae")==0){
+		return "Stae_";
+	} else if(strcmp(key,"tatyp")==0){
+		return "Tatyp_";
+	} else if(strcmp(key,"afilf")==0){
+		return "Afilf_";
+	} else if(strcmp(key,"afils")==0){
+		return "Afils_";
+	} else if(strcmp(key,"nofilf")==0){
+		return "Nofilf_";
+	} else if(strcmp(key,"nofils")==0){
+		return "Nofils_";
+	} else if(strcmp(key,"lcf")==0){
+		return "Lcf_";
+	} else if(strcmp(key,"hcf")==0){
+		return "Hcf_";
+	} else if(strcmp(key,"lcs")==0){
+		return "Lcs_";
+	} else if(strcmp(key,"hcs")==0){
+		return "Hcs_";
+	} else if(strcmp(key,"grnors")==0){
+		return "Grnors_";
+	} else if(strcmp(key,"grnofr")==0){
+		return "Grnofr_";
+	} else if(strcmp(key,"grnlof")==0){
+		return "Grnlof_";
+	} else if(strcmp(key,"gaps")==0){
+		return "Gaps_";
+	} else if(strcmp(key,"d1")==0){
+		return "D1_";
+	} else if(strcmp(key,"f1")==0){
+		return "F1_";
+	} else if(strcmp(key,"d2")==0){
+		return "D2_";
+	} else if(strcmp(key,"f2")==0){
+		return "F2_";
+	} else if(strcmp(key,"sfs")==0){
+		return "Sfs_";
+	} else if(strcmp(key,"ntr")==0){
+		return "Ntr_";
 	} else {
 		return -1;
 	}
@@ -1712,7 +1882,7 @@ int check_sorting_key(trace_t leftPos, trace_t rightPos, char *sort_key){
 void window_headers(read_traces *window_traces, read_traces *gather_traces, daos_obj_id_t *oids, char *key, long min, long max){
 
 	int i;
-	int k;
+	int k =0;
 	int temp = gather_traces->number_of_traces;
 	window_traces->number_of_traces = 0;
 	daos_obj_id_t *temp_oids = malloc(gather_traces->number_of_traces * sizeof(daos_obj_id_t));
@@ -1721,19 +1891,28 @@ void window_headers(read_traces *window_traces, read_traces *gather_traces, daos
 	memset(oids,0,gather_traces->number_of_traces * sizeof(daos_obj_id_t));
 	printf("number of traces before = %d \n", window_traces->number_of_traces);
 
+	long value;
 	for(i=0; i < temp ;i++){
 //		printf("i = %d \n", i);
-		if(check_windowing_key(gather_traces->traces[i], key, min, max) == 0){
-//			for(k=i; k < gather_traces->number_of_traces ; k++){
-//				memcpy(&oids[k],&oids[k+1], sizeof(daos_obj_id_t));
-//				memcpy(&gather_traces->traces[k], &gather_traces->traces[k+1], sizeof(trace_t));
-//			}
-//			gather_traces->number_of_traces--;
-		} else {
-			memcpy(&window_traces->traces[i], &gather_traces->traces[i], sizeof(trace_t));
-			memcpy(&oids[i], &temp_oids[i],sizeof(daos_obj_id_t));
+		value = get_header_value(gather_traces->traces[i], key);
+		if(value >= min && value <= max) {
+			memcpy(&window_traces->traces[k], &gather_traces->traces[i], sizeof(trace_t));
+			memcpy(&oids[k], &temp_oids[i],sizeof(daos_obj_id_t));
 			window_traces->number_of_traces ++;
+			k++;
 		}
+//		if(check_windowing_key(gather_traces->traces[i], key, min, max) == 0){
+////			for(k=i; k < gather_traces->number_of_traces ; k++){
+////				memcpy(&oids[k],&oids[k+1], sizeof(daos_obj_id_t));
+////				memcpy(&gather_traces->traces[k], &gather_traces->traces[k+1], sizeof(trace_t));
+////			}
+////			gather_traces->number_of_traces--;
+//		} else {
+//			memcpy(&window_traces->traces[k], &gather_traces->traces[i], sizeof(trace_t));
+//			memcpy(&oids[k], &temp_oids[i],sizeof(daos_obj_id_t));
+//			window_traces->number_of_traces ++;
+//			k++;
+//		}
 //		printf("number of traces in loop = %d \n", gather_traces->number_of_traces);
 	}
 
@@ -1741,405 +1920,584 @@ void window_headers(read_traces *window_traces, read_traces *gather_traces, daos
 
 }
 
-int check_windowing_key(trace_t trace, char *wind_key, long min, long max){
-	if(strcmp(wind_key, "tracl") == 0){
-		if((trace.tracl >= min) && (trace.tracl <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"tracr")==0){
-		if((trace.tracr >= min) && (trace.tracr <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"fldr")==0){
-		if((trace.fldr >= min) && (trace.fldr <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"tracf")==0){
-		if((trace.tracf >= min) && (trace.tracf <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"ep")==0){
-		if((trace.ep >= min) && (trace.ep <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"cdp")==0){
-		if((trace.cdp >= min) && (trace.cdp <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"cdpt")==0){
-		if((trace.cdpt >= min) && (trace.cdpt <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"nvs")==0){
-		if((trace.nvs >= min) && (trace.nvs <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"nhs")==0){
-		if((trace.nhs >= min) && (trace.nhs <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"offset")==0){
-		if((trace.offset >= min) && (trace.offset <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"gelev")==0){
-		if((trace.gelev >= min) && (trace.gelev <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"selev")==0){
-		if((trace.selev >= min) && (trace.selev <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"sdepth")==0){
-		if((trace.sdepth >= min) && (trace.sdepth <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"gdel")==0){
-		if((trace.gdel >= min) && (trace.gdel <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"sdel")==0){
-		if((trace.sdel >= min) && (trace.sdel <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"swdep")==0){
-		if((trace.swdep >= min) && (trace.swdep <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	}  else if(strcmp(wind_key,"gwdep")==0){
-		if((trace.gwdep >= min) && (trace.gwdep <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"scalel")==0){
-		if((trace.scalel >= min) && (trace.scalel <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"scalco")==0){
-		if((trace.scalco >= min) && (trace.scalco <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"sx")==0){
-		if((trace.sx >= min) && (trace.sx <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"sy")==0){
-		if((trace.sy >= min) && (trace.sy <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"gx")==0){
-		if((trace.gx >= min) && (trace.gx <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"gy")==0){
-		if((trace.gy >= min) && (trace.gy <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"wevel")==0){
-		if((trace.wevel >= min) && (trace.wevel <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"swevel")==0){
-		if((trace.swevel >= min) && (trace.swevel <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"sut")==0){
-		if((trace.sut >= min) && (trace.sut <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"gut")==0){
-		if((trace.gut >= min) && (trace.gut <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"sstat")==0){
-		if((trace.sstat >= min) && (trace.sstat <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"gstat")==0){
-		if((trace.gstat >= min) && (trace.gstat <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"tstat")==0){
-		if((trace.tstat >= min) && (trace.tstat <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"laga")==0){
-		if((trace.laga >= min) && (trace.laga <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"lagb")==0){
-		if((trace.lagb >= min) && (trace.lagb <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"delrt")==0){
-		if((trace.delrt >= min) && (trace.delrt <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"muts")==0){
-		if((trace.muts >= min) && (trace.muts <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"mute")==0){
-		if((trace.mute >= min) && (trace.mute <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"ns")==0){
-		if((trace.ns >= min) && (trace.ns <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"dt")==0){
-		if((trace.dt >= min) && (trace.dt <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"gain")==0){
-		if((trace.gain >= min) && (trace.gain <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"igc")==0){
-		if((trace.igc >= min) && (trace.igc <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"igi")==0){
-		if((trace.igi >= min) && (trace.igi <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"corr")==0){
-		if((trace.corr >= min) && (trace.corr <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"sfs")==0){
-		if((trace.sfs >= min) && (trace.sfs <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"sfe")==0){
-		if((trace.sfe >= min) && (trace.sfe <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"slen")==0){
-		if((trace.slen >= min) && (trace.slen <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"styp")==0){
-		if((trace.styp >= min) && (trace.styp <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"stas")==0){
-		if((trace.stas >= min) && (trace.stas <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"stae")==0){
-		if((trace.stae >= min) && (trace.stae <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"tatyp")==0){
-		if((trace.tatyp >= min) && (trace.tatyp <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"afilf")==0){
-		if((trace.afilf >= min) && (trace.afilf <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"afils")==0){
-		if((trace.afils >= min) && (trace.afils <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"nofilf")==0){
-		if((trace.nofilf >= min) && (trace.nofilf <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"nofils")==0){
-		if((trace.nofils >= min) && (trace.nofils <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"lcf")==0){
-		if((trace.lcf >= min) && (trace.lcf <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"hcf")==0){
-		if((trace.hcf >= min) && (trace.hcf <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"lcs")==0){
-		if((trace.lcs >= min) && (trace.lcs <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"hcs")==0){
-		if((trace.hcs >= min) && (trace.hcs <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"grnors")==0){
-		if((trace.grnors >= min) && (trace.grnors <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"grnofr")==0){
-		if((trace.grnofr >= min) && (trace.grnofr <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"grnlof")==0){
-		if((trace.grnlof >= min) && (trace.grnlof <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"gaps")==0){
-		if((trace.gaps >= min) && (trace.gaps <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"d1")==0){
-		if((trace.d1 >= min) && (trace.d1 <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"f1")==0){
-		if((trace.f1 >= min) && (trace.f1 <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"d2")==0){
-		if((trace.d2 >= min) && (trace.d2 <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"f2")==0){
-		if((trace.f2 >= min) && (trace.f2 <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"sfs")==0){
-		if((trace.sfs >= min) && (trace.sfs <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else if(strcmp(wind_key,"ntr")==0){
-		if((trace.ntr >= min) && (trace.ntr <= max)){
-			return 1;
-		} else {
-			return 0;
-		}
-	} else {
-		return -1;
+void new_window_headers(traces_headers_t **head, char *keys, char *min, char *max){
+
+	char temp[4096];
+	char min_temp[4096];
+	char max_temp[4096];
+	int number_of_keys = 0;
+	strcpy(temp, keys);
+	const char *sep = ",";
+	char *token = strtok(temp, sep);
+	while( token != NULL ) {
+		number_of_keys++;
+		token = strtok(NULL, sep);
+	}
+	printf("NUMBER OF KEYS === %d \n",number_of_keys);
+	char **window_keys = malloc(number_of_keys * sizeof(char*));
+	long min_keys[number_of_keys];
+	long max_keys[number_of_keys];
+
+	int i=0;
+	strcpy(temp,keys);
+	strcpy(min_temp,min);
+	strcpy(max_temp,max);
+	token =strtok(temp,sep);
+	while(token != NULL){
+		window_keys[i]= malloc((strlen(token) + 1)*sizeof(char));
+		strcpy(window_keys[i], token);
+		token = strtok(NULL,sep);
+		i++;
+	}
+	char *min_token =strtok(min_temp, sep);
+	i=0;
+	while(min_token != NULL){
+		min_keys[i]= atol(min_token);
+		min_token = strtok(NULL,sep);
+		i++;
+	}
+	char *max_token = strtok(max_temp, sep);
+	i=0;
+	while(max_token != NULL){
+		max_keys[i]= atol(max_token);
+		max_token = strtok(NULL,sep);
+		i++;
 	}
 
+//	for(int k=0; k<number_of_keys; k++) {
+//		printf("KEY is = %s \n", window_keys[k]);
+//		printf("MIN is = %ld \n", min_keys[k]);
+//		printf("MAX is = %ld \n", max_keys[k]);
+//	}
+
+	long values[number_of_keys];
+	traces_headers_t *current = (*head);
+	traces_headers_t *previous = NULL;
+	if(current == NULL) {
+		printf("NO traces exist in linked list \n");
+		return;
+	}
+
+	int l;
+	int break_loop;
+	while(current != NULL) {
+		break_loop = 0;
+		for(l = 0; l<number_of_keys && !break_loop; l++){
+			values[l] = get_header_value(current->trace, window_keys[l]);
+			if(!(values[l] >= min_keys[l] && values[l] <= max_keys[l])) {
+				if(current == (*head)){
+					(*head)= (*head)->next_trace;
+					free(current);
+					current = (*head);
+				} else{
+					previous->next_trace = current->next_trace;
+					free(current);
+					current = previous->next_trace;
+				}
+				break_loop=1;
+			}
+		}
+		if(break_loop){
+			continue;
+		} else {
+			previous = current;
+			current = current->next_trace;
+		}
+	}
+	free(window_keys);
+}
+
+//int check_windowing_key(trace_t trace, char *wind_key, long min, long max){
+//	if(strcmp(wind_key, "tracl") == 0){
+//		if((trace.tracl >= min) && (trace.tracl <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"tracr")==0){
+//		if((trace.tracr >= min) && (trace.tracr <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"fldr")==0){
+//		if((trace.fldr >= min) && (trace.fldr <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"tracf")==0){
+//		if((trace.tracf >= min) && (trace.tracf <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"ep")==0){
+//		if((trace.ep >= min) && (trace.ep <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"cdp")==0){
+//		if((trace.cdp >= min) && (trace.cdp <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"cdpt")==0){
+//		if((trace.cdpt >= min) && (trace.cdpt <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"nvs")==0){
+//		if((trace.nvs >= min) && (trace.nvs <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"nhs")==0){
+//		if((trace.nhs >= min) && (trace.nhs <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"offset")==0){
+//		if((trace.offset >= min) && (trace.offset <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"gelev")==0){
+//		if((trace.gelev >= min) && (trace.gelev <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"selev")==0){
+//		if((trace.selev >= min) && (trace.selev <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"sdepth")==0){
+//		if((trace.sdepth >= min) && (trace.sdepth <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"gdel")==0){
+//		if((trace.gdel >= min) && (trace.gdel <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"sdel")==0){
+//		if((trace.sdel >= min) && (trace.sdel <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"swdep")==0){
+//		if((trace.swdep >= min) && (trace.swdep <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	}  else if(strcmp(wind_key,"gwdep")==0){
+//		if((trace.gwdep >= min) && (trace.gwdep <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"scalel")==0){
+//		if((trace.scalel >= min) && (trace.scalel <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"scalco")==0){
+//		if((trace.scalco >= min) && (trace.scalco <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"sx")==0){
+//		if((trace.sx >= min) && (trace.sx <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"sy")==0){
+//		if((trace.sy >= min) && (trace.sy <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"gx")==0){
+//		if((trace.gx >= min) && (trace.gx <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"gy")==0){
+//		if((trace.gy >= min) && (trace.gy <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"wevel")==0){
+//		if((trace.wevel >= min) && (trace.wevel <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"swevel")==0){
+//		if((trace.swevel >= min) && (trace.swevel <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"sut")==0){
+//		if((trace.sut >= min) && (trace.sut <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"gut")==0){
+//		if((trace.gut >= min) && (trace.gut <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"sstat")==0){
+//		if((trace.sstat >= min) && (trace.sstat <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"gstat")==0){
+//		if((trace.gstat >= min) && (trace.gstat <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"tstat")==0){
+//		if((trace.tstat >= min) && (trace.tstat <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"laga")==0){
+//		if((trace.laga >= min) && (trace.laga <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"lagb")==0){
+//		if((trace.lagb >= min) && (trace.lagb <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"delrt")==0){
+//		if((trace.delrt >= min) && (trace.delrt <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"muts")==0){
+//		if((trace.muts >= min) && (trace.muts <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"mute")==0){
+//		if((trace.mute >= min) && (trace.mute <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"ns")==0){
+//		if((trace.ns >= min) && (trace.ns <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"dt")==0){
+//		if((trace.dt >= min) && (trace.dt <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"gain")==0){
+//		if((trace.gain >= min) && (trace.gain <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"igc")==0){
+//		if((trace.igc >= min) && (trace.igc <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"igi")==0){
+//		if((trace.igi >= min) && (trace.igi <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"corr")==0){
+//		if((trace.corr >= min) && (trace.corr <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"sfs")==0){
+//		if((trace.sfs >= min) && (trace.sfs <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"sfe")==0){
+//		if((trace.sfe >= min) && (trace.sfe <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"slen")==0){
+//		if((trace.slen >= min) && (trace.slen <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"styp")==0){
+//		if((trace.styp >= min) && (trace.styp <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"stas")==0){
+//		if((trace.stas >= min) && (trace.stas <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"stae")==0){
+//		if((trace.stae >= min) && (trace.stae <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"tatyp")==0){
+//		if((trace.tatyp >= min) && (trace.tatyp <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"afilf")==0){
+//		if((trace.afilf >= min) && (trace.afilf <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"afils")==0){
+//		if((trace.afils >= min) && (trace.afils <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"nofilf")==0){
+//		if((trace.nofilf >= min) && (trace.nofilf <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"nofils")==0){
+//		if((trace.nofils >= min) && (trace.nofils <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"lcf")==0){
+//		if((trace.lcf >= min) && (trace.lcf <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"hcf")==0){
+//		if((trace.hcf >= min) && (trace.hcf <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"lcs")==0){
+//		if((trace.lcs >= min) && (trace.lcs <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"hcs")==0){
+//		if((trace.hcs >= min) && (trace.hcs <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"grnors")==0){
+//		if((trace.grnors >= min) && (trace.grnors <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"grnofr")==0){
+//		if((trace.grnofr >= min) && (trace.grnofr <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"grnlof")==0){
+//		if((trace.grnlof >= min) && (trace.grnlof <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"gaps")==0){
+//		if((trace.gaps >= min) && (trace.gaps <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"d1")==0){
+//		if((trace.d1 >= min) && (trace.d1 <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"f1")==0){
+//		if((trace.f1 >= min) && (trace.f1 <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"d2")==0){
+//		if((trace.d2 >= min) && (trace.d2 <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"f2")==0){
+//		if((trace.f2 >= min) && (trace.f2 <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"sfs")==0){
+//		if((trace.sfs >= min) && (trace.sfs <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else if(strcmp(wind_key,"ntr")==0){
+//		if((trace.ntr >= min) && (trace.ntr <= max)){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
+//	} else {
+//		return -1;
+//	}
+//
+//}
+
+char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,
+																int cmp_obj, int off_obj, int direction){
+	uint32_t nr = seismic_object->number_of_gathers +1;
+	d_sg_list_t sglo;
+	sglo.sg_nr_out = sglo.sg_nr = 1;
+	d_iov_t iov_temp;
+	char *temp_array = malloc(4096 * sizeof(char));
+	d_iov_set(&iov_temp, temp_array, 4096);
+	sglo.sg_iovs = &iov_temp;
+	daos_anchor_t	anchor = { 0 };
+	int rc;
+	daos_key_desc_t  *kds= malloc((seismic_object->number_of_gathers + 1) * sizeof(daos_key_desc_t));
+	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
+	if(rc){
+		printf(" LIST DKEY FAILED \n");
+	}
+
+	char **dkeys_list = malloc((seismic_object->number_of_gathers +1) * sizeof(char*));
+	int off=0;
+
+	char **unique_keys = malloc(seismic_object->number_of_gathers * sizeof(char *));
+	int u=0;
+	int z;
+	for( z=0; z< seismic_object->number_of_gathers +1; z++ ){
+    	dkeys_list[z] = malloc(kds[z].kd_key_len +1 * sizeof(char));
+		strncpy(dkeys_list[z],&temp_array[off], kds[z].kd_key_len);
+		dkeys_list[z][kds[z].kd_key_len] = '\0';
+		off += kds[z].kd_key_len;
+		for (int k=0; k< strlen(dkeys_list[z])+1;k++){
+			if(isdigit(dkeys_list[z][k])){
+				unique_keys[u]=malloc(kds[z].kd_key_len * sizeof(char));
+				unique_keys[u]= dkeys_list[z];
+				u++;
+				break;
+			} else {
+				continue;
+			}
+		}
+	}
+
+	if(sort){
+		   long *first_array = malloc(seismic_object->number_of_gathers * sizeof(long));
+		   sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys,direction);
+
+		   char **dkeys_sorted_list = malloc((seismic_object->number_of_gathers) * sizeof(char*));
+		   int m;
+			for(m=0;m< seismic_object->number_of_gathers; m++){
+				dkeys_sorted_list[m]=malloc(kds[z].kd_key_len *sizeof(char));
+				char dkey_name[200] = "";
+				char temp_st[200]="";
+				if(shot_obj){
+					strcat(dkey_name,"fldr_");
+				}
+//				seismic_object->gathers[m].unique_key = first_array[m];
+				sprintf(temp_st, "%ld", first_array[m]);
+				strcat(dkey_name,temp_st);
+				strcpy(dkeys_sorted_list[m], dkey_name);
+			}
+			free(first_array);
+
+		return dkeys_sorted_list;
+	}
+	return unique_keys;
+}
+
+void tokenize_str(void **str, char *sep, char *string, int type){
+	char temp[4096];
+	strcpy(temp, string);
+	char *token = strtok(temp, sep);
+	int i=0;
+	char **temp_c;
+	long *temp_l;
+	while( token != NULL ) {
+		switch(type){
+			case 0:
+				temp_c = (char **) str;
+				temp_c[i]= malloc((strlen(token)+1)*sizeof(char));
+				strcpy(temp_c[i],token);
+				break;
+			case 1:
+				temp_l = *((long **) str);
+				temp_l[i]= atol(token);
+				break;
+			default:
+				printf("ERROR\n");
+				exit(0);
+		}
+		token = strtok(NULL, sep);
+		i++;
+	}
 }
