@@ -622,6 +622,11 @@ typedef struct traces_headers{
 	struct traces_headers *next_trace;
 }traces_headers_t;
 
+typedef struct traces_list{
+	traces_headers_t *head;
+	traces_headers_t *tail;
+	long size;
+}traces_list_t;
 
 /** Function responsible for fetching seismic entry(data stored under specific seismic object) */
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev);
@@ -757,9 +762,9 @@ void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, i
 
 void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode);
 
-void new_fetch_traces_data(dfs_t *dfs, traces_headers_t **head_traces, int daos_mode);
+void new_fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mode);
 
-void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_headers_t **head_traces, int daos_mode, int number_of_traces);
+void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_list_t **head_traces, int daos_mode, int number_of_traces);
 
 void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_keys, int direction);
 
@@ -777,11 +782,11 @@ int check_windowing_key(trace_t trace, char *wind_key, long min, long max);
 
 char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,
 																int cmp_obj, int off_obj, int direction);
-void new_window_headers(traces_headers_t **head, char *key, char *min, char *max);
+void new_window_headers(traces_list_t **head, char *key, char *min, char *max);
 
-void add_trace_header(trace_t *trace, traces_headers_t **head);
+void add_trace_header(trace_t *trace, traces_list_t **head);
 
 void tokenize_str(void **str, char *sep, char *string, int type);
 
-void merge_trace_lists(traces_headers_t **headers,traces_headers_t *gather_headers);
+void merge_trace_lists(traces_list_t **headers,traces_list_t **gather_headers);
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

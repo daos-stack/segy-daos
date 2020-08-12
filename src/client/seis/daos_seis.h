@@ -31,9 +31,9 @@ int daos_seis_close_root(seis_root_obj_t *segy_root_object);
 
 read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, long min, long max, int *ngathers);
 
-traces_headers_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys);
+traces_list_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys);
 
-traces_headers_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max);
+traces_list_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max);
 /**
  * Fetch total number of traces stored under seismic root object.
  *
@@ -104,6 +104,6 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
  * \param[in]   root           pointer to root seismic object.
  * \return      returns array of traces holding all shot gather traces headers and data.
  */
-traces_headers_t* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root);
+traces_list_t* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root);
 
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */

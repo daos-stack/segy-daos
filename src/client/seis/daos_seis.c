@@ -465,130 +465,13 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
 	return rc;
 }
 
-traces_headers_t* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root){
+traces_list_t* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root){
 
-	int rc;
-	int daos_mode;
-	daos_handle_t	th = DAOS_TX_NONE;
-	struct seismic_entry seismic_entry = {0};
-	seis_obj_t *shot_obj = 	malloc(sizeof(seis_obj_t));
-	daos_mode = get_daos_obj_mode(O_RDWR);
-	daos_array_iod_t iod;
-	daos_range_t		rg;
-	d_sg_list_t sgl;
-
-	traces_headers_t *traces_head = NULL;
-
-	struct timeval  tv1, tv2;
-    double time_taken;
-
-    double total_time_trh =0;
-    double total_time_trd =0;
-
-    //Open Shot Gather Object
-	rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(shot_obj->oh), NULL);
-	if (rc) {
-		printf("daos_obj_open()__shot_object Failed (%d)\n", rc);
-		return rc;
-	}
-	//Fetch Number of Gathers Under Shot Gather object
-	prepare_seismic_entry(&seismic_entry, shot_obj->oid, DS_D_NGATHERS, DS_A_NGATHERS,
-							(char*)&shot_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
-
-	rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry, NULL);
-
-	int i;
-
-	shot_obj->gathers=malloc(sizeof(seis_gather_t));
-
-	char temp[200]="";
-	char shot_dkey_name[200] = "";
-	strcat(shot_dkey_name,"fldr_");
-	sprintf(temp, "%d", shot_id);
-	strcat(shot_dkey_name,temp);
-	printf("LOOKING FOR %s \n",shot_dkey_name);
-	int temp_shot_id;
-
-	//Fetch shot id
-	prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_UNIQUE_VAL,
-				(char*)&temp_shot_id, sizeof(int), DAOS_IOD_SINGLE);
-	rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry, NULL);
-	if(rc) {
-		printf("FETCH using this dkey (%s) failed \n", shot_dkey_name);
-		return rc;
-	}
-
-	gettimeofday(&tv1, NULL);
-	if(temp_shot_id == shot_id){
-		//Fetch number of traces
-		prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_NTRACES,
-						(char*)&(shot_obj->gathers->number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
-		rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry, NULL);
-
-		shot_obj->gathers->oids = malloc(shot_obj->gathers->number_of_traces * sizeof(daos_obj_id_t));
-		//Fetch object id of traces object
-		trace_obj_t *trace_oids_obj = malloc(sizeof(trace_obj_t));
-
-		prepare_seismic_entry(&seismic_entry, shot_obj->oid, shot_dkey_name, DS_A_GATHER_TRACE_OIDS,
-						(char*)&(trace_oids_obj->oid), sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = daos_seis_fetch_entry(shot_obj->oh, th, &seismic_entry, NULL);
-		if(rc) {
-			printf("Fetch TRACE OIDS object id failed (%d) \n", rc);
-			return rc;
-		}
-
-		rc = daos_array_open_with_attr(dfs->coh, (trace_oids_obj)->oid, th,
-				DAOS_OO_RW, 1,500*sizeof(daos_obj_id_t), &(trace_oids_obj->oh), NULL);
-		if (rc) {
-			printf("daos_array_open_with_attr()-->>GATHER OIDS object<<-- failed (%d)\n", rc);
-			return rc;
-		}
-
-		int offset = 0;
-
-		sgl.sg_nr = 1;
-		sgl.sg_nr_out = 0;
-		d_iov_t iov;
-		seismic_entry.data = (char*) shot_obj->gathers->oids;
-		d_iov_set(&iov, (void*)(seismic_entry.data), shot_obj->gathers->number_of_traces * sizeof(daos_obj_id_t));
-
-		sgl.sg_iovs = &iov;
-		iod.arr_nr = 1;
-		rg.rg_len = shot_obj->gathers->number_of_traces * sizeof(daos_obj_id_t);
-		rg.rg_idx = offset;
-		iod.arr_rgs = &rg;
-
-		rc = daos_array_read(trace_oids_obj->oh, th, &iod, &sgl, NULL);
-		if(rc){
-			printf("ERROR READING GATHER OIDS----------------- error = %d  \n", rc);
-			return rc;
-		}
-		daos_array_close(trace_oids_obj->oh,NULL);
-	} else {
-		printf("SHOT ID %d doesn't exist \n",shot_id);
-		return 0;
-	}
-
-	gettimeofday(&tv2, NULL);
-    time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
-    printf("TIME TAKEN IN FIrst FOR LOOP ISSS %f \n", time_taken);
-
-	// Read Traces header
-	gettimeofday(&tv1, NULL);
-	new_fetch_traces_header(dfs,shot_obj->gathers->oids,&traces_head,daos_mode,shot_obj->gathers->number_of_traces);
-	gettimeofday(&tv2, NULL);
-	total_time_trh = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
-
-	//Read Traces data
-	gettimeofday(&tv1, NULL);
-	new_fetch_traces_data(dfs,&traces_head,daos_mode);
-	gettimeofday(&tv2, NULL);
-	total_time_trd = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
-	total_time_trd += time_taken;
-
-	printf("TIME TAKEN IN Reading trace headers ISSS %f \n", total_time_trh);
-	printf("TIME TAKEN IN Reading trace data ISSS %f \n", total_time_trd);
-	return traces_head;
+	traces_list_t *trace_list;
+	char min[200]="";
+	sprintf(min, "%d", shot_id);
+	trace_list = new_daos_seis_wind_traces(dfs,root,"fldr",min, min);
+	return trace_list;
 }
 
 int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root){
@@ -1589,9 +1472,13 @@ read_traces* new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char 
 	return gather_traces;
 }
 
-traces_headers_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys){
+traces_list_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys){
 
-    traces_headers_t *headers = NULL;
+//    traces_headers_t *headers = NULL;
+	traces_list_t *trace_list = malloc(sizeof(traces_list_t));
+	trace_list->head = NULL;
+	trace_list->tail = NULL;
+	trace_list->size = 0;
 	char temp[4096];
     int number_of_keys = 0;
     strcpy(temp, array_keys);
@@ -1785,23 +1672,23 @@ traces_headers_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *ro
 //	 	}
 		int k;
 		// create list
-		traces_headers_t *gather_headers = NULL;
+//		traces_headers_t *gather_headers = NULL;
+		traces_list_t *gather_trace_list = malloc(sizeof(traces_list_t));
+		gather_trace_list->head = NULL;
+		gather_trace_list->tail = NULL;
+		gather_trace_list->size = 0;
+
 		for(k=0;k<gather_traces[i].number_of_traces;k++){
-			add_trace_header(&(gather_traces[i].traces[k]), &gather_headers);
+			add_trace_header(&(gather_traces[i].traces[k]), &gather_trace_list);
 		}
 //	 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
-		new_fetch_traces_data(dfs, &gather_headers,daos_mode);
+		new_fetch_traces_data(dfs, &gather_trace_list,daos_mode);
 
-		merge_trace_lists(&headers,gather_headers);
+		merge_trace_lists(&trace_list,&gather_trace_list);
  	}
 
-	return headers;
+	return trace_list;
 }
-
-
-
-
-
 
 read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, long min, long max, int *ngathers){
 
@@ -1905,12 +1792,16 @@ read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key,
 	return window_traces;
 }
 
-traces_headers_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max){
+traces_list_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max){
 
 	int daos_mode = get_daos_obj_mode(O_RDWR);
 	seismic_entry_t seismic_entry = {0};
 	seis_obj_t *seismic_object = malloc(sizeof(seis_obj_t));
-	traces_headers_t *traces_headers_head = NULL;
+//	traces_headers_t *traces_headers_head = NULL;
+	traces_list_t *trace_list = malloc(sizeof(traces_list_t));
+	trace_list->head = NULL;
+	trace_list->tail = NULL;
+	trace_list->size = 0;
 	seismic_object->oid = root->shot_oid;
 	int rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(seismic_object->oh), NULL);
 	printf("OPENED SHOT OBJECT \n");
@@ -2011,11 +1902,11 @@ traces_headers_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, c
 
 		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
 
-		new_fetch_traces_header(dfs, oids, &traces_headers_head,daos_mode,number_of_traces);
+		new_fetch_traces_header(dfs, oids, &trace_list,daos_mode,number_of_traces);
 		free(oids);
  	}
 
-	new_window_headers(&traces_headers_head,key,min,max);
+	new_window_headers(&trace_list,key,min,max);
 
 //	printf("AFTER WINDOW \n");
 //
@@ -2032,7 +1923,7 @@ traces_headers_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, c
 // 	}
 // 	free(temp);
 
-	new_fetch_traces_data(dfs, &traces_headers_head, daos_mode);
+	new_fetch_traces_data(dfs, &trace_list, daos_mode);
 
-	return traces_headers_head;
+	return trace_list;
 }

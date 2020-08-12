@@ -16,8 +16,8 @@ int main(int argc, char *argv[]){
     int verbose =0;                    /* Flag to allow verbose output */
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
-	char pool_id[100]="f3580d48-c945-4094-826d-2ef436fc1443";
-	char container_id[100]="f3580d48-c945-4094-826d-2ef436fc1441";
+	char pool_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc62";
+	char container_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc61";
 	char svc_list[100]="0";
 
     struct timeval tv1, tv2;
@@ -41,42 +41,24 @@ int main(int argc, char *argv[]){
 	gettimeofday(&tv1, NULL);
 	int ngathers;
 //	read_traces *all_traces = daos_seis_sort_headers(get_dfs(), segy_root_object, "+fldr,-gx", &ngathers);
-	traces_headers_t *head = new_new_daos_seis_sort_headers(get_dfs(), segy_root_object, "+fldr,-gx");
-//	if (all_traces == 0) {
-//		printf("Couldn't open shot 610, test FAILED\n");
-//		return 0;
-//	}
+	traces_list_t *trace_list = new_new_daos_seis_sort_headers(get_dfs(), segy_root_object, "+fldr,-gx");
 
-	if(head==NULL){
-		printf("LINKED LIST FAILURE \n");
+	FILE *fd = fopen("daos_seis_SORT_+fldr-gx_10_SHOT.su", "w");
+
+	int tracl_mod = 1;
+	traces_headers_t *temp = trace_list->head;
+	if (temp == NULL) {
+		printf("LINKED LIST EMPTY>>FAILURE\n");
 		return 0;
+	} else{
+		while(temp != NULL){
+	    	segy* tp = trace_to_segy(&(temp->trace));
+	    	tp->tracl = tp->tracr = tracl_mod;
+	    	tracl_mod++;
+	    	fputtr(fd, tp);
+	    	temp = temp->next_trace;
+		}
 	}
-    FILE *fd = fopen("daos_seis_SORT_+fldr-gx_10_SHOT.su", "w");
-    int tracl_mod = 1;
-	while(head!=NULL){
-    	segy* tp = trace_to_segy(&(head->trace));
-    	tp->tracl = tp->tracr = tracl_mod;
-    	tracl_mod++;
-    	fputtr(fd, tp);
-    	head=head->next_trace;
-	}
-//	int i;
-//	int z;
-////    for(i=0; i < all_traces->number_of_traces; i++){
-////    	segy* tp = trace_to_segy(&(all_traces->traces[i]));
-////    	fputtr(fd, tp);
-////    }
-//
-//	printf("NUMBER OF GATHERS IS  %d \n",ngathers);
-//    for(i=0; i < ngathers; i++){
-////    	printf("NUMBER OF TRACES IN I = %d IS %d \n", i, all_traces[i].number_of_traces);
-////    	if(all_traces[i].number_of_traces > 0){
-//    		for(z=0; z < all_traces[i].number_of_traces; z++){
-//            	segy* tp = trace_to_segy(&(all_traces[i].traces[z]));
-//            	fputtr(fd, tp);
-//    		}
-////    	}
-//    }
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

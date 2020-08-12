@@ -318,34 +318,42 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 //	printf("FINISHED ADDING NEW GATHER \n");
 }
 
-void merge_trace_lists(traces_headers_t **headers,traces_headers_t *gather_headers){
+void merge_trace_lists(traces_list_t **headers,traces_list_t **gather_headers){
 
-	traces_headers_t *temp = *headers;
-	if(*headers == NULL){
-		*headers = gather_headers;
+	traces_headers_t *temp = (*headers)->head;
+	if((*headers)->head == NULL){
+		(*headers)->head = (*gather_headers)->head;
+		(*headers)->tail = (*gather_headers)->tail;
+		(*headers)->size = (*gather_headers)->size;
 	} else {
-		while(temp->next_trace != NULL){
-			temp = temp->next_trace;
-		}
-		temp->next_trace = gather_headers;
+		(*headers)->tail->next_trace = (*gather_headers)->head;
+		(*headers)->tail = (*gather_headers)->tail;
+		(*headers)->size = (*headers)->size + (*gather_headers)->size;
 	}
 }
 
-void add_trace_header(trace_t *trace, traces_headers_t **head){
+void add_trace_header(trace_t *trace, traces_list_t **head){
 //	printf("ADDING NEW TRACE HEADER \n");
 	traces_headers_t *new_node = (traces_headers_t *) malloc(sizeof(traces_headers_t));
 	new_node->trace = *trace;
 	new_node->next_trace = NULL;
-	traces_headers_t *last = *head;
-	if((*head) == NULL){
-		(*head)= new_node;
+//	traces_headers_t *last = *head;
+
+	if((*head)->head == NULL){
+		(*head)->head = new_node;
+		(*head)->tail = new_node;
+		(*head)->size ++;
 		return;
 //		printf("AFTER ADDING NEW TRACE HEADER L.L was EMPTY\n");
+	} else {
+		(*head)->tail->next_trace = new_node;
+		(*head)->tail = new_node;
+		(*head)->size ++;
 	}
-	while (last->next_trace != NULL) {
-		last = last->next_trace;
-	}
-	last->next_trace = new_node;
+//	while (last->next_trace != NULL) {
+//		last = last->next_trace;
+//	}
+//	last->next_trace = new_node;
 //	printf("AFTER ADDING NEW TRACE HEADER L.L wasNOT EMPTY\n");
 
 }
@@ -1289,7 +1297,7 @@ void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, i
 	free(trace_hdr_obj);
 }
 
-void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_headers_t **head_traces, int daos_mode, int number_of_traces){
+void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_list_t **head_traces, int daos_mode, int number_of_traces){
 
 	trace_oid_oh_t *trace_hdr_obj = malloc( number_of_traces * sizeof(trace_oid_oh_t));
 	int i;
@@ -1305,7 +1313,7 @@ void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_headers_t *
 		}
 		//Read Trace header
 		prepare_seismic_entry(&seismic_entry, trace_hdr_obj[i].oid, DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
-							(char*)&(temp), HDRBYTES, DAOS_IOD_ARRAY);
+							(char*)(temp), HDRBYTES, DAOS_IOD_ARRAY);
 
 		rc = daos_seis_fetch_entry(trace_hdr_obj[i].oh, DAOS_TX_NONE, &seismic_entry, NULL);
 		if (rc) {
@@ -1364,11 +1372,11 @@ void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int
 
 }
 
-void new_fetch_traces_data(dfs_t *dfs, traces_headers_t **head_traces, int daos_mode){
+void new_fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mode){
 
 //	trace_oid_oh_t *trace_data_obj = malloc( number_of_traces * sizeof(trace_oid_oh_t));
 
-	traces_headers_t *current = (*head_traces);
+	traces_headers_t *current = (*head_traces)->head;
 	if(current == NULL){
 		printf("LINKED LIST EMPTY \n");
 		return;
@@ -1920,7 +1928,7 @@ void window_headers(read_traces *window_traces, read_traces *gather_traces, daos
 
 }
 
-void new_window_headers(traces_headers_t **head, char *keys, char *min, char *max){
+void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 
 	char temp[4096];
 	char min_temp[4096];
@@ -1971,7 +1979,7 @@ void new_window_headers(traces_headers_t **head, char *keys, char *min, char *ma
 //	}
 
 	long values[number_of_keys];
-	traces_headers_t *current = (*head);
+	traces_headers_t *current = (*head)->head;
 	traces_headers_t *previous = NULL;
 	if(current == NULL) {
 		printf("NO traces exist in linked list \n");
@@ -1985,10 +1993,10 @@ void new_window_headers(traces_headers_t **head, char *keys, char *min, char *ma
 		for(l = 0; l<number_of_keys && !break_loop; l++){
 			values[l] = get_header_value(current->trace, window_keys[l]);
 			if(!(values[l] >= min_keys[l] && values[l] <= max_keys[l])) {
-				if(current == (*head)){
-					(*head)= (*head)->next_trace;
+				if(current == (*head)->head){
+					(*head)->head= (*head)->head->next_trace;
 					free(current);
-					current = (*head);
+					current = (*head)->head;
 				} else{
 					previous->next_trace = current->next_trace;
 					free(current);

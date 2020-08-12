@@ -19,8 +19,8 @@ int main(int argc, char *argv[]){
 
 
 
-	char pool_id[100]="f3580d48-c945-4094-826d-2ef436fc1443";
-	char container_id[100]="f3580d48-c945-4094-826d-2ef436fc1441";
+	char pool_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc62";
+	char container_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc61";
 	char svc_list[100]="0";
 
     struct timeval tv1, tv2;
@@ -35,18 +35,21 @@ int main(int argc, char *argv[]){
 	int shot_id = 609;
 
 	gettimeofday(&tv1, NULL);
-	traces_headers_t *head = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
+	traces_list_t *trace_list = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
     FILE *fd = fopen("daos_seis_SHOT_609_10_SHOT.su", "w");
 
-    if(head==NULL){
-    	printf("LINKED LIST EMPTY \n");
-    	return 0;
-    }
-	while(head!=NULL){
-    	segy* tp = trace_to_segy(&(head->trace));
-    	fputtr(fd, tp);
-    	head=head->next_trace;
+	traces_headers_t *temp = trace_list->head;
+	if (temp == NULL) {
+		printf("LINKED LIST EMPTY>>FAILURE\n");
+		return 0;
+	} else{
+		while(temp != NULL){
+	    	segy* tp = trace_to_segy(&(temp->trace));
+	    	fputtr(fd, tp);
+	    	temp = temp->next_trace;
+		}
 	}
+
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);
