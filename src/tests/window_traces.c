@@ -15,8 +15,8 @@ int main(int argc, char *argv[]){
     int verbose =0;                    /* Flag to allow verbose output */
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
-	char pool_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc62";
-	char container_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc61";
+	char pool_id[100]="b99749cc-2642-4526-9e02-d6e089c84338";
+	char container_id[100]="b99749cc-2642-4526-9e02-d6e089c84331";
 	char svc_list[100]="0";
 
     struct timeval tv1, tv2;
@@ -29,8 +29,8 @@ int main(int argc, char *argv[]){
 
 	gettimeofday(&tv1, NULL);
 	int ngathers;
-	traces_list_t *trace_list = new_daos_seis_wind_traces(get_dfs(), segy_root_object, "fldr", "601", "609");
-    FILE *fd = fopen("daos_seis_SUWIND_fldr_601_609_10_SHOT.su", "w");
+	traces_list_t *trace_list = new_daos_seis_wind_traces(get_dfs(), segy_root_object, "tracl,cdp,fldr", "10666,296000,610", "12010,305000,610");
+    FILE *fd = fopen("daos_seis_SUWIND_cdp_offset_fldr_610_610_10_SHOT.su", "w");
 	traces_headers_t *temp = trace_list->head;
 	if (temp == NULL) {
 		printf("LINKED LIST EMPTY>>FAILURE\n");

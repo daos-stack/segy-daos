@@ -52,7 +52,7 @@ seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
 	if(rc) {
 		return rc;
 	}
-
+//	printf("SHOT ID %llu%llu \n",root_obj->shot_oid.lo, root_obj->shot_oid.hi);
 	/** fetch CMP oid value */
 	prepare_seismic_entry(&entry, root->oid, DS_D_SORTING_TYPES, DS_A_CMP_GATHER,
 			(char*)(&root_obj->cmp_oid), sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
@@ -61,6 +61,7 @@ seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
 	if(rc) {
 		return rc;
 	}
+//	printf("cmp ID %llu%llu \n",root_obj->cmp_oid.lo, root_obj->cmp_oid.hi);
 
 	/** fetch OFFSET oid value */
 	prepare_seismic_entry(&entry, root->oid, DS_D_SORTING_TYPES, DS_A_OFFSET_GATHER,
@@ -70,6 +71,7 @@ seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
 	if(rc) {
 		return rc;
 	}
+//	printf("offset ID %llu%llu \n",root_obj->offset_oid.lo, root_obj->offset_oid.hi);
 
 	/** fetch number of traces */
 	prepare_seismic_entry(&entry, root->oid, DS_D_FILE_HEADER, DS_A_NTRACES_HEADER,
@@ -1057,6 +1059,24 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 			printf("ERROR UPDATING OFFSET number_of_traces key, error: %d \n", rc);
 		}
 
+//		uint32_t nr = cmp_obj->number_of_gathers +1;
+//		d_sg_list_t sglo;
+//		sglo.sg_nr_out = sglo.sg_nr = 1;
+//		d_iov_t iov_temp;
+//		char *temp_array = malloc(12750 * sizeof(char));
+//		d_iov_set(&iov_temp, temp_array, 12750);
+//		sglo.sg_iovs = &iov_temp;
+//		daos_anchor_t	anchor = { 0 };
+//		printf("NUMBER OF GATHERS SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSsssssssssSS>>>>>>> %d \n", nr);
+//
+//		daos_key_desc_t  *kds= malloc((cmp_obj->number_of_gathers + 1) * sizeof(daos_key_desc_t));
+//		rc = daos_obj_list_dkey(cmp_obj->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
+//		if(rc){
+//			printf(" LIST DKEY FAILED \n");
+//		}
+//		printf("NUMBER OF GATHERS SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSsssssssssSS>>>>>>> %d \n", nr);
+
+
 		printf("Updated all gathers traces...\n");
 		free(shot_obj->seis_gather_trace_oids_obj);
 		free(cmp_obj->seis_gather_trace_oids_obj);
@@ -1583,11 +1603,11 @@ traces_list_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root,
 	}
 
 
-	int z;
-	for(z=0;z<seismic_object->number_of_gathers;z++){
-		printf("dkeys list %s \n", unique_keys[z]);
-//		printf("KEY value %d \n", seismic_object->gathers[z].keys[0]);
-	}
+//	int z;
+//	for(z=0;z<seismic_object->number_of_gathers;z++){
+//		printf("dkeys list %s \n", unique_keys[z]);
+////		printf("KEY value %d \n", seismic_object->gathers[z].keys[0]);
+//	}
 
 //	free(unique_keys);
 //	free(first_array);
@@ -1802,25 +1822,12 @@ traces_list_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
-	seismic_object->oid = root->shot_oid;
-	int rc = daos_obj_open(dfs->coh, root->shot_oid, daos_mode, &(seismic_object->oh), NULL);
-	printf("OPENED SHOT OBJECT \n");
-	if (rc) {
-		printf("daos_obj_open()__ seismic _object Failed (%d)\n", rc);
-		return rc;
-	}
-	//Fetch Number of Gathers Under opened Gather object
-	prepare_seismic_entry(&seismic_entry, seismic_object->oid, DS_D_NGATHERS, DS_A_NGATHERS,
-				(char*)&seismic_object->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+	int fldr_key=0;
+	int offset_key=0;
+	int cdp_key=0;
 
-	rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
-
-	seismic_object->sequence_number = 0;
-	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
-
-	//Fetch list of dkeys under seimsic_object
-	char **unique_keys = daos_seis_fetch_dkeys(seismic_object, 1, 1, 0, 0, 1);
 	char temp[4096];
+	int rc;
 	int number_of_keys = 0;
 	strcpy(temp, key);
 	const char *sep = ",";
@@ -1837,20 +1844,85 @@ traces_list_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char
 	tokenize_str(&min_keys,",", min, 1);
 	tokenize_str(&max_keys,",", max, 1);
 
+	int h = 0;
+	while(h < number_of_keys){
+		if(!strcmp(window_keys[h],"cdp")){
+			seismic_object->oid = root->cmp_oid;
+			cdp_key = 1;
+		} else if (!strcmp(window_keys[h],"offset")){
+			seismic_object->oid = root->offset_oid;
+			offset_key = 1;
+		} else if (!strcmp(window_keys[h],"fldr")){
+			seismic_object->oid = root->shot_oid;
+			fldr_key = 1;
+		} else{
+			h++;
+			continue;
+		}
+		if(h >0){
+			char key_temp[200] = "";
+			long min_temp;
+			long max_temp;
+			min_temp = min_keys[h];
+			min_keys[h] = min_keys[0];
+			min_keys[0] = min_temp;
+			max_temp = max_keys[h];
+			max_keys[h] = max_keys[0];
+			max_keys[0] = max_temp;
+			strcpy(key_temp,window_keys[h]);
+			strcpy(window_keys[h],window_keys[0]);
+			strcpy(window_keys[0],key_temp);
+			break;
+//			h++;
+		} else {
+			break;
+		}
+	}
+
+
+	if(!fldr_key && !cdp_key && !offset_key){
+		seismic_object->oid = root->shot_oid;
+	}
+	rc = daos_obj_open(dfs->coh, seismic_object->oid, daos_mode, &(seismic_object->oh), NULL);
+	printf("OPENED SEISMIC OBJECT \n");
+	if (rc) {
+		printf("daos_obj_open()__ seismic _object Failed (%d)\n", rc);
+		return rc;
+	}
+
+	//Fetch Number of Gathers Under opened Gather object
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid, DS_D_NGATHERS, DS_A_NGATHERS,
+				(char*)&seismic_object->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+//	printf("GATHERS ZIZO %d \n", seismic_object->number_of_gathers);
+
+	seismic_object->sequence_number = 0;
+	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
+	char **unique_keys;
+	//Fetch list of dkeys under seimsic_object
+
+	if(seismic_object->number_of_gathers > 2){
+		unique_keys = daos_seis_fetch_dkeys(seismic_object, 1, fldr_key, cdp_key, offset_key, 1);
+	} else {
+		unique_keys = daos_seis_fetch_dkeys(seismic_object, 0, fldr_key, cdp_key, offset_key, 1);
+	}
 
 	long *first_array = malloc(seismic_object->number_of_gathers * sizeof(long));
 
 	sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys, 1);
-	int fldr_key=0;
-	if(!strcmp(window_keys[0],"fldr")){
-		fldr_key=1;
+
+	for(int k=0; k<number_of_keys; k++){
+		printf("key is >>>>>> %s \n", window_keys[k]);
+		printf("MIN is >>>>> %ld \n", min_keys[k]);
+		printf("MAX is >>>>>> %ld \n", max_keys[k]);
 	}
 
 	int i;
 	int number_of_traces = 0;
  	for(i=0; i< seismic_object->number_of_gathers; i++){
 		// Check bool and shot id number out of range --> continue.
- 		if(fldr_key && (first_array[i]< min_keys[0] || first_array[i] >max_keys[0])){
+ 		if((fldr_key || cdp_key || offset_key) && (first_array[i]< min_keys[0] || first_array[i] >max_keys[0])){
  			printf("key is out of range \n");
  			continue;
  		}

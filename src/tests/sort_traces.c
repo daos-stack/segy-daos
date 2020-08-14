@@ -16,8 +16,8 @@ int main(int argc, char *argv[]){
     int verbose =0;                    /* Flag to allow verbose output */
     int allow_container_creation =1;   /* Flag to allow container creation if not found */
 
-	char pool_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc62";
-	char container_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc61";
+	char pool_id[100]="b99749cc-2642-4526-9e02-d6e089c84338";
+	char container_id[100]="b99749cc-2642-4526-9e02-d6e089c84331";
 	char svc_list[100]="0";
 
     struct timeval tv1, tv2;

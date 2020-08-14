@@ -438,8 +438,10 @@ int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object
 			char temp[200]="";
 			char gather_dkey_name[200] = "";
 			strcat(gather_dkey_name,dkey_name);
-			sprintf(temp, "%d", head->unique_key);
+			sprintf(temp, "%ld", head->unique_key);
 			strcat(gather_dkey_name,temp);
+//			printf("GATHER_DKEY %s z>>>> %d\n", gather_dkey_name, z);
+
 			//insert array object_id in gather object...
 			rc = daos_seis_gather_oids_array_update(dfs, &(object->seis_gather_trace_oids_obj[z]), head);
 			if(rc != 0) {
@@ -1169,15 +1171,15 @@ int new_daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *sei
 		char dkey_name[200] = "";
 		strcat(dkey_name, key);
 		strcat(dkey_name,"_");
-		sprintf(temp, "%d", unique_value);
+		sprintf(temp, "%ld", unique_value);
 		strcat(dkey_name,temp);
-
 		rc = update_gather_object(seis_obj, dkey_name, DS_A_UNIQUE_VAL, (char*)&new_gather_data.unique_key,
-							sizeof(int), DAOS_IOD_SINGLE);
+							sizeof(long), DAOS_IOD_SINGLE);
 		if(rc) {
 			printf("ERROR adding Seismic object unique value key , error: %d", rc);
 			return rc;
 		}
+
 		add_gather(&(seis_obj->gathers), &new_gather_data);
 		seis_obj->sequence_number++;
 		seis_obj->number_of_gathers++;
@@ -1432,27 +1434,32 @@ void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_key
     const char *sep = "_";
     char *token;
     int i;
-
     char new_temp[4096];
     int *positive = malloc(number_of_gathers * sizeof(int));
     char **sorted_keys = malloc(number_of_gathers * sizeof(char *));
     int j=0;
+//    for(int k=0 ; k<number_of_gathers; k++){
+//    	printf("KEY KEY KEY %s \n", unique_keys[k]);
+//    }
     for(i=0;i< number_of_gathers;i++){
         strcpy(new_temp, unique_keys[j]);
         token = strtok(new_temp, sep);
-      	sorted_keys[j] = malloc((strlen(token) + 1) * sizeof(char));
+//        printf("TOKEN IS %s \n", token);
+//      	sorted_keys[j] = malloc((strlen(token) + 1) * sizeof(char));
         while( token != NULL ) {
         	token = strtok(NULL, sep);
-        	if(token == NULL)
+        	if(token == NULL){
         		break;
+        	}
+          	sorted_keys[j] = malloc((strlen(token) + 1) * sizeof(char));
         	if(token[0]== '-'){
-				positive[j]= 0;
+        		positive[j]= 0;
 	            strcpy(sorted_keys[j], &token[1]);
         	}else{
 				positive[j]=1;
 	            strcpy(sorted_keys[j], token);
 			}
-        	first_array[j] = atoi(sorted_keys[j]);
+        	first_array[j] = atol(sorted_keys[j]);
         }
         j++;
     }
@@ -2424,20 +2431,20 @@ char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj
 	d_sg_list_t sglo;
 	sglo.sg_nr_out = sglo.sg_nr = 1;
 	d_iov_t iov_temp;
-	char *temp_array = malloc(4096 * sizeof(char));
-	d_iov_set(&iov_temp, temp_array, 4096);
+	char *temp_array = malloc(seismic_object->number_of_gathers * 11 * sizeof(char));
+	d_iov_set(&iov_temp, temp_array, seismic_object->number_of_gathers * 11);
 	sglo.sg_iovs = &iov_temp;
 	daos_anchor_t	anchor = { 0 };
 	int rc;
+printf("BEFORE FETCH %d \n", nr);
 	daos_key_desc_t  *kds= malloc((seismic_object->number_of_gathers + 1) * sizeof(daos_key_desc_t));
 	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
 	if(rc){
 		printf(" LIST DKEY FAILED \n");
 	}
-
 	char **dkeys_list = malloc((seismic_object->number_of_gathers +1) * sizeof(char*));
 	int off=0;
-
+	int out;
 	char **unique_keys = malloc(seismic_object->number_of_gathers * sizeof(char *));
 	int u=0;
 	int z;
@@ -2445,6 +2452,8 @@ char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj
     	dkeys_list[z] = malloc(kds[z].kd_key_len +1 * sizeof(char));
 		strncpy(dkeys_list[z],&temp_array[off], kds[z].kd_key_len);
 		dkeys_list[z][kds[z].kd_key_len] = '\0';
+
+//		printf("TMP KEY >> %s\n",dkeys_list[z]);
 		off += kds[z].kd_key_len;
 		for (int k=0; k< strlen(dkeys_list[z])+1;k++){
 			if(isdigit(dkeys_list[z][k])){
@@ -2453,33 +2462,49 @@ char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj
 				u++;
 				break;
 			} else {
+				out = z;
 				continue;
 			}
 		}
 	}
 
-	if(sort){
+	printf("AFTER FETCH %d \n", nr);
+
+	if(sort && (shot_obj || cmp_obj || off_obj)){
 		   long *first_array = malloc(seismic_object->number_of_gathers * sizeof(long));
 		   sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys,direction);
 
 		   char **dkeys_sorted_list = malloc((seismic_object->number_of_gathers) * sizeof(char*));
 		   int m;
-			for(m=0;m< seismic_object->number_of_gathers; m++){
+		   z=0;
+
+			for(m=0; m< seismic_object->number_of_gathers; m++){
+				if(z == out){
+					z++;
+				}
 				dkeys_sorted_list[m]=malloc(kds[z].kd_key_len *sizeof(char));
 				char dkey_name[200] = "";
 				char temp_st[200]="";
 				if(shot_obj){
 					strcat(dkey_name,"fldr_");
+				} else if (cmp_obj){
+					strcat(dkey_name,"cdp_");
+				} else if(off_obj){
+					strcat(dkey_name,"offset_");
+				} else{
+					strcat(dkey_name,"fldr_");
 				}
-//				seismic_object->gathers[m].unique_key = first_array[m];
+	//				seismic_object->gathers[m].unique_key = first_array[m];
 				sprintf(temp_st, "%ld", first_array[m]);
 				strcat(dkey_name,temp_st);
 				strcpy(dkeys_sorted_list[m], dkey_name);
+				z++;
 			}
 			free(first_array);
 
 		return dkeys_sorted_list;
 	}
+
 	return unique_keys;
 }
 

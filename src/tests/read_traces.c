@@ -19,8 +19,8 @@ int main(int argc, char *argv[]){
 
 
 
-	char pool_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc62";
-	char container_id[100]="9d9129b8-9e57-45e8-84fc-1a00310fcc61";
+	char pool_id[100]="b99749cc-2642-4526-9e02-d6e089c84338";
+	char container_id[100]="b99749cc-2642-4526-9e02-d6e089c84331";
 	char svc_list[100]="0";
 
     struct timeval tv1, tv2;
@@ -31,12 +31,12 @@ int main(int argc, char *argv[]){
 	printf(" OPEN SEGY ROOT OBJECT== \n");
 	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), NULL,"/SHOTS_601_610_SEIS_ROOT_OBJECT");
 
-	printf("READING SHOT 609 TRACES==\n");
-	int shot_id = 609;
+	printf("READING SHOT 610 TRACES==\n");
+	int shot_id = 610;
 
 	gettimeofday(&tv1, NULL);
 	traces_list_t *trace_list = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
-    FILE *fd = fopen("daos_seis_SHOT_609_10_SHOT.su", "w");
+    FILE *fd = fopen("daos_seis_SHOT_610_10_SHOT.su", "w");
 
 	traces_headers_t *temp = trace_list->head;
 	if (temp == NULL) {
