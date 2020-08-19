@@ -8,6 +8,63 @@
 #include "daos_seis_internal_functions.h"
 
 
+dfs_obj_t * get_parent_of_file_new(dfs_t *dfs, const char *file_directory, int allow_creation,
+                               char *file_name, int verbose_output) {
+	dfs_obj_t *parent = NULL;
+    daos_oclass_id_t cid= OC_SX;
+    char temp[2048];
+    int array_len = 0;
+    strcpy(temp, file_directory);
+    const char *sep = "/";
+    char *token = strtok(temp, sep);
+    while( token != NULL ) {
+        array_len++;
+        token = strtok(NULL, sep);
+    }
+    char **array = malloc(sizeof(char *) * array_len);
+    strcpy(temp, file_directory);
+    token = strtok(temp, sep);
+    int i = 0;
+    while( token != NULL ) {
+        array[i] = malloc(sizeof(char) * (strlen(token) + 1));
+        strcpy(array[i], token);
+        token = strtok(NULL, sep);
+        i++;
+    }
+    for (i = 0; i < array_len - 1; i++) {
+        dfs_obj_t *temp_obj;
+        int err = dfs_lookup_rel(dfs, parent, array[i], O_RDWR, &temp_obj, NULL, NULL);
+        if (err == 0) {
+            if(verbose_output){
+                warn("Subdirectory '%s' already exist \n", array[i]);
+            }
+        } else if (allow_creation) {
+            mode_t mode = 0666;
+            err = dfs_mkdir(dfs, parent, array[i], mode,cid);
+            if (err == 0) {
+                if(verbose_output) {
+                    warn("Created directory '%s'\n", array[i]);
+                }
+                check_error_code(dfs_lookup_rel(dfs, parent, array[i], O_RDWR, &temp_obj, NULL, NULL)
+                        , "Lookup after mkdir");
+            } else {
+                warn("Mkdir on %s failed with error code : %d \n", array[i], err);
+            }
+        } else {
+            warn("Relative lookup on %s failed with error code : %d \n", array[i], err);
+        }
+        parent = temp_obj;
+    }
+    strcpy(file_name, array[array_len - 1]);
+//    for (i = 0; i < array_len; i++) {
+//        free(array[i]);
+//    }
+//    free(array);
+
+    return parent;
+}
+
+
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev){
 
 	d_sg_list_t	sgl;
@@ -2019,411 +2076,11 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 			current = current->next_trace;
 		}
 	}
-	free(window_keys);
-}
-
-//int check_windowing_key(trace_t trace, char *wind_key, long min, long max){
-//	if(strcmp(wind_key, "tracl") == 0){
-//		if((trace.tracl >= min) && (trace.tracl <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"tracr")==0){
-//		if((trace.tracr >= min) && (trace.tracr <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"fldr")==0){
-//		if((trace.fldr >= min) && (trace.fldr <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"tracf")==0){
-//		if((trace.tracf >= min) && (trace.tracf <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"ep")==0){
-//		if((trace.ep >= min) && (trace.ep <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"cdp")==0){
-//		if((trace.cdp >= min) && (trace.cdp <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"cdpt")==0){
-//		if((trace.cdpt >= min) && (trace.cdpt <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"nvs")==0){
-//		if((trace.nvs >= min) && (trace.nvs <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"nhs")==0){
-//		if((trace.nhs >= min) && (trace.nhs <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"offset")==0){
-//		if((trace.offset >= min) && (trace.offset <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"gelev")==0){
-//		if((trace.gelev >= min) && (trace.gelev <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"selev")==0){
-//		if((trace.selev >= min) && (trace.selev <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"sdepth")==0){
-//		if((trace.sdepth >= min) && (trace.sdepth <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"gdel")==0){
-//		if((trace.gdel >= min) && (trace.gdel <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"sdel")==0){
-//		if((trace.sdel >= min) && (trace.sdel <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"swdep")==0){
-//		if((trace.swdep >= min) && (trace.swdep <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	}  else if(strcmp(wind_key,"gwdep")==0){
-//		if((trace.gwdep >= min) && (trace.gwdep <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"scalel")==0){
-//		if((trace.scalel >= min) && (trace.scalel <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"scalco")==0){
-//		if((trace.scalco >= min) && (trace.scalco <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"sx")==0){
-//		if((trace.sx >= min) && (trace.sx <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"sy")==0){
-//		if((trace.sy >= min) && (trace.sy <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"gx")==0){
-//		if((trace.gx >= min) && (trace.gx <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"gy")==0){
-//		if((trace.gy >= min) && (trace.gy <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"wevel")==0){
-//		if((trace.wevel >= min) && (trace.wevel <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"swevel")==0){
-//		if((trace.swevel >= min) && (trace.swevel <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"sut")==0){
-//		if((trace.sut >= min) && (trace.sut <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"gut")==0){
-//		if((trace.gut >= min) && (trace.gut <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"sstat")==0){
-//		if((trace.sstat >= min) && (trace.sstat <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"gstat")==0){
-//		if((trace.gstat >= min) && (trace.gstat <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"tstat")==0){
-//		if((trace.tstat >= min) && (trace.tstat <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"laga")==0){
-//		if((trace.laga >= min) && (trace.laga <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"lagb")==0){
-//		if((trace.lagb >= min) && (trace.lagb <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"delrt")==0){
-//		if((trace.delrt >= min) && (trace.delrt <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"muts")==0){
-//		if((trace.muts >= min) && (trace.muts <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"mute")==0){
-//		if((trace.mute >= min) && (trace.mute <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"ns")==0){
-//		if((trace.ns >= min) && (trace.ns <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"dt")==0){
-//		if((trace.dt >= min) && (trace.dt <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"gain")==0){
-//		if((trace.gain >= min) && (trace.gain <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"igc")==0){
-//		if((trace.igc >= min) && (trace.igc <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"igi")==0){
-//		if((trace.igi >= min) && (trace.igi <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"corr")==0){
-//		if((trace.corr >= min) && (trace.corr <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"sfs")==0){
-//		if((trace.sfs >= min) && (trace.sfs <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"sfe")==0){
-//		if((trace.sfe >= min) && (trace.sfe <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"slen")==0){
-//		if((trace.slen >= min) && (trace.slen <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"styp")==0){
-//		if((trace.styp >= min) && (trace.styp <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"stas")==0){
-//		if((trace.stas >= min) && (trace.stas <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"stae")==0){
-//		if((trace.stae >= min) && (trace.stae <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"tatyp")==0){
-//		if((trace.tatyp >= min) && (trace.tatyp <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"afilf")==0){
-//		if((trace.afilf >= min) && (trace.afilf <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"afils")==0){
-//		if((trace.afils >= min) && (trace.afils <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"nofilf")==0){
-//		if((trace.nofilf >= min) && (trace.nofilf <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"nofils")==0){
-//		if((trace.nofils >= min) && (trace.nofils <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"lcf")==0){
-//		if((trace.lcf >= min) && (trace.lcf <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"hcf")==0){
-//		if((trace.hcf >= min) && (trace.hcf <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"lcs")==0){
-//		if((trace.lcs >= min) && (trace.lcs <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"hcs")==0){
-//		if((trace.hcs >= min) && (trace.hcs <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"grnors")==0){
-//		if((trace.grnors >= min) && (trace.grnors <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"grnofr")==0){
-//		if((trace.grnofr >= min) && (trace.grnofr <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"grnlof")==0){
-//		if((trace.grnlof >= min) && (trace.grnlof <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"gaps")==0){
-//		if((trace.gaps >= min) && (trace.gaps <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"d1")==0){
-//		if((trace.d1 >= min) && (trace.d1 <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"f1")==0){
-//		if((trace.f1 >= min) && (trace.f1 <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"d2")==0){
-//		if((trace.d2 >= min) && (trace.d2 <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"f2")==0){
-//		if((trace.f2 >= min) && (trace.f2 <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"sfs")==0){
-//		if((trace.sfs >= min) && (trace.sfs <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else if(strcmp(wind_key,"ntr")==0){
-//		if((trace.ntr >= min) && (trace.ntr <= max)){
-//			return 1;
-//		} else {
-//			return 0;
-//		}
-//	} else {
-//		return -1;
+//	for(l=0; l<number_of_keys; l++){
+//		free(window_keys[l]);
 //	}
-//
-//}
+//	free(window_keys);
+}
 
 char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,
 																int cmp_obj, int off_obj, int direction){
@@ -2470,6 +2127,11 @@ printf("BEFORE FETCH %d \n", nr);
 
 	printf("AFTER FETCH %d \n", nr);
 
+//	for(z=0; z< seismic_object->number_of_gathers +1; z++){
+//		free(dkeys_list[z]);
+//	}
+//	free(dkeys_list);
+
 	if(sort && (shot_obj || cmp_obj || off_obj)){
 		   long *first_array = malloc(seismic_object->number_of_gathers * sizeof(long));
 		   sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys,direction);
@@ -2481,6 +2143,7 @@ printf("BEFORE FETCH %d \n", nr);
 			for(m=0; m< seismic_object->number_of_gathers; m++){
 				if(z == out){
 					z++;
+					continue;
 				}
 				dkeys_sorted_list[m]=malloc(kds[z].kd_key_len *sizeof(char));
 				char dkey_name[200] = "";

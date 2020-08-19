@@ -93,7 +93,7 @@ seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
 	return root_obj;
 }
 
-seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, const char *root_name){
+seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, const char *root_name){
 
 	seis_root_obj_t* root_obj;
 	int rc;
@@ -1287,6 +1287,10 @@ read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *arr
 
 	 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
  	}
+//	for(z=0;z<seismic_object->number_of_gathers;z++){
+//		free(unique_keys[z]);
+//	}
+//	free(unique_keys);
 
 	return gather_traces;
 }
@@ -1488,6 +1492,10 @@ read_traces* new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char 
 
 	 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
  	}
+//	for(z=0;z<seismic_object->number_of_gathers;z++){
+//		free(unique_keys[z]);
+//	}
+//	free(unique_keys);
 
 	return gather_traces;
 }
@@ -1706,6 +1714,11 @@ traces_list_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root,
 
 		merge_trace_lists(&trace_list,&gather_trace_list);
  	}
+// 	for(int k=0; k<number_of_keys;k++){
+// 		free(sort_keys[k]);
+//	}
+// 	free(sort_keys);
+
 
 	return trace_list;
 }
@@ -1996,6 +2009,11 @@ traces_list_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char
 // 	free(temp);
 
 	new_fetch_traces_data(dfs, &trace_list, daos_mode);
+//
+//	for(int k=0; k<number_of_keys; k++){
+//		free(window_keys[k]);
+//	}
+//	free(window_keys);
 
 	return trace_list;
 }

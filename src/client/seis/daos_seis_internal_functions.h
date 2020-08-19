@@ -789,4 +789,7 @@ void add_trace_header(trace_t *trace, traces_list_t **head);
 void tokenize_str(void **str, char *sep, char *string, int type);
 
 void merge_trace_lists(traces_list_t **headers,traces_list_t **gather_headers);
+
+dfs_obj_t * get_parent_of_file_new(dfs_t *dfs, const char *file_directory, int allow_creation,
+                               char *file_name, int verbose_output);
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

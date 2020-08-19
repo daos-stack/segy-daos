@@ -25,7 +25,7 @@ read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *arr
 /** returns pointer to segy root object */
 seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
 /** returns pointer to segy root object */
-seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, dfs_obj_t *parent, const char *root_name);
+seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, const char *root_name);
 
 int daos_seis_close_root(seis_root_obj_t *segy_root_object);
 
