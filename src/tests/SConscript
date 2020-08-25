@@ -9,3 +9,5 @@ env.Program('get_traces_count', 'get_traces_count.c', LIBS=libraries, LIBPATH=li
 env.Program('read_traces', 'read_traces.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('sort_traces', 'sort_traces.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('window_traces', 'window_traces.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('set_headers', 'set_headers.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('change_headers', 'change_headers.c', LIBS=libraries, LIBPATH=libraries_path)

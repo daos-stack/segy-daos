@@ -746,6 +746,22 @@ int daos_seis_trh_update(dfs_t* dfs, trace_obj_t* tr_obj, segy *tr, int hdrbytes
 	return rc;
 }
 
+int new_daos_seis_trh_update(dfs_t* dfs, trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes){
+
+	int		rc;
+	struct seismic_entry	tr_entry = {0};
+
+	prepare_seismic_entry(&tr_entry, tr_obj->oid, DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
+				(char*)tr, hdrbytes, DAOS_IOD_ARRAY);
+
+	rc = daos_seis_obj_update(tr_obj->oh, DAOS_TX_NONE, tr_entry);
+	if(rc) {
+		printf("ERROR UPDATING TRACE header KEY err = %d ----------------- \n", rc);
+		return rc;
+	}
+	return rc;
+}
+
 int daos_seis_tr_data_update(dfs_t* dfs, trace_oid_oh_t* trace_data_obj, segy *trace){
 
 	int		rc;
@@ -1383,6 +1399,7 @@ void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_list_t **he
 		temp->trace_header_obj = oids[i];
 		add_trace_header(temp, head_traces);
 	}
+
 	free(temp);
 	free(trace_hdr_obj);
 }
@@ -1812,6 +1829,184 @@ long get_header_value(trace_t trace, char *sort_key){
 	}
 }
 
+void get_header_value_new(trace_t trace, char *sort_key, Value *value){
+
+	if(!strcmp(sort_key, "tracl")){
+		value->i = trace.tracl;
+	} else if(!strcmp(sort_key,"tracr")){
+		value->i = trace.tracr;
+	} else if(!strcmp(sort_key,"fldr")){
+		value->i = trace.fldr;
+	} else if(!strcmp(sort_key,"tracf")){
+		value->i = trace.tracf;
+	} else if(!strcmp(sort_key,"ep")){
+		value->i = trace.ep;
+	} else if(!strcmp(sort_key,"cdp")){
+		value->i = trace.cdp;
+	}else if(!strcmp(sort_key,"ns")){
+		value->u = trace.ns;
+	} else if(!strcmp(sort_key,"gx")){
+		value->i = trace.gx;
+	} else if(!strcmp(sort_key,"sx")){
+		value->i = trace.sx;
+	} else if(!strcmp(sort_key,"offset")){
+		value->i = trace.offset;
+	} else{
+		return;
+	}
+
+}
+void set_header_value(trace_t *trace, char *sort_key, Value *value){
+
+	if(!strcmp(sort_key, "tracl")){
+		trace->tracl = value->i;
+//		printf("TRACL    %d \n ", value.i);
+	} else if(!strcmp(sort_key,"tracr")){
+		trace->tracr = value->i;
+	} else if(!strcmp(sort_key,"fldr")){
+		trace->fldr = value->i;
+	} else if(!strcmp(sort_key,"tracf")){
+		trace->tracf = value->i;
+	} else if(!strcmp(sort_key,"ep")){
+		trace->ep = value->i;
+	} else if(!strcmp(sort_key,"cdp")){
+//		printf("CDP VALUES IS %d \n", value->i);
+		trace->cdp = value->i;
+	}else if(!strcmp(sort_key,"ns")){
+		trace->ns = value->u;
+	} else if(!strcmp(sort_key,"gx")){
+//		printf("GX VALUES IS %d \n", value->i);
+		trace->gx = value->i;
+	} else if(!strcmp(sort_key,"dt")){
+		trace->dt = value->u;
+	}else{
+		return;
+	}
+//	} else if(strcmp(sort_key,"cdpt")==0){
+//		trace.cdpt = value;
+//	} else if(strcmp(sort_key,"nvs")==0){
+//		trace.nvs = value;
+//	} else if(strcmp(sort_key,"nhs")==0){
+//		trace.nhs = value;
+//	} else if(strcmp(sort_key,"offset")==0){
+//		trace.offset = value;
+//	} else if(strcmp(sort_key,"gelev")==0){
+//		trace.gelev = value;
+//	} else if(strcmp(sort_key,"selev")==0){
+//		trace.selev = value;
+//	} else if(strcmp(sort_key,"sdepth")==0){
+//		trace.sdepth = value;
+//	} else if(strcmp(sort_key,"gdel")==0){
+//		trace.gdel = value;
+//	} else if(strcmp(sort_key,"sdel")==0){
+//		trace.sdel = value;
+//	} else if(strcmp(sort_key,"swdep")==0){
+//		trace.swdep = value;
+//	} else if(strcmp(sort_key,"gwdep")==0){
+//		trace.gwdep = value;
+//	} else if(strcmp(sort_key,"scalel")==0){
+//		trace.scalel = value;
+//	} else if(strcmp(sort_key,"scalco")==0){
+//		trace.scalco = value;
+//	} else if(strcmp(sort_key,"sx")==0){
+//		trace.sx = value;
+//	} else if(strcmp(sort_key,"sy")==0){
+//		trace.sy = value;
+//	} else if(strcmp(sort_key,"gx")==0){
+//		trace.gx = value;
+//	} else if(strcmp(sort_key,"gy")==0){
+//		trace.gy = value;
+//	} else if(strcmp(sort_key,"wevel")==0){
+//		trace.wevel = value;
+//	} else if(strcmp(sort_key,"swevel")==0){
+//		trace.swevel = value;
+//	} else if(strcmp(sort_key,"sut")==0){
+//		trace.sut = value;
+//	} else if(strcmp(sort_key,"gut")==0){
+//		trace.gut = value;
+//	} else if(strcmp(sort_key,"sstat")==0){
+//		trace.sstat = value;
+//	} else if(strcmp(sort_key,"gstat")==0){
+//		trace.gstat = value;
+//	} else if(strcmp(sort_key,"tstat")==0){
+//		trace.tstat = value;
+//	} else if(strcmp(sort_key,"laga")==0){
+//		trace.laga = value;
+//	} else if(strcmp(sort_key,"lagb")==0){
+//		trace.lagb = value;
+//	} else if(strcmp(sort_key,"delrt")==0){
+//		trace.delrt = value;
+//	} else if(strcmp(sort_key,"muts")==0){
+//		trace.muts = value;
+//	} else if(strcmp(sort_key,"mute")==0){
+//		trace.mute = value;
+//	} else if(strcmp(sort_key,"ns")==0){
+//		trace.ns = value;
+//	} else if(strcmp(sort_key,"dt")==0){
+//		trace.dt = value;
+//	} else if(strcmp(sort_key,"gain")==0){
+//		trace.gain = value;
+//	} else if(strcmp(sort_key,"igc")==0){
+//		trace.igc = value;
+//	} else if(strcmp(sort_key,"igi")==0){
+//		trace.igi = value;
+//	} else if(strcmp(sort_key,"corr")==0){
+//		trace.corr = value;
+//	} else if(strcmp(sort_key,"sfs")==0){
+//		trace.sfs = value;
+//	} else if(strcmp(sort_key,"sfe")==0){
+//		trace.sfe = value;
+//	} else if(strcmp(sort_key,"slen")==0){
+//		trace.slen = value;
+//	} else if(strcmp(sort_key,"styp")==0){
+//		trace.styp = value;
+//	} else if(strcmp(sort_key,"stas")==0){
+//		trace.stas = value;
+//	} else if(strcmp(sort_key,"stae")==0){
+//		trace.stae = value;
+//	} else if(strcmp(sort_key,"tatyp")==0){
+//		trace.tatyp = value;
+//	} else if(strcmp(sort_key,"afilf")==0){
+//		trace.afilf = value;
+//	} else if(strcmp(sort_key,"afils")==0){
+//		trace.afils = value;
+//	} else if(strcmp(sort_key,"nofilf")==0){
+//		trace.nofilf = value;
+//	} else if(strcmp(sort_key,"nofils")==0){
+//		trace.nofils = value;
+//	} else if(strcmp(sort_key,"lcf")==0){
+//		trace.lcf = value;
+//	} else if(strcmp(sort_key,"hcf")==0){
+//		trace.hcf = value;
+//	} else if(strcmp(sort_key,"lcs")==0){
+//		trace.lcs = value;
+//	} else if(strcmp(sort_key,"hcs")==0){
+//		trace.hcs = value;
+//	} else if(strcmp(sort_key,"grnors")==0){
+//		trace.grnors = value;
+//	} else if(strcmp(sort_key,"grnofr")==0){
+//		trace.grnofr = value;
+//	} else if(strcmp(sort_key,"grnlof")==0){
+//		trace.grnlof = value;
+//	} else if(strcmp(sort_key,"gaps")==0){
+//		trace.gaps = value;
+//	} else if(strcmp(sort_key,"d1")==0){
+//		trace.d1 = value;
+//	} else if(strcmp(sort_key,"f1")==0){
+//		trace.f1 = value;
+//	} else if(strcmp(sort_key,"d2")==0){
+//		trace.d2 = value;
+//	} else if(strcmp(sort_key,"f2")==0){
+//		trace.f2 = value;
+//	} else if(strcmp(sort_key,"sfs")==0){
+//		trace.sfs = value;
+//	} else if(strcmp(sort_key,"ntr")==0){
+//		trace.ntr = value;
+//	} else {
+//		return;
+//	}
+}
+
 char* get_dkey(char *key){
 
 	if(strcmp(key, "tracl") == 0){
@@ -1992,6 +2187,100 @@ void window_headers(read_traces *window_traces, read_traces *gather_traces, daos
 
 }
 
+void set_traces_header(dfs_t *dfs, int daos_mode, traces_list_t **head, int num_of_keys, char **keys_1, char **keys_2, char **keys_3, double *a, double *b, double *c,
+					double *d, double *e, double *f, double *j, header_type_t type){
+	int rc;
+	printf("===================KEY VALUES IN SET TRACES HEADER FUNCTION================ \n");
+	for(int k=0; k< num_of_keys; k++){
+		printf("===================(%d) KEY VALUES================ \n", k);
+		printf("KEY 1 IS %s \n", keys_1[k]);
+		if(keys_2 != NULL && keys_3 != NULL){
+			printf("KEY 2 IS %s \n", keys_2[k]);
+			printf("KEY 3 IS %s \n", keys_3[k]);
+		}
+		printf("A IS %lf \n", a[k]);
+		printf("B IS %lf \n", b[k]);
+		printf("C IS %lf \n", c[k]);
+		printf("D IS %lf \n", d[k]);
+		if(j != NULL){
+			printf("J IS %lf \n", j[k]);
+		}
+		if(e != NULL && f != NULL){
+			printf("E IS %lf \n", e[k]);
+			printf("F IS %lf \n", f[k]);
+		}
+	}
+
+	traces_headers_t *current = (*head)->head;
+	int i;
+	int itr;
+	trace_oid_oh_t *trace_hdr_obj = malloc( (*head)->size * sizeof(trace_oid_oh_t));
+	cwp_String header_data_type_key_1[num_of_keys]; /* array of keywords			*/
+	cwp_String header_data_type_key_2[num_of_keys]; /* array of keywords			*/
+	cwp_String header_data_type_key_3[num_of_keys]; /* array of keywords			*/
+	if(current == NULL) {
+			printf("NO traces exist in linked list \n");
+			return;
+	} else {
+		itr=0;
+	while(current != NULL){
+		trace_hdr_obj[itr].oid = current->trace.trace_header_obj;
+		rc = daos_obj_open(dfs->coh, trace_hdr_obj[itr].oid, daos_mode, &(trace_hdr_obj[itr].oh), NULL);
+		if(rc) {
+			printf("daos_obj_open()__ trace_header_obj Failed (%d)\n", rc);
+			exit(rc);
+		}
+
+		for(i=0; i<num_of_keys; i++){
+			header_data_type_key_1[i]=hdtype(keys_1[i]);
+			if(type==0){
+				calculate_new_header_value(current, keys_1[i], NULL, NULL, a[i], b[i], c[i], d[i],0, 0, j[i], itr,
+										type, header_data_type_key_1[i], NULL, NULL);
+			} else {
+				header_data_type_key_2[i]=hdtype(keys_2[i]);
+				header_data_type_key_3[i]=hdtype(keys_3[i]);
+				calculate_new_header_value(current, keys_1[i], keys_2[i], keys_3[i], a[i], b[i], c[i], d[i], e[i], f[i], 0, 0,
+										type, header_data_type_key_1[i], header_data_type_key_2[i], header_data_type_key_3[i]);
+			}
+		}
+		rc = new_daos_seis_trh_update(dfs, &trace_hdr_obj[itr], &(current->trace), HDRBYTES);
+		if(rc){
+			printf("FAILED TO UPDATE TrACE %d \n" ,rc);
+		}
+		rc = daos_obj_close(trace_hdr_obj[itr].oh, NULL);
+		itr++;
+		current = current->next_trace;
+	}
+		}
+}
+
+void calculate_new_header_value(traces_headers_t *current, char *key1, char *key2, char *key3, double a, double b,
+							double c, double d,double e, double f, double j, int itr, header_type_t type,
+							cwp_String header_data_type_key1, cwp_String header_data_type_key2, cwp_String header_data_type_key3){
+	double i;
+	long temp;
+	Value val1;		/* value of key field 			*/
+	Value val2;		/* value of key field 			*/
+	Value val3;		/* value of key field 			*/
+	switch(type){
+		case set_header:
+			i = (double) itr + d;
+			setval(header_data_type_key1, &val1, a, b, c, i, j);
+			set_header_value(&(current->trace), key1, &val1);
+			break;
+		case change_header:
+			get_header_value_new(current->trace, key2, &val2);
+			get_header_value_new(current->trace, key3, &val3);
+			changeval(header_data_type_key1, &val1, header_data_type_key2, &val2,
+					header_data_type_key3, &val3, a, b, c, d, e, f);
+			set_header_value(&(current->trace), key1, &val1);
+			break;
+		default:
+			break;
+	}
+
+}
+
 void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 
 	char temp[4096];
@@ -2093,7 +2382,7 @@ char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj
 	sglo.sg_iovs = &iov_temp;
 	daos_anchor_t	anchor = { 0 };
 	int rc;
-printf("BEFORE FETCH %d \n", nr);
+//printf("BEFORE FETCH %d \n", nr);
 	daos_key_desc_t  *kds= malloc((seismic_object->number_of_gathers + 1) * sizeof(daos_key_desc_t));
 	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
 	if(rc){
@@ -2125,7 +2414,7 @@ printf("BEFORE FETCH %d \n", nr);
 		}
 	}
 
-	printf("AFTER FETCH %d \n", nr);
+//	printf("AFTER FETCH %d \n", nr);
 
 //	for(z=0; z< seismic_object->number_of_gathers +1; z++){
 //		free(dkeys_list[z]);
@@ -2178,6 +2467,9 @@ void tokenize_str(void **str, char *sep, char *string, int type){
 	int i=0;
 	char **temp_c;
 	long *temp_l;
+	double *temp_d;
+	char *ptr;
+
 	while( token != NULL ) {
 		switch(type){
 			case 0:
@@ -2189,11 +2481,15 @@ void tokenize_str(void **str, char *sep, char *string, int type){
 				temp_l = *((long **) str);
 				temp_l[i]= atol(token);
 				break;
+			case 2:
+				temp_d = *((double **) str);
+				temp_d[i] = strtod(token, &ptr);
+				break;
 			default:
 				printf("ERROR\n");
 				exit(0);
 		}
-		token = strtok(NULL, sep);
 		i++;
+		token = strtok(NULL, sep);
 	}
 }

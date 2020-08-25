@@ -27,6 +27,9 @@ seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
 /** returns pointer to segy root object */
 seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, const char *root_name);
 
+traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys, char **keys_1, char **keys_2, char **keys_3,
+								double *a, double *b, double *c, double *d, double *j, double *e, double *f, header_type_t type);
+
 int daos_seis_close_root(seis_root_obj_t *segy_root_object);
 
 read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, long min, long max, int *ngathers);

@@ -628,6 +628,12 @@ typedef struct traces_list{
 	long size;
 }traces_list_t;
 
+typedef enum{
+	set_header,
+	change_header
+}header_type_t;
+
+
 /** Function responsible for fetching seismic entry(data stored under specific seismic object) */
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev);
 
@@ -776,6 +782,8 @@ void MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction,
 
 long get_header_value(trace_t trace, char *sort_key);
 
+void get_header_value_new(trace_t trace, char *sort_key, Value *value);
+
 void window_headers(read_traces *window_traces, read_traces *gather_traces, daos_obj_id_t *oids, char *key, long min, long max);
 
 int check_windowing_key(trace_t trace, char *wind_key, long min, long max);
@@ -792,4 +800,12 @@ void merge_trace_lists(traces_list_t **headers,traces_list_t **gather_headers);
 
 dfs_obj_t * get_parent_of_file_new(dfs_t *dfs, const char *file_directory, int allow_creation,
                                char *file_name, int verbose_output);
+
+void calculate_new_header_value(traces_headers_t *current, char *key1, char *key2, char *key3, double a, double b,
+							double c, double d,double e, double f, double j, int itr, header_type_t type,
+							cwp_String header_data_type_key1, cwp_String header_data_type_key2, cwp_String header_data_type_key3);
+
+void set_traces_header(dfs_t *dfs, int daos_mode, traces_list_t **head, int num_of_keys, char **keys_1, char **keys_2, char **keys_3, double *a, double *b, double *c,
+				double *d, double *e, double *f, double *j, header_type_t type);
+
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

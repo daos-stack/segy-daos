@@ -350,5 +350,112 @@ void ugethval(cwp_String type1, Value *valp1,
     }
 }
 
+//char *hdtype(const char *key)
+//{
+//	int index = getindex(key);
+//
+//	if (-1 == (index))
+//		err("%s: key word not in segy.h: '%s'", __FILE__, key);
+//
+//	return hdr[index].type;
+//}
+//
+//int getindex(const char *key)	/* get index for this key */
+//{
+//	register int i;
+//
+//	for (i = 0; i < SU_NKEYS; i++)
+//		if (STREQ(hdr[i].key, key))
+//			return i;	/* key found */
+//
+//	/* not found */
+//	return -1;
+//}
+
+void setval( cwp_String type, Value *valp, double a, double b,
+		double c, double i, double j)
+{
+	switch (*type) {
+	case 's':
+		err("can't set char header word");
+	break;
+	case 'h':
+		valp->h = a + b * mod(i, j) + c * ((int) (i/j));
+	break;
+	case 'u':
+		valp->u = (unsigned short)(a + b * mod(i, j) + c * ((int) (i/j)));
+	break;
+	case 'l':
+		valp->l = (long) (a + b * mod(i, j) + c * ((int) (i/j)));
+	break;
+	case 'v':
+		valp->v = (unsigned long) (a + b * mod(i, j) + c * ((int) (i/j)));
+	break;
+	case 'i':
+		valp->i = a + b * mod(i, j) + c * ((int) (i/j));
+	break;
+	case 'p':
+		valp->p = a + b * mod(i, j) + c * ((int) (i/j));
+	break;
+	case 'f':
+		valp->f = a + b * mod(i, j) + c * ((int) (i/j));
+	break;
+	case 'd':
+		valp->d = a + b * mod(i, j) + c * ((int) (i/j));
+	break;
+	default:
+		err("unknown type %s", type);
+	break;
+	}
+	return;
+}
+
+double mod(double x, double y)	/* As defined in Knuth, vol. 1	*/
+{
+	return y == 0.0 ? x : x - y * floor(x/y);
+}
+
+
+void changeval(cwp_String type1, Value *valp1, cwp_String type2,
+	       Value *valp2, cwp_String type3, Value *valp3,
+		double a, double b, double c, double d, double e, double f)
+{
+	double dval2=vtod( type2, *valp2);
+	double dval3=vtod( type3, *valp3);
+	double dval1=(a+b*pow(dval2,e)+c*pow(dval3,f))/d;
+
+	switch (*type1) {
+	case 's':
+		err("can't change char header word");
+	break;
+	case 'h':
+		valp1->h = (short) dval1;
+	break;
+	case 'u':
+		valp1->u = (unsigned short) dval1;
+	break;
+	case 'l':
+		valp1->l = (long) dval1;
+	break;
+	case 'v':
+		valp1->v = (unsigned long) dval1;
+	break;
+	case 'i':
+		valp1->i = (int) dval1;
+	break;
+	case 'p':
+		valp1->p = (unsigned int) dval1;
+	break;
+	case 'f':
+		valp1->f = (float) dval1;
+	break;
+	case 'd':
+		valp1->d = (double) dval1;
+	break;
+	default:
+		err("unknown type %s", type1);
+	break;
+	}
+}
 
 
