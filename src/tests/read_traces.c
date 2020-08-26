@@ -70,6 +70,10 @@ int main(int argc, char *argv[]){
 	    	temp = temp->next_trace;
 		}
 	}
+	printf("NUMBER OF TRACES in linked list == %d \n", trace_list->size);
+	int number_of_traces;
+	number_of_traces = daos_seis_get_trace_count(segy_root_object);
+	printf("NUMBER OF TRACES == %d \n", number_of_traces);
 
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");

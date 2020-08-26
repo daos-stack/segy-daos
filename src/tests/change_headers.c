@@ -162,6 +162,18 @@ int main(int argc, char *argv[]){
 
 	gettimeofday(&tv1, NULL);
 	int ngathers;
+	int cmp_gathers;
+	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+
+	int shot_gathers;
+	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
+
+	int offset_gathers;
+	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
+//	printf("CMP_OID %llu %llu \n", segy_root_object->cmp_oid.lo, segy_root_object->cmp_oid.hi);
 
 	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, keys_1, keys_2, keys_3, a_values, b_values, c_values,
 													d_values, NULL, e_values, f_values, type);
@@ -180,6 +192,9 @@ int main(int argc, char *argv[]){
 	    	tempo = tempo->next_trace;
 		}
 	}
+
+	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

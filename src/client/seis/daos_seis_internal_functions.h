@@ -677,8 +677,7 @@ int daos_seis_exth_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name
 /** Function responsible for creating (CMP/SHOTT/OFFSET) gather objects.
  * Can be extended later to create other gather objects if needed.
  */
-int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t *parent,
-			seis_obj_t **shot_obj, seis_obj_t **cmp_obj, seis_obj_t **offset_obj);
+int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t *parent, seis_obj_t **obj, char* key);
 
 /** Function responsible for preparing seismic entry with trace header data.
  *  It is called to update/insert trace header data under specific trace_header_object.
@@ -807,5 +806,8 @@ void calculate_new_header_value(traces_headers_t *current, char *key1, char *key
 
 void set_traces_header(dfs_t *dfs, int daos_mode, traces_list_t **head, int num_of_keys, char **keys_1, char **keys_2, char **keys_3, double *a, double *b, double *c,
 				double *d, double *e, double *f, double *j, header_type_t type);
+
+void daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1, int shot_header_key, int cmp_header_key,
+					int offset_header_key, traces_list_t *trace_list ,seis_root_obj_t *root);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

@@ -42,6 +42,7 @@ seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
 	daos_handle_t	th = DAOS_TX_NONE;
 
     root_obj->root_obj = root;
+//	memcpy(root_obj->root_obj, root, sizeof(dfs_obj_t));
 	strcpy(root_obj->root_obj->name, root->name);
 
 	/** fetch shot oid value */
@@ -90,6 +91,10 @@ seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
 	if(rc){
 		return rc;
 	}
+//	printf("SHOT_OID %llu %llu \n", root_obj->shot_oid.lo, root_obj->shot_oid.hi);
+//	printf("CMP_OID %llu %llu \n", root_obj->cmp_oid.lo, root_obj->cmp_oid.hi);
+//	printf("OFFSET_OID %llu %llu \n", root_obj->offset_oid.lo, root_obj->offset_oid.hi);
+
 	return root_obj;
 }
 
@@ -119,27 +124,29 @@ int daos_seis_get_cmp_gathers(dfs_t *dfs, seis_root_obj_t *root){
 
 	int rc;
 	int daos_mode;
-	dfs_obj_t cmp_object;
+//	dfs_obj_t cmp_object;
 	struct seismic_entry cmp_gather = {0};
 	seis_obj_t *cmp_obj = 	malloc(sizeof(seis_obj_t));
 	daos_mode = get_daos_obj_mode(O_RDWR);
 	int number_of_gathers;
-
-	rc = daos_obj_open(dfs->coh, root->cmp_oid, daos_mode, &cmp_object.oh, NULL);
+	cmp_obj->oid = root->cmp_oid;
+	rc = daos_obj_open(dfs->coh, cmp_obj->oid, daos_mode, &cmp_obj->oh, NULL);
 	if (rc) {
 		printf("daos_obj_open() Failed (%d)\n", rc);
 		return rc;
 	}
 
-	prepare_seismic_entry(&cmp_gather, cmp_object.oid, DS_D_NGATHERS, DS_A_NGATHERS,
-				(char*)&number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
-	rc = daos_seis_fetch_entry(cmp_object.oh, DAOS_TX_NONE, &cmp_gather, NULL);
+	prepare_seismic_entry(&cmp_gather, cmp_obj->oid, DS_D_NGATHERS, DS_A_NGATHERS,
+				(char*)& cmp_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+	rc = daos_seis_fetch_entry(cmp_obj->oh, DAOS_TX_NONE, &cmp_gather, NULL);
 	if(rc){
 		printf("Fetch number of gathers failed error = %d \n", rc);
 		return rc;
 	}
-	cmp_obj->number_of_gathers = number_of_gathers;
-	return cmp_obj->number_of_gathers;
+	number_of_gathers = cmp_obj->number_of_gathers;
+	rc = daos_obj_close(cmp_obj->oh, NULL);
+
+	return number_of_gathers;
 }
 
 int daos_seis_get_shot_gathers(dfs_t *dfs, seis_root_obj_t *root){
@@ -498,7 +505,20 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 		warn("FAILED TO create ROOT OBJECT");
 		return rc;
 	}
-	rc = daos_seis_gather_obj_create(dfs,cid, root_obj, &shot_obj, &cmp_obj, &offset_obj);
+	rc = daos_seis_gather_obj_create(dfs,cid, root_obj, &shot_obj, "fldr");
+	if (rc != 0)
+	{
+		warn("FAILED TO create gather OBJECT");
+		return rc;
+	}
+	rc = daos_seis_gather_obj_create(dfs,cid, root_obj, &cmp_obj, "cdp");
+	if (rc != 0)
+	{
+		warn("FAILED TO create gather OBJECT");
+		return rc;
+	}
+
+	rc = daos_seis_gather_obj_create(dfs,cid, root_obj, &offset_obj, "offset");
 	if (rc != 0)
 	{
 		warn("FAILED TO create gather OBJECT");
@@ -1058,25 +1078,6 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 		if(rc!=0){
 			printf("ERROR UPDATING OFFSET number_of_traces key, error: %d \n", rc);
 		}
-
-//		uint32_t nr = cmp_obj->number_of_gathers +1;
-//		d_sg_list_t sglo;
-//		sglo.sg_nr_out = sglo.sg_nr = 1;
-//		d_iov_t iov_temp;
-//		char *temp_array = malloc(12750 * sizeof(char));
-//		d_iov_set(&iov_temp, temp_array, 12750);
-//		sglo.sg_iovs = &iov_temp;
-//		daos_anchor_t	anchor = { 0 };
-//		printf("NUMBER OF GATHERS SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSsssssssssSS>>>>>>> %d \n", nr);
-//
-//		daos_key_desc_t  *kds= malloc((cmp_obj->number_of_gathers + 1) * sizeof(daos_key_desc_t));
-//		rc = daos_obj_list_dkey(cmp_obj->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
-//		if(rc){
-//			printf(" LIST DKEY FAILED \n");
-//		}
-//		printf("NUMBER OF GATHERS SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSsssssssssSS>>>>>>> %d \n", nr);
-
-
 		printf("Updated all gathers traces...\n");
 		free(shot_obj->seis_gather_trace_oids_obj);
 		free(cmp_obj->seis_gather_trace_oids_obj);
@@ -2027,7 +2028,24 @@ traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
+	int i;
+	int number_of_traces = 0;
 
+	int shot_header_key = 0;
+	int cmp_header_key = 0;
+	int offset_header_key = 0;
+
+	for(i=0; i < num_of_keys; i++){
+		if(!strcmp("fldr",keys_1[i])){
+			shot_header_key = 1;
+		} else if(!strcmp("cdp",keys_1[i])){
+			cmp_header_key = 1;
+		} else if(!strcmp("fldr",keys_1[i])){
+			offset_header_key = 1;
+		} else{
+			continue;
+		}
+	}
 	seismic_object->oid = root->shot_oid;
 
 	rc = daos_obj_open(dfs->coh, seismic_object->oid, daos_mode, &(seismic_object->oh), NULL);
@@ -2045,6 +2063,7 @@ traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_
 
 	char **unique_keys;
 	//Fetch list of dkeys under seimsic_object
+//	printf("NUMBER OF GATHERS IN seismic OBJECT IS %d \n", seismic_object->number_of_gathers);
 
 	if(seismic_object->number_of_gathers > 2){
 		unique_keys = daos_seis_fetch_dkeys(seismic_object, 1, 1, 0, 0, 1);
@@ -2052,8 +2071,6 @@ traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_
 		unique_keys = daos_seis_fetch_dkeys(seismic_object, 0, 1, 0, 0, 1);
 	}
 
-	int i;
-	int number_of_traces = 0;
 	seismic_object->seis_gather_trace_oids_obj = malloc(seismic_object->number_of_gathers * sizeof(trace_oid_oh_t));
 
  	for(i=0; i< seismic_object->number_of_gathers; i++){
@@ -2111,6 +2128,57 @@ traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_
  	}
 
  	set_traces_header(dfs, daos_mode, &trace_list, num_of_keys, keys_1, keys_2, keys_3, a, b, c, d, e, f, j, type);
+
+ 	if(shot_header_key || cmp_header_key || offset_header_key){
+ 		for(i=0; i< num_of_keys; i++){
+ 			if(!strcmp("fldr", keys_1[i])){
+ 					printf("KEY MATCHES FLDR \n");
+ 					shot_header_key = 1;
+ 					cmp_header_key = 0;
+ 					offset_header_key = 0;
+ 			 		daos_seis_replace_objects(dfs, daos_mode, keys_1, shot_header_key, cmp_header_key, offset_header_key, trace_list ,root);
+// 					existing_obj->oid = root->shot_oid;
+// 					rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "fldr");
+ 				} else if(!strcmp("cdp", keys_1[i])){
+ 					printf("KEY MATCHES CDP \n");
+ 					shot_header_key = 0;
+ 					cmp_header_key = 1;
+ 					offset_header_key = 0;
+// 					existing_obj->oid = root->cmp_oid;
+// 					rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "cdp");
+ 			 		daos_seis_replace_objects(dfs, daos_mode, keys_1, shot_header_key, cmp_header_key, offset_header_key, trace_list ,root);
+ 				} else if (!strcmp("offset", keys_1[i])){
+ 					printf("KEY MATCHES OFFSET \n");
+ 					shot_header_key = 0;
+ 					cmp_header_key = 0;
+ 					offset_header_key = 1;
+// 					existing_obj->oid = root->offset_oid;
+// 					rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "offset");
+ 			 		daos_seis_replace_objects(dfs, daos_mode, keys_1, shot_header_key, cmp_header_key, offset_header_key, trace_list ,root);
+ 				} else {
+ 					continue;
+ 				}
+
+ 		}
+ 	}
+ 	daos_obj_close(seismic_object->oh,NULL);
+
+
+	seismic_object->oid = root->shot_oid;
+
+	rc = daos_obj_open(dfs->coh, seismic_object->oid, daos_mode, &(seismic_object->oh), NULL);
+	printf("OPENED SEISMIC OBJECT \n");
+	if (rc) {
+		printf("daos_obj_open()__ seismic _object Failed (%d)\n", rc);
+		return rc;
+	}
+
+	//Fetch Number of Gathers Under opened Gather object
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid, DS_D_NGATHERS, DS_A_NGATHERS,
+				(char*)&seismic_object->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+
 
 	traces_list_t *trace_list_after = malloc(sizeof(traces_list_t));
 	trace_list_after->head = NULL;
@@ -2170,6 +2238,6 @@ traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_
 		new_fetch_traces_header(dfs, oids, &trace_list_after,daos_mode,number_of_traces);
 		free(oids);
  	}
-
+ 	daos_obj_close(seismic_object->oh,NULL);
  	return trace_list_after;
 }

@@ -135,6 +135,20 @@ int main(int argc, char *argv[]){
 	printf(" OPEN SEGY ROOT OBJECT== \n");
 	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
+	int cmp_gathers;
+	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+
+	int shot_gathers;
+	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
+
+	int offset_gathers;
+	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
+//	printf("CMP_OID %llu %llu \n", segy_root_object->cmp_oid.lo, segy_root_object->cmp_oid.hi);
+
+
 	gettimeofday(&tv1, NULL);
 	int ngathers;
 	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, header_keys, NULL, NULL, a_values, b_values, c_values,
@@ -149,12 +163,23 @@ int main(int argc, char *argv[]){
 		return 0;
 	} else{
 		while(tempo != NULL){
-			printf("TRACE DT ==== %hu \n", tempo->trace.dt);
-			printf("TRACE NS ==== %hu \n", tempo->trace.ns);
-			printf("TRACEL ==== %d \n", tempo->trace.tracl);
+			printf("TRACE FLDR  ==== %d          ", tempo->trace.fldr);
+			printf("TRACE DT ==== %hu       ", tempo->trace.dt);
+			printf("TRACE NS ==== %hu      ", tempo->trace.ns);
+			printf("TRACEL ==== %d      \n", tempo->trace.tracl);
 	    	tempo = tempo->next_trace;
 		}
 	}
+	printf("NUMBER OF TRACES in linked list == %d \n", trace_list->size);
+
+//	int shot_gathers;
+	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
+	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
+
+	int number_of_traces;
+	number_of_traces = daos_seis_get_trace_count(segy_root_object);
+	printf("NUMBER OF TRACES == %d \n", number_of_traces);
+
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

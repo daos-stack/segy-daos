@@ -625,107 +625,117 @@ int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,seis_obj_t *
 }
 
 int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t *parent,
-							seis_obj_t **shot_obj, seis_obj_t **cmp_obj, seis_obj_t **offset_obj){
+							seis_obj_t **obj, char* key){
 	int		rc;
 	int daos_mode;
 
 	/*Allocate shot object pointer */
-	D_ALLOC_PTR(*shot_obj);
-	if (*shot_obj == NULL)
+	D_ALLOC_PTR(*obj);
+	if (*obj == NULL)
 		return ENOMEM;
-	strncpy((*shot_obj)->name, "shot_gather", SEIS_MAX_PATH);
-	(*shot_obj)->name[SEIS_MAX_PATH] = '\0';
-	(*shot_obj)->sequence_number = 0;
-	(*shot_obj)->gathers = NULL;
-	(*shot_obj)->number_of_gathers = 0;
+//	strncpy((*obj)->name, "shot_gather", SEIS_MAX_PATH);
+	(*obj)->name[SEIS_MAX_PATH] = '\0';
+	(*obj)->sequence_number = 0;
+	(*obj)->gathers = NULL;
+	(*obj)->number_of_gathers = 0;
 
 	/** Get new OID for shot object */
-	rc = oid_gen(dfs, cid,false, &(*shot_obj)->oid);
+	rc = oid_gen(dfs, cid,false, &(*obj)->oid);
 	if (rc) {
 		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
 		return rc;
 	}
 
-	oid_cp(&parent->shot_oid, (*shot_obj)->oid);
 
 	daos_mode = get_daos_obj_mode(O_RDWR);
 
-	rc = daos_obj_open(dfs->coh, (*shot_obj)->oid, daos_mode, &(*shot_obj)->oh, NULL);
+	rc = daos_obj_open(dfs->coh, (*obj)->oid, daos_mode, &(*obj)->oh, NULL);
 	if (rc) {
 		printf("daos_obj_open() Failed (%d)\n", rc);
 		return rc;
 	}
+	if(!strcmp(key, "fldr")){
+		oid_cp(&parent->shot_oid, (*obj)->oid);
+		rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_SHOT_GATHER,
+								(char*)&(*obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+	} else if (!strcmp(key, "cdp")){
+		oid_cp(&parent->cmp_oid, (*obj)->oid);
+		rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_CMP_GATHER ,
+							(char*)&(*obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 
-	rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_SHOT_GATHER,
-							(char*)&(*shot_obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+	} else if (!strcmp(key, "offset")){
+		oid_cp(&parent->offset_oid, (*obj)->oid);
+		rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_OFFSET_GATHER ,
+							(char*)&(*obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+	}
 	if(rc){
 		printf("ERROR UPDATING SEISMIC ROOT ERR = %d", rc);
 		return rc;
 	}
 
-	/*Allocate object pointer */
-	D_ALLOC_PTR(*cmp_obj);
-	if (*cmp_obj == NULL)
-		return ENOMEM;
-	strncpy((*cmp_obj)->name, "cmp_gather", SEIS_MAX_PATH);
-	(*cmp_obj)->name[SEIS_MAX_PATH] = '\0';
-	(*cmp_obj)->sequence_number = 0;
-	(*cmp_obj)->gathers = NULL;
-	(*cmp_obj)->number_of_gathers = 0;
-
-	/** Get new OID for shot object */
-	rc = oid_gen(dfs, cid,false, &(*cmp_obj)->oid);
-	if (rc) {
-		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
-		return rc;
-	}
-	oid_cp(&parent->cmp_oid, (*cmp_obj)->oid);
-
-	daos_mode = get_daos_obj_mode(O_RDWR);
-
-	rc = daos_obj_open(dfs->coh, (*cmp_obj)->oid, daos_mode, &(*cmp_obj)->oh, NULL);
-	if (rc) {
-		printf("daos_obj_open() Failed (%d)\n", rc);
-		return rc;
-	}
-	rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_CMP_GATHER ,
-			(char*)&(*cmp_obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-	if(rc){
-		printf("ERROR UPDATING SEISMIC ROOT ERR = %d", rc);
-		return rc;
-	}
-
-	/*Allocate object pointer */
-	D_ALLOC_PTR(*offset_obj);
-	if (*offset_obj == NULL)
-		return ENOMEM;
-	strncpy((*offset_obj)->name, "offset_gather", SEIS_MAX_PATH);
-	(*offset_obj)->name[SEIS_MAX_PATH] = '\0';
-	(*offset_obj)->sequence_number = 0;
-	(*offset_obj)->gathers = NULL;
-	(*offset_obj)->number_of_gathers = 0;
-
-	/** Get new OID for shot object */
-	rc = oid_gen(dfs, cid,false, &(*offset_obj)->oid);
-	if (rc) {
-		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
-		return rc;
-	}
-	oid_cp(&parent->offset_oid, (*offset_obj)->oid);
-
-	daos_mode = get_daos_obj_mode(O_RDWR);
-
-	rc = daos_obj_open(dfs->coh, (*offset_obj)->oid, daos_mode, &(*offset_obj)->oh, NULL);
-	if (rc) {
-		printf("daos_obj_open() Failed (%d)\n", rc);
-		return rc;
-	}
-	rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_OFFSET_GATHER ,
-									(char*)&(*offset_obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-	if(rc) {
-		printf("ERROR UPDATING SEISMIC ROOT ERR = %d", rc);
-		return rc;
-	}
+//	/*Allocate object pointer */
+//	D_ALLOC_PTR(*cmp_obj);
+//	if (*cmp_obj == NULL)
+//		return ENOMEM;
+//	strncpy((*cmp_obj)->name, "cmp_gather", SEIS_MAX_PATH);
+//	(*cmp_obj)->name[SEIS_MAX_PATH] = '\0';
+//	(*cmp_obj)->sequence_number = 0;
+//	(*cmp_obj)->gathers = NULL;
+//	(*cmp_obj)->number_of_gathers = 0;
+//
+//	/** Get new OID for shot object */
+//	rc = oid_gen(dfs, cid,false, &(*cmp_obj)->oid);
+//	if (rc) {
+//		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
+//		return rc;
+//	}
+//	oid_cp(&parent->cmp_oid, (*cmp_obj)->oid);
+//
+//	daos_mode = get_daos_obj_mode(O_RDWR);
+//
+//	rc = daos_obj_open(dfs->coh, (*cmp_obj)->oid, daos_mode, &(*cmp_obj)->oh, NULL);
+//	if (rc) {
+//		printf("daos_obj_open() Failed (%d)\n", rc);
+//		return rc;
+//	}
+//	rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_CMP_GATHER ,
+//			(char*)&(*cmp_obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+//	if(rc){
+//		printf("ERROR UPDATING SEISMIC ROOT ERR = %d", rc);
+//		return rc;
+//	}
+//
+//	/*Allocate object pointer */
+//	D_ALLOC_PTR(*offset_obj);
+//	if (*offset_obj == NULL)
+//		return ENOMEM;
+//	strncpy((*offset_obj)->name, "offset_gather", SEIS_MAX_PATH);
+//	(*offset_obj)->name[SEIS_MAX_PATH] = '\0';
+//	(*offset_obj)->sequence_number = 0;
+//	(*offset_obj)->gathers = NULL;
+//	(*offset_obj)->number_of_gathers = 0;
+//
+//	/** Get new OID for shot object */
+//	rc = oid_gen(dfs, cid,false, &(*offset_obj)->oid);
+//	if (rc) {
+//		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
+//		return rc;
+//	}
+//	oid_cp(&parent->offset_oid, (*offset_obj)->oid);
+//
+//	daos_mode = get_daos_obj_mode(O_RDWR);
+//
+//	rc = daos_obj_open(dfs->coh, (*offset_obj)->oid, daos_mode, &(*offset_obj)->oh, NULL);
+//	if (rc) {
+//		printf("daos_obj_open() Failed (%d)\n", rc);
+//		return rc;
+//	}
+//	rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_OFFSET_GATHER ,
+//									(char*)&(*offset_obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+//	if(rc) {
+//		printf("ERROR UPDATING SEISMIC ROOT ERR = %d", rc);
+//		return rc;
+//	}
 
 	return rc;
 }
@@ -2458,6 +2468,172 @@ char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj
 	}
 
 	return unique_keys;
+}
+
+void daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1, int shot_header_key, int cmp_header_key,
+					int offset_header_key, traces_list_t *trace_list ,seis_root_obj_t *root){
+	int rc;
+	int i;
+	seismic_entry_t seismic_entry={0};
+
+	seis_obj_t *new_seis_obj;
+	seis_obj_t *existing_obj = malloc(sizeof(seis_obj_t));
+	seismic_entry_t new_entry={0};
+//	printf("SHOT_OID %llu %llu \n", root->shot_oid.lo, root->shot_oid.hi);
+//	printf("CMP_OID %llu %llu \n", root->cmp_oid.lo, root->cmp_oid.hi);
+//	printf("OFFSET_OID %llu %llu \n", root->offset_oid.lo, root->offset_oid.hi);
+		if(shot_header_key){
+			printf("KEY MATCHES FLDR \n");
+			existing_obj->oid = root->shot_oid;
+//			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "fldr");
+		} else if(cmp_header_key){
+			printf("KEY MATCHES CDP \n");
+			existing_obj->oid = root->cmp_oid;
+//			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "cdp");
+		} else if (offset_header_key){
+			printf("KEY MATCHES OFFSET \n");
+			existing_obj->oid = root->offset_oid;
+//			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "offset");
+		} else {
+//			continue;
+		}
+//		if (rc) {
+//			warn("FAILED TO create gather OBJECT");
+////			return rc;
+//		}
+
+		rc = daos_obj_open(dfs->coh, existing_obj->oid, daos_mode, &(existing_obj->oh), NULL);
+		printf("OPENED SEISMIC OBJECT \n");
+		if (rc) {
+			printf("daos_obj_open()__ seismic _object Failed (%d)\n", rc);
+//			return rc;
+		}
+//		int temp;
+		//Fetch Number of Gathers Under opened Gather object
+		prepare_seismic_entry(&seismic_entry, existing_obj->oid, DS_D_NGATHERS, DS_A_NGATHERS,
+					(char*)&(existing_obj->number_of_gathers), sizeof(int), DAOS_IOD_SINGLE);
+
+		rc = daos_seis_fetch_entry(existing_obj->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+		if(rc){
+			printf("FAILED TO FETCH NUMBER OF GATHERS IN EXISTING OBJECT %d \n", rc);
+		}
+//		existing_obj->number_of_gathers = temp;
+		printf("NUMBER OF GATHERS IN EXISTING OBJECT IS %d \n", existing_obj->number_of_gathers);
+
+
+		char **temp_keys;
+		temp_keys = daos_seis_fetch_dkeys(existing_obj, 0,shot_header_key,cmp_header_key, offset_header_key, 1);
+//		printf("SEG FAULT HERE %d %d %d \n", shot_header_key, cmp_header_key, offset_header_key);
+
+//		for(i=0; i<existing_obj->number_of_gathers; i++){
+//			printf("KEY number %d is %s \n", i, temp_keys[i]);
+//		}
+
+		for(i=0; i < existing_obj->number_of_gathers; i++){
+			printf("KEY number %d is %s \n", i, temp_keys[i]);
+			trace_oid_oh_t *temp = malloc(sizeof(trace_oid_oh_t));
+			prepare_seismic_entry(&seismic_entry, existing_obj->oid, temp_keys[i], DS_A_GATHER_TRACE_OIDS,
+									(char*)&temp->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+			rc = daos_seis_fetch_entry(existing_obj->oh, DAOS_TX_NONE, &seismic_entry, NULL);
+			rc = daos_array_open_with_attr(dfs->coh, temp->oid, DAOS_TX_NONE,DAOS_OO_RW, 1,
+									500*sizeof(daos_obj_id_t), &(temp->oh), NULL);
+			if (rc) {
+				printf("daos_array_open_with_attr()-->>GATHER OIDS object<<-- failed (%d)\n", rc);
+				exit(0);
+			}
+			rc = daos_array_destroy(temp->oh, DAOS_TX_NONE, NULL);
+			if(rc){
+				printf("failed to punch array object \n");
+			}
+			rc = daos_array_close(temp->oh, NULL);
+			if(rc){
+				printf("FAILED TO CLOSE ARRAY OBJECT \n");
+			}
+			free(temp);
+
+		}
+		for(i=0; i < existing_obj->number_of_gathers; i++){
+			free(temp_keys[i]);
+		}
+		free(temp_keys);
+
+		rc = daos_obj_punch(existing_obj->oh, DAOS_TX_NONE, 0, NULL);
+		if(rc){
+			printf("Failed to punch existing object \n");
+		}
+//		daos_obj_close(existing_obj->oh,NULL);
+
+		if(shot_header_key){
+			printf("KEY MATCHES FLDR \n");
+//			existing_obj->oid = root->shot_oid;
+			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "fldr");
+		} else if(cmp_header_key){
+			printf("KEY MATCHES CDP \n");
+//			existing_obj->oid = root->cmp_oid;
+			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "cdp");
+		} else if (offset_header_key){
+			printf("KEY MATCHES OFFSET \n");
+//			existing_obj->oid = root->offset_oid;
+			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "offset");
+		} else {
+			return;
+		}
+		if (rc) {
+			warn("FAILED TO create gather OBJECT");
+//			return rc;
+		}
+		printf("LINKING TRACES ========== \n");
+		traces_headers_t *current= trace_list->head;
+		while(current != NULL){
+//		printf("HELLO \n");
+		trace_obj_t *trace_obj = malloc(sizeof(trace_obj_t));
+		trace_obj->trace = malloc(sizeof(trace_t));
+//		printf("HELLO \n");
+//		*(trace_obj->trace)= current->trace;
+		memcpy(trace_obj->trace, &(current->trace), sizeof(trace_t));
+//		printf("HELLO \n");
+
+//		*(trace_obj->trace) = current->trace;
+		trace_obj->oid = current->trace.trace_header_obj;
+		if(shot_header_key) {
+			rc = new_daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"fldr");
+		} else if(cmp_header_key) {
+			rc = new_daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"cdp");
+		} else {
+			rc = new_daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"offset");
+		}
+		if(rc) {
+			printf("failed in linking trace to new seismic object %d \n", rc);
+		}
+		current = current->next_trace;
+		free(trace_obj->trace);
+		free(trace_obj);
+		}
+		rc = update_gather_object(new_seis_obj, DS_D_NGATHERS, DS_A_NGATHERS,
+						(char*)&new_seis_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
+		if(rc){
+			printf("ERROR adding Number of gathers key, error: %d", rc);
+//			return rc;
+		}
+		printf("NEW NUMBER OF GATHERS IS %d \n", new_seis_obj->number_of_gathers);
+		rc = daos_seis_trace_oids_obj_create(dfs,OC_SX, new_seis_obj);
+		if (rc)
+		{
+			warn("FAILED TO CREATE ARRAY OIDs OBJECT");
+//			return rc;
+		}
+		if(shot_header_key){
+			rc = new_update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "fldr_", DS_A_NTRACES);
+		} else if (cmp_header_key){
+			rc = new_update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "cdp_", DS_A_NTRACES);
+		} else {
+			rc = new_update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "offset_", DS_A_NTRACES);
+		}
+		if(rc){
+			printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
+		}
+		daos_obj_close(new_seis_obj->oh, NULL);
+		free(existing_obj);
 }
 
 void tokenize_str(void **str, char *sep, char *string, int type){
