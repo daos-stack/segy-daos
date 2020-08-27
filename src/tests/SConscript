@@ -11,3 +11,4 @@ env.Program('sort_traces', 'sort_traces.c', LIBS=libraries, LIBPATH=libraries_pa
 env.Program('window_traces', 'window_traces.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('set_headers', 'set_headers.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('change_headers', 'change_headers.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('range_headers', 'range_headers.c', LIBS=libraries, LIBPATH=libraries_path)

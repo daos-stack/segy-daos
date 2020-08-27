@@ -63,6 +63,7 @@ int main(int argc, char *argv[]){
 		return 0;
 	} else{
 		while(temp != NULL){
+			printf("tracl  === %d , fldr === %d \n", temp->trace.tracl, temp->trace.fldr);
 	    	segy* tp = trace_to_segy(&(temp->trace));
 	    	fputtr(fd, tp);
 	    	temp = temp->next_trace;

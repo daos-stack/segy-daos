@@ -149,4 +149,6 @@ void changeval(cwp_String type1, Value *valp1, cwp_String type2,
 	       Value *valp2, cwp_String type3, Value *valp3,
 		double a, double b, double c, double d, double e, double f);
 
+//int valcmp_(register cwp_String type, Value val1, Value val2);
+
 #endif /* LSU_SRC_CLIENT_SEIS_SU_HELPERS_H_ */

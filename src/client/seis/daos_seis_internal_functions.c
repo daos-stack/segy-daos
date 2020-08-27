@@ -495,7 +495,9 @@ int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object
 			char temp[200]="";
 			char gather_dkey_name[200] = "";
 			strcat(gather_dkey_name,dkey_name);
-			sprintf(temp, "%ld", head->unique_key);
+//			sprintf(temp, "%ld", head->unique_key);
+			val_sprintf(temp, head->unique_key, object->name);
+
 			strcat(gather_dkey_name,temp);
 //			printf("GATHER_DKEY %s z>>>> %d\n", gather_dkey_name, z);
 
@@ -568,7 +570,7 @@ int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object
 //	return exists;
 //}
 
-int new_check_key_value(long target,seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
+int new_check_key_value(Value target, char *key, seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
 
 	int exists = 0;
 	if(head == NULL) {
@@ -577,7 +579,7 @@ int new_check_key_value(long target,seis_gather_t *head, daos_obj_id_t trace_obj
 		return exists;
 	} else {
 		while(head != NULL) {
-			if(head->unique_key == target) {
+			if(!valcmp(hdtype(key), head->unique_key, target)) {
 				head->oids[head->number_of_traces] = trace_obj_id;
 				head->number_of_traces++;
 				*ntraces = head->number_of_traces;
@@ -634,7 +636,8 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t
 	if (*obj == NULL)
 		return ENOMEM;
 //	strncpy((*obj)->name, "shot_gather", SEIS_MAX_PATH);
-	(*obj)->name[SEIS_MAX_PATH] = '\0';
+	strcpy((*obj)->name, key);
+//	(*obj)->name[SEIS_MAX_PATH] = '\0';
 	(*obj)->sequence_number = 0;
 	(*obj)->gathers = NULL;
 	(*obj)->number_of_gathers = 0;
@@ -1231,14 +1234,15 @@ void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 int new_daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key){
 
 	int rc = 0;
-	long unique_value = get_header_value(*(trace_obj->trace),key);
-
+//	long unique_value = get_header_value(*(trace_obj->trace),key);
+	Value unique_value;
+	get_header_value_new(*(trace_obj->trace),key,&unique_value);
 	int key_exists=0;
 	int ntraces;
 	struct seismic_entry gather_entry = {0};
 	int no_of_traces;
 
-	if(new_check_key_value(unique_value,seis_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+	if(new_check_key_value(unique_value, key, seis_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
 		key_exists=1;
 	}
 
@@ -1254,7 +1258,8 @@ int new_daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *sei
 		char dkey_name[200] = "";
 		strcat(dkey_name, key);
 		strcat(dkey_name,"_");
-		sprintf(temp, "%ld", unique_value);
+//		sprintf(temp, "%ld", unique_value);
+		val_sprintf(temp, unique_value, key);
 		strcat(dkey_name,temp);
 		rc = update_gather_object(seis_obj, dkey_name, DS_A_UNIQUE_VAL, (char*)&new_gather_data.unique_key,
 							sizeof(long), DAOS_IOD_SINGLE);
@@ -1622,11 +1627,16 @@ void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direc
     int leftPos = low;
     int rightPos = mid + 1;
     int z=1;
+    Value val1;
+    Value val2;
 //    printf("SORTKEY IS %s direction is %d \n", sort_key[z], direction[z]);
     while (leftPos <= mid && rightPos <= high)
     {
     	while(z <= number_of_keys){
-			if(get_header_value(arr[leftPos],sort_key[z]) < get_header_value(arr[rightPos], sort_key[z])) {
+    		get_header_value_new(arr[leftPos],sort_key[z],&val1);
+    		get_header_value_new(arr[rightPos],sort_key[z],&val2);
+
+    		if(valcmp(hdtype(sort_key[z]),val1,val2) == -1) {
 				if(direction[z] == 1){
 //					printf("ONE \n");
 					temp[mergePos++] = arr[leftPos++];
@@ -1635,7 +1645,7 @@ void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direc
 					temp[mergePos++] = arr[rightPos++];
 				}
 				break;
-			} else if(get_header_value(arr[leftPos],sort_key[z]) > get_header_value(arr[rightPos], sort_key[z])){
+			} else if(valcmp(hdtype(sort_key[z]),val1,val2) == 1) {
 				if(direction[z] == 1){
 //					printf("THREE \n");
 					temp[mergePos++] = arr[rightPos++];
@@ -1861,11 +1871,14 @@ void get_header_value_new(trace_t trace, char *sort_key, Value *value){
 		value->i = trace.sx;
 	} else if(!strcmp(sort_key,"offset")){
 		value->i = trace.offset;
+	} else if(!strcmp(sort_key,"dt")){
+		value->u = trace.dt;
 	} else{
 		return;
 	}
 
 }
+
 void set_header_value(trace_t *trace, char *sort_key, Value *value){
 
 	if(!strcmp(sort_key, "tracl")){
@@ -2306,8 +2319,12 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 	}
 	printf("NUMBER OF KEYS === %d \n",number_of_keys);
 	char **window_keys = malloc(number_of_keys * sizeof(char*));
-	long min_keys[number_of_keys];
-	long max_keys[number_of_keys];
+//	long min_keys[number_of_keys];
+	Value min_keys[number_of_keys];
+	Value max_keys[number_of_keys];
+	cwp_String type[number_of_keys];
+
+//	long max_keys[number_of_keys];
 
 	int i=0;
 	strcpy(temp,keys);
@@ -2317,23 +2334,27 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 	while(token != NULL){
 		window_keys[i]= malloc((strlen(token) + 1)*sizeof(char));
 		strcpy(window_keys[i], token);
+		type[i] = hdtype(window_keys[i]);
 		token = strtok(NULL,sep);
 		i++;
 	}
 	char *min_token =strtok(min_temp, sep);
 	i=0;
 	while(min_token != NULL){
-		min_keys[i]= atol(min_token);
+		atoval(type[i], min_token, &min_keys[i]);
+//		min_keys[i]= atol(min_token);
 		min_token = strtok(NULL,sep);
 		i++;
 	}
 	char *max_token = strtok(max_temp, sep);
 	i=0;
 	while(max_token != NULL){
-		max_keys[i]= atol(max_token);
+		atoval(type[i], max_token, &max_keys[i]);
+//		max_keys[i]= atol(max_token);
 		max_token = strtok(NULL,sep);
 		i++;
 	}
+
 
 //	for(int k=0; k<number_of_keys; k++) {
 //		printf("KEY is = %s \n", window_keys[k]);
@@ -2341,7 +2362,7 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 //		printf("MAX is = %ld \n", max_keys[k]);
 //	}
 
-	long values[number_of_keys];
+//	long values[number_of_keys];
 	traces_headers_t *current = (*head)->head;
 	traces_headers_t *previous = NULL;
 	if(current == NULL) {
@@ -2351,23 +2372,26 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 
 	int l;
 	int break_loop;
+	Value val;
 	while(current != NULL) {
 		break_loop = 0;
 		for(l = 0; l<number_of_keys && !break_loop; l++){
-			values[l] = get_header_value(current->trace, window_keys[l]);
-			if(!(values[l] >= min_keys[l] && values[l] <= max_keys[l])) {
-				if(current == (*head)->head){
-					(*head)->head= (*head)->head->next_trace;
-					free(current);
-					current = (*head)->head;
-				} else{
-					previous->next_trace = current->next_trace;
-					free(current);
-					current = previous->next_trace;
+			get_header_value_new(current->trace, window_keys[l], &val);
+			if(!(valcmp(type[l], val, min_keys[l]) == 1 || valcmp(type[l], val, min_keys[l]) == 0) ||
+					!(valcmp(type[l], val, max_keys[l]) == -1 || valcmp(type[l], val, max_keys[l]) == 0)) {
+					if(current == (*head)->head){
+						(*head)->head= (*head)->head->next_trace;
+						free(current);
+						current = (*head)->head;
+					} else{
+						previous->next_trace = current->next_trace;
+						free(current);
+						current = previous->next_trace;
+					}
+					break_loop=1;
 				}
-				break_loop=1;
-			}
 		}
+
 		if(break_loop){
 			continue;
 		} else {
@@ -2375,6 +2399,7 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 			current = current->next_trace;
 		}
 	}
+
 //	for(l=0; l<number_of_keys; l++){
 //		free(window_keys[l]);
 //	}
@@ -2466,7 +2491,6 @@ char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj
 
 		return dkeys_sorted_list;
 	}
-
 	return unique_keys;
 }
 
@@ -2669,3 +2693,337 @@ void tokenize_str(void **str, char *sep, char *string, int type){
 		token = strtok(NULL, sep);
 	}
 }
+
+void range_traces_headers(traces_list_t *trace_list, int number_of_keys, char **keys, int dim){
+	int i;
+	traces_headers_t *current = trace_list->head;
+	Value val;
+	Value valmin;
+	Value valmax;
+	trace_t *trmin = malloc(sizeof(trace_t));
+	trace_t *trmax = malloc(sizeof(trace_t));
+	trace_t *trfirst = malloc(sizeof(trace_t));
+	trace_t *trlast = malloc(sizeof(trace_t));
+    double eastShot[2], westShot[2], northShot[2], southShot[2];
+    double eastRec[2], westRec[2], northRec[2], southRec[2];
+    double eastCmp[2], westCmp[2], northCmp[2], southCmp[2];
+    double dcoscal = 1.0;
+    double sx, sy, gx, gy, mx, my;
+    double mx1=0.0, my1=0.0;
+    double mx2=0.0, my2=0.0, dm=0.0, dmin=0.0, dmax=0.0, davg=0.0;
+    int coscal = 1;
+
+    northShot[0] = southShot[0] = eastShot[0] = westShot[0] = 0.0;
+    northShot[1] = southShot[1] = eastShot[1] = westShot[1] = 0.0;
+    northRec[0] = southRec[0] = eastRec[0] = westRec[0] = 0.0;
+    northRec[1] = southRec[1] = eastRec[1] = westRec[1] = 0.0;
+    northCmp[0] = southCmp[0] = eastCmp[0] = westCmp[0] = 0.0;
+    northCmp[1] = southCmp[1] = eastCmp[1] = westCmp[1] = 0.0;
+    sx = sy = gx = gy = mx = my = 0.0;
+
+	if (number_of_keys==0) {
+		for (i = 0; i < SU_NKEYS; ++i) {
+			get_header_value_new(current->trace, keys[i], &val);
+			set_header_value(trmin, keys[i], &val);
+			set_header_value(trmax, keys[i], &val);
+			set_header_value(trfirst, keys[i], &val);
+
+			if(i == 20) {
+				coscal = val.h;
+				if(coscal == 0) {
+					coscal = 1;
+				} else if(coscal > 0) {
+					dcoscal = 1.0*coscal;
+				} else {
+					dcoscal = 1.0/coscal;
+				}
+			} else if(i == 21) {
+				sx = eastShot[0] = westShot[0] = northShot[0] = southShot[0] = val.i*dcoscal;
+			} else if(i == 22) {
+				sy = eastShot[1] = westShot[1] = northShot[1] = southShot[1] = val.i*dcoscal;
+			} else if(i == 23) {
+				gx = eastRec[0] = westRec[0] = northRec[0] = southRec[0] = val.i*dcoscal;
+			} else if(i == 24) {
+				gy = eastRec[1] = westRec[1] = northRec[1] = southRec[1] = val.i*dcoscal;
+			} else {
+				continue;
+			}
+		}
+	} else	{
+		for (i=0; i<number_of_keys; i++) {
+			get_header_value_new(current->trace, keys[i], &val);
+			set_header_value(trmin,keys[i],&val);
+			set_header_value(trmax,keys[i],&val);
+			set_header_value(trfirst,keys[i],&val);
+		}
+	}
+    if(number_of_keys == 0) {
+        mx = eastCmp[0] = westCmp[0] = northCmp[0] = southCmp[0] = 0.5*(eastShot[0]+eastRec[0]);
+        my = eastCmp[1] = westCmp[1] = northCmp[1] = southCmp[1] = 0.5*(eastShot[1]+eastRec[1]);
+    }
+
+	int ntr = 1;
+	current = current->next_trace;
+
+	while(current != NULL){
+        sx = sy = gx = gy = mx = my = 0.0;
+		if (number_of_keys == 0) {
+			for (i = 0; i < SU_NKEYS; i++) {
+				get_header_value_new(current->trace, keys[i], &val);
+				get_header_value_new(*trmin, keys[i], &valmin);
+				get_header_value_new(*trmax, keys[i], &valmax);
+
+				if (valcmp(hdr[i].type, val, valmin) < 0) {
+					set_header_value(trmin,keys[i],&val);
+				} else if (valcmp(hdr[i].type, val, valmax) > 0) {
+					set_header_value(trmax,keys[i],&val);
+				}
+
+				set_header_value(trlast,keys[i],&val);
+
+				if(i == 20) {
+					coscal = val.h;
+					if(coscal == 0) {
+						coscal = 1;
+					} else if (coscal > 0 ){
+						dcoscal = 1.0*coscal;
+					} else {
+						dcoscal = 1.0/coscal;
+					}
+				} else if(i == 21) {
+					sx = val.i*dcoscal;
+				} else if(i == 22) {
+					sy = val.i*dcoscal;
+				} else if(i == 23) {
+					gx = val.i*dcoscal;
+				} else if(i == 24) {
+					gy = val.i*dcoscal;
+				} else {
+					continue;
+				}
+			}
+		} else {
+			for (i=0; i < number_of_keys; i++) {
+				get_header_value_new(current->trace, keys[i], &val);
+				get_header_value_new(*trmin, keys[i], &valmin);
+				get_header_value_new(*trmax, keys[i], &valmax);
+				if (valcmp(hdtype(keys[i]), val, valmin) < 0) {
+					set_header_value(trmin,keys[i],&val);
+				} else if (valcmp(hdtype(keys[i]), val, valmax) > 0) {
+					set_header_value(trmax,keys[i],&val);
+				}
+				set_header_value(trlast,keys[i],&val);
+			}
+		}
+
+        if(number_of_keys == 0) {
+            mx = 0.5*(sx+gx);
+            my = 0.5*(sy+gy);
+            if(eastShot[0] < sx) {
+            	eastShot[0] = sx;
+            	eastShot[1] = sy;
+            }
+            if(westShot[0] > sx) {
+            	westShot[0] = sx;
+            	westShot[1] = sy;
+            }
+            if(northShot[1] < sy) {
+            	northShot[0] = sx;
+            	northShot[1] = sy;
+            }
+            if(southShot[1] > sy) {
+            	southShot[0] = sx;
+            	southShot[1] = sy;
+            }
+            if(eastRec[0] < gx) {
+            	eastRec[0] = gx;
+            	eastRec[1] = gy;
+            }
+            if(westRec[0] > gx) {
+            	westRec[0] = gx;
+            	westRec[1] = gy;
+            }
+            if(northRec[1] < gy) {
+            	northRec[0] = gx;
+            	northRec[1] = gy;
+            }
+            if(southRec[1] > gy) {
+            	southRec[0] = gx;
+            	southRec[1] = gy;
+            }
+            if(eastCmp[0] < mx) {
+            	eastCmp[0] = mx;
+            	eastCmp[1] = my;
+            }
+            if(westCmp[0] > mx) {
+            	westCmp[0] = mx;
+            	westCmp[1] = my;
+            }
+            if(northCmp[1] < my){
+            	northCmp[0] = mx;
+            	northCmp[1] = my;
+            }
+            if(southCmp[1] > my){
+            	southCmp[0] = mx;
+            	southCmp[1] = my;
+            }
+        }
+
+        if (ntr == 1) {
+            /* get midpoint (mx1,my1) on trace 1 */
+            mx1 = 0.5*(current->trace.sx+current->trace.gx);
+            my1 = 0.5*(current->trace.sy+current->trace.gy);
+        } else if (ntr == 2) {
+            /* get midpoint (mx2,my2) on trace 2 */
+            mx2 = 0.5*(current->trace.sx + current->trace.gx);
+            my2 = 0.5*(current->trace.sy + current->trace.gy);
+            /* midpoint interval between traces 1 and 2 */
+            dm = sqrt( (mx1 - mx2)*(mx1 - mx2) + (my1 - my2)*(my1 - my2) );
+            /* set min, max and avg midpoint interval holders */
+            dmin = dm;
+            dmax = dm;
+            davg = (dmin+dmax)/2.0;
+            /* hold this midpoint */
+            mx1 = mx2;
+            my1 = my2;
+        } else if (ntr > 2) {
+            /* get midpoint (mx,my) on this trace */
+            mx2 = 0.5*(current->trace.sx + current->trace.gx);
+            my2 = 0.5*(current->trace.sy + current->trace.gy);
+            /* get midpoint (mx,my) between this and previous trace */
+            dm = sqrt( (mx1 - mx2)*(mx1 - mx2) + (my1 - my2)*(my1 - my2) );
+            /* reset min, max and avg midpoint interval holders, if needed */
+            if (dm < dmin) dmin = dm;
+            if (dm > dmax) dmax = dm;
+            davg = (davg + (dmin+dmax)/2.0) / 2.0;
+            /* hold this midpoint */
+            mx1 = mx2;
+            my1 = my2;
+        }
+        ntr++;
+		current = current->next_trace;
+	}
+
+	printf("%ld traces: \n",trace_list->size);
+
+	print_headers_ranges(number_of_keys, keys, trmin, trmax, trfirst, trlast);
+
+    if(number_of_keys == 0) {
+        if(northShot[1] != 0.0 || southShot[1] != 0.0 || eastShot[0] != 0.0 || westShot[0] != 0.0) {
+        	printf("\nShot coordinate limits:\n" "\tNorth(%g,%g) South(%g,%g) East(%g,%g) West(%g,%g)\n",
+               northShot[0],northShot[1],southShot[0],southShot[1], eastShot[0],eastShot[1],westShot[0],westShot[1]);
+        }
+        if(northRec[1] != 0.0 || southRec[1] != 0.0 || eastRec[0] != 0.0 || westRec[0] != 0.0) {
+        	printf("\nReceiver coordinate limits:\n" "\tNorth(%g,%g) South(%g,%g) East(%g,%g) West(%g,%g)\n",
+               northRec[0],northRec[1],southRec[0],southRec[1], eastRec[0],eastRec[1],westRec[0],westRec[1]);
+        }
+        if(northCmp[1] != 0.0 || southCmp[1] != 0.0 || eastCmp[0] != 0.0 || westCmp[0] != 0.0) {
+        	printf("\nMidpoint coordinate limits:\n" "\tNorth(%g,%g) South(%g,%g) East(%g,%g) West(%g,%g)\n",
+               northCmp[0],northCmp[1],southCmp[0],southCmp[1], eastCmp[0],eastCmp[1],westCmp[0],westCmp[1]);
+        }
+    }
+
+	if (dim != 0){
+		if (dim == 1) {
+			printf("\n2D line: \n");
+			printf("Min CMP interval = %g ft\n",dmin);
+			printf("Max CMP interval = %g ft\n",dmax);
+			printf("Line length = %g miles (using avg CMP interval of %g ft)\n",davg*ntr/5280,davg);
+		} else if (dim == 2) {
+			printf("ddim line: \n");
+			printf("Min CMP interval = %g m\n",dmin);
+			printf("Max CMP interval = %g m\n",dmax);
+			printf("Line length = %g km (using avg CMP interval of %g m)\n",davg*ntr/1000,davg);
+		}
+	}
+
+	return;
+}
+
+void print_headers_ranges(int number_of_keys, char **keys, trace_t *trmin, trace_t *trmax, trace_t *trfirst, trace_t *trlast){
+	int i;
+	Value valmin, valmax, valfirst, vallast;
+	double dvalmin, dvalmax;
+	cwp_String key;
+	cwp_String type;
+	int kmax;
+	if(number_of_keys==0){
+		kmax = SU_NKEYS;
+	} else {
+		kmax = number_of_keys;
+	}
+	for(i = 0; i < kmax; i++) {
+//		key = getkey(i);
+//		type = hdtype(key);
+		get_header_value_new(*trmin, keys[i], &valmin);
+		get_header_value_new(*trmax, keys[i], &valmax);
+		get_header_value_new(*trfirst, keys[i], &valfirst);
+		get_header_value_new(*trlast, keys[i], &vallast);
+//		type = hdtype(keys[i]);
+		dvalmin = vtod(hdtype(keys[i]), valmin);
+		dvalmax = vtod(hdtype(keys[i]), valmax);
+		if (dvalmin || dvalmax) {
+			if (dvalmin < dvalmax) {
+				printf("%s ", keys[i]);
+				printfval(hdtype(keys[i]), valmin);
+				printf(" ");
+				printfval(hdtype(keys[i]), valmax);
+				printf(" (");
+				printfval(hdtype(keys[i]), valfirst);
+				printf(" - ");
+				printfval(hdtype(keys[i]), vallast);
+				printf(")");
+			} else {
+				printf("%s ", keys[i]);
+				printfval(hdtype(keys[i]), valmin);
+			}
+			printf("\n");
+		}
+	}
+	return;
+}
+
+void val_sprintf(char *temp, Value unique_value, char *key){
+
+    switch(*hdtype(key)) {
+	case 's':
+            (void) sprintf(temp, "%s", unique_value.s);
+	break;
+	case 'h':
+            (void) sprintf(temp, "%d", unique_value.h);
+	break;
+	case 'u':
+            (void) sprintf(temp, "%d", unique_value.u);
+	break;
+	case 'i':
+            (void) sprintf(temp, "%d", unique_value.i);
+	break;
+	case 'p':
+            (void) sprintf(temp, "%d", unique_value.p);
+	break;
+	case 'l':
+            (void) sprintf(temp, "%ld", unique_value.l);
+	break;
+	case 'v':
+            (void) sprintf(temp, "%ld", unique_value.v);
+	break;
+	case 'f':
+            (void) sprintf(temp, "%f", unique_value.f);
+	break;
+	case 'd':
+            (void) sprintf(temp, "%f", unique_value.d);
+	break;
+	case 'U':
+            (void) sprintf(temp, "%d", unique_value.U);
+	break;
+	case 'P':
+            (void) sprintf(temp, "%d", unique_value.P);
+	break;
+	default:
+		err("fprintfval: unknown type %s", *hdtype(key));
+	}
+
+	return;
+
+}
+

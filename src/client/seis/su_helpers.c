@@ -458,4 +458,52 @@ void changeval(cwp_String type1, Value *valp1, cwp_String type2,
 	}
 }
 
-
+//int valcmp_(register cwp_String type, Value val1, Value val2)
+//{
+//	switch(*type) {
+//		case 's': return strcmp(val1.s, val2.s);
+//		case 'h':
+//			if      ( val1.h <= val2.h ) return -1;
+//			else if ( val1.h >= val2.h ) return  1;
+//			else                        return  0;
+//		case 'u':
+//			if      ( val1.u <= val2.u ) return -1;
+//			else if ( val1.u >= val2.u ) return  1;
+//			else                        return  0;
+//		case 'l':
+//			if      ( val1.l <= val2.l ) return -1;
+//			else if ( val1.l >= val2.l ) return  1;
+//			else                        return  0;
+//		case 'v':
+//			if      ( val1.v <= val2.v ) return -1;
+//			else if ( val1.v >= val2.v ) return  1;
+//			else                        return  0;
+//		case 'i':
+//			if      ( val1.i <= val2.i ) return -1;
+//			else if ( val1.i >= val2.i ) return  1;
+//			else                        return  0;
+//		case 'p':
+//			if      ( val1.p <= val2.p ) return -1;
+//			else if ( val1.p >= val2.p ) return  1;
+//			else                        return  0;
+//		case 'f':
+//			if      ( val1.f <= val2.f ) return -1;
+//			else if ( val1.f >= val2.f ) return  1;
+//			else                        return  0;
+//		case 'd':
+//			if      ( val1.d <= val2.d ) return -1;
+//			else if ( val1.d >= val2.d ) return  1;
+//			else                        return  0;
+//		case 'U':
+//			if      ( val1.U <= val2.U ) return -1;
+//			else if ( val1.U >= val2.U ) return  1;
+//			else                        return  0;
+//		case 'P':
+//			if      ( val1.P <= val2.P ) return -1;
+//			else if ( val1.P >= val2.P ) return  1;
+//			else                        return  0;
+//		default: err("valcmp: unknown type %s", type);
+//			 return 0;	/* for lint */
+//	}
+//}
+//

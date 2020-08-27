@@ -61,7 +61,7 @@ typedef struct seis_gather{
 //	 */
 //	int nkeys;
 	/** gather unique info */
-	long unique_key;
+	Value unique_key;
 	/** pointer to the next gather */
 	struct seis_gather *next_gather;
 }seis_gather_t;
@@ -733,7 +733,7 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
  */
 int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj, int *ntraces);
 
-int new_check_key_value(long target,seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces);
+int new_check_key_value(Value target, char *key, seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces);
 /** Function responsible for updating gather keys at the end of parsing segy file.
  * It writes the number_of_traces key(akey) under each gather(dkey).
  * It writes the object id of the DAOS_ARRAY object holding the traces oids.
@@ -809,5 +809,12 @@ void set_traces_header(dfs_t *dfs, int daos_mode, traces_list_t **head, int num_
 
 void daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1, int shot_header_key, int cmp_header_key,
 					int offset_header_key, traces_list_t *trace_list ,seis_root_obj_t *root);
+
+void range_traces_headers(traces_list_t *trace_list, int number_of_keys, char **keys, int dim);
+
+void print_headers_ranges(int number_of_keys, char **keys, trace_t *trmin, trace_t *trmax, trace_t *trfirst, trace_t *trlast);
+
+void val_sprintf(char *temp, Value unique_value, char *key);
+
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */
