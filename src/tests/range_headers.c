@@ -88,17 +88,17 @@ int main(int argc, char *argv[]){
 	printf(" OPEN SEGY ROOT OBJECT== \n");
 	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
-	int cmp_gathers;
-	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
-	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
-
-	int shot_gathers;
-	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
-	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
-
-	int offset_gathers;
-	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
-	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
+//	int cmp_gathers;
+//	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
+//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+//
+//	int shot_gathers;
+//	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
+//	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
+//
+//	int offset_gathers;
+//	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
+//	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
 //	printf("CMP_OID %llu %llu \n", segy_root_object->cmp_oid.lo, segy_root_object->cmp_oid.hi);
 
 
@@ -122,8 +122,8 @@ int main(int argc, char *argv[]){
 //		}
 //	}
 
-	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
-	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+//	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
+//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

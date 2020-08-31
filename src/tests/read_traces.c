@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
 	printf("READING SHOT (%d) TRACES==\n",shot_id);
 
 	gettimeofday(&tv1, NULL);
-	traces_list_t *trace_list = new_daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
+	traces_list_t *trace_list = daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
     FILE *fd = fopen(out_file, "w");
 
 	traces_headers_t *temp = trace_list->head;

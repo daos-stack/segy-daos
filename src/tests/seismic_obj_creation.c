@@ -61,17 +61,17 @@ int main(int argc, char *argv[]){
 	printf(" OPEN SEIS ROOT OBJECT== \n");
 	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), out_file);
 
-	int cmp_gathers;
-	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
-	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
-
-	int shot_gathers;
-	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
-	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
-
-	int offset_gathers;
-	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
-	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
+//	int cmp_gathers;
+//	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
+//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+//
+//	int shot_gathers;
+//	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
+//	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
+//
+//	int offset_gathers;
+//	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
+//	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
 
 	printf("READING SEGY ROOT BINARY HEADER KEY == \n");
 	bhed *binary_header = malloc(sizeof(bhed));

@@ -634,6 +634,14 @@ typedef enum{
 }header_type_t;
 
 
+/** Open seismic root object
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root            pointer to root seismic object (dfs object).
+ * \return      pointer to segy root object
+ */
+seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
+
 /** Function responsible for fetching seismic entry(data stored under specific seismic object) */
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev);
 

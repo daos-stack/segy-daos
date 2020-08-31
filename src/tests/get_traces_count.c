@@ -47,6 +47,17 @@ int main(int argc, char *argv[]){
 	number_of_traces = daos_seis_get_trace_count(segy_root_object);
 	printf("NUMBER OF TRACES == %d \n", number_of_traces);
 
+	int cmp_gathers;
+	cmp_gathers = daos_seis_get_number_of_gathers(get_dfs(),segy_root_object, "cdp");
+	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+
+	int shot_gathers;
+	shot_gathers = daos_seis_get_number_of_gathers(get_dfs(),segy_root_object, "fldr");
+	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
+
+	int offset_gathers;
+	offset_gathers = daos_seis_get_number_of_gathers(get_dfs(),segy_root_object, "offset");
+	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

@@ -7,6 +7,58 @@
 
 #include "daos_seis_internal_functions.h"
 
+seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root){
+
+	seis_root_obj_t* root_obj = malloc(sizeof(seis_root_obj_t));
+	int rc;
+	struct seismic_entry entry ={0};
+	daos_handle_t	th = DAOS_TX_NONE;
+
+    root_obj->root_obj = root;
+	strcpy(root_obj->root_obj->name, root->name);
+
+	/** fetch shot oid value */
+	prepare_seismic_entry(&entry, root->oid, DS_D_SORTING_TYPES, DS_A_SHOT_GATHER,
+			(char*)(&root_obj->shot_oid), sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	if(rc) {
+		return rc;
+	}
+	/** fetch CMP oid value */
+	prepare_seismic_entry(&entry, root->oid, DS_D_SORTING_TYPES, DS_A_CMP_GATHER,
+			(char*)(&root_obj->cmp_oid), sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	if(rc) {
+		return rc;
+	}
+	/** fetch OFFSET oid value */
+	prepare_seismic_entry(&entry, root->oid, DS_D_SORTING_TYPES, DS_A_OFFSET_GATHER,
+			(char*)(&root_obj->offset_oid), sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	if(rc) {
+		return rc;
+	}
+	/** fetch number of traces */
+	prepare_seismic_entry(&entry, root->oid, DS_D_FILE_HEADER, DS_A_NTRACES_HEADER,
+			(char*)(&root_obj->number_of_traces), sizeof(int), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	if(rc) {
+		return rc;
+	}
+	/** fetch number of extended text headers */
+	prepare_seismic_entry(&entry, root->oid, DS_D_FILE_HEADER, DS_A_NEXTENDED_HEADER,
+			(char*)(&root_obj->nextended), sizeof(int), DAOS_IOD_SINGLE);
+
+	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	if(rc){
+		return rc;
+	}
+	return root_obj;
+}
 
 dfs_obj_t * get_parent_of_file_new(dfs_t *dfs, const char *file_directory, int allow_creation,
                                char *file_name, int verbose_output) {

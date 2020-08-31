@@ -94,7 +94,7 @@ int main(int argc, char *argv[]){
 	gettimeofday(&tv1, NULL);
 	int ngathers;
 //	read_traces *all_traces = daos_seis_sort_headers(get_dfs(), segy_root_object, "+fldr,-gx", &ngathers);
-	traces_list_t *trace_list = new_new_daos_seis_sort_headers(get_dfs(), segy_root_object, keys);
+	traces_list_t *trace_list = daos_seis_sort_headers(get_dfs(), segy_root_object, keys);
 
 	FILE *fd = fopen(out_file, "w");
 

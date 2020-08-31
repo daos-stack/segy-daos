@@ -18,27 +18,22 @@
 #include "daos.h"
 #include "daos_fs.h"
 
-/** Parsing segy file and building equivalent daos-seismic graph  */
-int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root);
-/** Sort file header */
-read_traces* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys, int *ngathers);
-/** returns pointer to segy root object */
-seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
-/** returns pointer to segy root object */
-seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, const char *root_name);
-
-traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys, char **keys_1, char **keys_2, char **keys_3,
-								double *a, double *b, double *c, double *d, double *j, double *e, double *f, header_type_t type);
-
+/** closes opened root object
+ *
+ *  \param[in]   root            pointer to root seismic object.
+ *  \return     0 on success
+ *  			error_code otherwise
+ */
 int daos_seis_close_root(seis_root_obj_t *segy_root_object);
 
-void daos_seis_range_headers(dfs_t *dfs, seis_root_obj_t *root, int number_of_keys, char **keys, int dim);
+/** Open root seismic object
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root_path      path of root seismic object.
+ * \return      pointer to segy root object
+ */
+seis_root_obj_t* daos_seis_open_root_path(dfs_t *dfs, const char *root_path);
 
-read_traces* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, long min, long max, int *ngathers);
-
-traces_list_t* new_new_daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys);
-
-traces_list_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max);
 /**
  * Fetch total number of traces stored under seismic root object.
  *
@@ -46,6 +41,17 @@ traces_list_t* new_daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char
  * \return      returns the number of traces.
  */
 int daos_seis_get_trace_count(seis_root_obj_t *root);
+
+/**
+ * Fetch number of gathers stored under any of the main seismic objects (CDP/ FLDR/ OFFSET).
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \param[in]   key            name of target seismic object.
+ *
+ * \return      returns number of gathers.
+ */
+int daos_seis_get_number_of_gathers(dfs_t *dfs, seis_root_obj_t *root, char *key);
 
 /**
  * Fetch binary header data stored under seismic root object.
@@ -64,44 +70,6 @@ bhed* daos_seis_read_binary_header(seis_root_obj_t *root);
 char* daos_seis_read_text_header(seis_root_obj_t *root);
 
 /**
- * Fetch number of cmp gathers stored under CMP seismic object.
- *
- * \param[in]   dfs            pointer to DAOS file system.
- * \param[in]   root           pointer to root seismic object.
- * \return      returns number of cmp gathers.
- */
-int daos_seis_get_cmp_gathers(dfs_t *dfs, seis_root_obj_t *root);
-
-/**
- * Fetch number of shot gathers stored under SHOT seismic object.
- *
- * \param[in]   dfs            pointer to DAOS file system.
- * \param[in]   root           pointer to root seismic object.
- * \return      returns number of shot gathers.
- */
-int daos_seis_get_shot_gathers(dfs_t *dfs, seis_root_obj_t *root);
-
-/**
- * Fetch number of offset gathers stored under OFFSET seismic object.
- *
- * \param[in]   dfs            pointer to DAOS file system.
- * \param[in]   root           pointer to root seismic object.
- * \return      returns number of offset gathers.
- */
-int daos_seis_get_offset_gathers(dfs_t *dfs, seis_root_obj_t *root);
-
-/**
- * Fetch shot traces
- *
- * \param[in]   dfs            pointer to DAOS file system.
- * \param[in]   shot_id        shot_id value to lookup and fetch.
- * \param[in]   root           pointer to root seismic object.
- * \param[in]   name           string containing name of file.
- * \return      returns number of offset gathers.
- */
-int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, char *name);
-
-/**
  * Fetch shot traces
  *
  * \param[in]   dfs            pointer to DAOS file system.
@@ -109,7 +77,76 @@ int daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root, c
  * \param[in]   root           pointer to root seismic object.
  * \return      returns array of traces holding all shot gather traces headers and data.
  */
-traces_list_t* new_daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root);
+traces_list_t* daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root);
 
+
+/** Parse segy file and build equivalent daos-seismic graph
+ *
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   parent         pointer to parent DAOS file system object.
+ * \param[in]   name           name of root object that will be create.
+ * \param[in]   segy_root      pointer to file that will be parsed.
+ * \return      0 on success
+ * 				error_code otherwise
+ */
+int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *segy_root);
+
+/** Sort traces headers
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \param[in]   array_keys     array of key headers to sort on.
+ * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers after sorting.
+ */
+traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys);
+
+/** Window traces headers
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \param[in]   array_keys     array of key headers to use in window
+ * \param[in]   min            minimum values of key headers to accept.
+ * \param[in]   max            maximum values of key headers to accept.
+ * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers after applying window.
+ */
+traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max);
+
+/** Set traces headers (used with Add_headers/ Set_headers/ Change_headers)
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \param[in]   num_of_keys    number of header keys to set their value.
+ * \param[in]	keys_1		   array of keys to set the header value.
+ * \param[in]	keys_2		   array of keys to use their header value while setting keys_1(change headers case)
+ * \param[in]	keys_3		   array of keys to use their header value while setting keys_1(change headers case)
+ * \param[in] 	a			   values on first trace(set_headers case) or overall shift(change headers case)
+ * \param[in] 	b			   increments within group(set_headers case) or scale on first input key(change headers case)
+ * \param[in] 	c			   group increments(set_headers case) or scale on second input key(change headers case)
+ * \param[in] 	d			   trace number shifts(set_headers case) or overall scale (change headers case)
+ * \param[in] 	j			   number of elements in group (set headers case only)
+ * \param[in]	e			   exponent on first input key(change headers case only)
+ * \param[in] 	f			   exponent on second input keys(change headers case only)
+ * \param[in]   type           type of operation requested set headers or change headers.
+ * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers after applying window.
+ */
+traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys, char **keys_1, char **keys_2, char **keys_3,
+								double *a, double *b, double *c, double *d, double *j, double *e, double *f, header_type_t type);
+
+/** Fetch range traces headers
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \param[in]   num_of_keys    number of header keys to find their range of values.
+ * \param[in]	keys		   array of keys to fetch their header min and max ranges.
+ * \param[in]	dim			   dim seismic flag (0 -> not dim)(1 -> coord in ft) (2 -> coord in m)
+ * \return      number of traces.
+ * 				key min max (first - last).
+ * 				north-south-east-west limits of shot/receiver/midpoint.
+ * 				midpoint interval and line length if dim.
+ */
+void daos_seis_range_headers(dfs_t *dfs, seis_root_obj_t *root, int number_of_keys, char **keys, int dim);
+
+/** Get all traces headers
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers after applying window.
+ */
+traces_list_t* daos_seis_get_headers(dfs_t *dfs, seis_root_obj_t *root);
 
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */
