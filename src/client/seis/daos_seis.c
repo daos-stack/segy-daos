@@ -630,20 +630,20 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 						return rc;
 	            	}
 //	        	rc = daos_seis_tr_linking(dfs, trace_obj, &tr, shot_obj, cmp_obj, offset_obj);
-	        rc = new_daos_seis_tr_linking(dfs, trace_obj, shot_obj, "fldr");
+	        rc = daos_seis_tr_linking(dfs, trace_obj, shot_obj, "fldr");
 			if(rc!=0)
 				{
 					printf("ERROR LINKING TRACE TO SHOT GATHER OBJECT, err number= %d \n",rc);
 					return rc;
 				}
-	        rc = new_daos_seis_tr_linking(dfs, trace_obj, cmp_obj, "cdp");
+	        rc = daos_seis_tr_linking(dfs, trace_obj, cmp_obj, "cdp");
 			if(rc!=0)
 				{
 					printf("ERROR LINKING TRACE TO CMP GATHER OBJECT, err number= %d \n",rc);
 					return rc;
 				}
 
-	        rc = new_daos_seis_tr_linking(dfs, trace_obj, offset_obj, "offset");
+	        rc = daos_seis_tr_linking(dfs, trace_obj, offset_obj, "offset");
 			if(rc!=0)
 				{
 					printf("ERROR LINKING TRACE TO OFFSET GATHER OBJECT, err number= %d \n",rc);
@@ -716,17 +716,17 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 
 		printf("Open all gathers oids arrays...\n");
 
-		rc = new_update_gather_traces(dfs, shot_obj->gathers, shot_obj, "fldr_", DS_A_NTRACES);
+		rc = update_gather_traces(dfs, shot_obj->gathers, shot_obj, "fldr_", DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
 		}
 
-		rc = new_update_gather_traces(dfs, cmp_obj->gathers, cmp_obj, "cdp_", DS_A_NTRACES);
+		rc = update_gather_traces(dfs, cmp_obj->gathers, cmp_obj, "cdp_", DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING CMP number_of_traces key, error: %d \n", rc);
 		}
 
-		rc = new_update_gather_traces(dfs, offset_obj->gathers, offset_obj, "offset_", DS_A_NTRACES);
+		rc = update_gather_traces(dfs, offset_obj->gathers, offset_obj, "offset_", DS_A_NTRACES);
 		if(rc!=0){
 			printf("ERROR UPDATING OFFSET number_of_traces key, error: %d \n", rc);
 		}
@@ -743,7 +743,7 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 	return rc;
 }
 
-traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys){
+traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys, char *window_keys, char *min, char *max){
 
 	traces_list_t *trace_list = malloc(sizeof(traces_list_t));
 	trace_list->head = NULL;
@@ -888,7 +888,6 @@ traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *a
 //Allocate oids array , size = number of traces
 		seismic_object->gathers[i].oids = malloc(gather_traces[i].number_of_traces * sizeof(daos_obj_id_t));
 //Fetch array of trace headers oids..
-//		printf("ARRAY OID IS %lu%lu\n", seismic_object->seis_gather_trace_oids_obj[i].oid.lo, seismic_object->seis_gather_trace_oids_obj[i].oid.hi);
 		// open array object
 		rc = daos_array_open_with_attr(dfs->coh, seismic_object->seis_gather_trace_oids_obj[i].oid, DAOS_TX_NONE,
 				DAOS_OO_RW, 1, 500*sizeof(daos_obj_id_t), &(seismic_object->seis_gather_trace_oids_obj[i].oh), NULL);
@@ -925,24 +924,16 @@ traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *a
 		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
 		gather_traces[i].traces = malloc(gather_traces[i].number_of_traces * sizeof(trace_t));
 
-		fetch_traces_header(dfs, seismic_object->gathers[i].oids, &gather_traces[i], daos_mode);
+		fetch_traces_header_read_traces(dfs, seismic_object->gathers[i].oids, &gather_traces[i], daos_mode);
 
-//		int z;
 		if(shot_obj || cmp_obj || offset_obj ){
 			temp_number_of_keys --;
 		}
-//			z=0;
-//		}
-//		printf("Z=== %d \n",number_of_keys);
-//	 	while(z < number_of_keys ){
 			if(temp_number_of_keys > 0){
 		 		sort_headers(&gather_traces[i], sort_keys, directions, temp_number_of_keys);
 			}
-//	 		z++;
-//	 	}
 		int k;
 		// create list
-//		traces_headers_t *gather_headers = NULL;
 		traces_list_t *gather_trace_list = malloc(sizeof(traces_list_t));
 		gather_trace_list->head = NULL;
 		gather_trace_list->tail = NULL;
@@ -951,11 +942,35 @@ traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *a
 		for(k=0;k<gather_traces[i].number_of_traces;k++){
 			add_trace_header(&(gather_traces[i].traces[k]), &gather_trace_list);
 		}
-//	 	fetch_traces_data(dfs,seismic_object->gathers[i].oids,&gather_traces[i],daos_mode);
-		new_fetch_traces_data(dfs, &gather_trace_list,daos_mode);
 
-		merge_trace_lists(&trace_list,&gather_trace_list);
+		if(window_keys != NULL){
+			window_headers(&gather_trace_list, window_keys, min, max);
+		}
+		if(gather_trace_list->head != NULL){
+			fetch_traces_data(dfs, &gather_trace_list,daos_mode);
+			merge_trace_lists(&trace_list,&gather_trace_list);
+		}
+
  	}
+
+// 	traces_headers_t *tempo = trace_list->head;
+// 	while(tempo != NULL){
+//		printf("tracl  === %d , fldr === %d \n", tempo->trace.tracl, tempo->trace.fldr);
+//		tempo = tempo->next_trace;
+// 	}
+//	if(window_keys != NULL){
+////		printf("HELLO Hello  \n");
+//		new_window_headers(&trace_list, window_keys, min, max);
+//	}
+
+//	printf ("AFTER WINDOWING \n \n \n \n \n ");
+
+//	tempo = trace_list->head;
+//	while(tempo != NULL){
+//		printf("tracl  === %d , fldr === %d \n", tempo->trace.tracl, tempo->trace.fldr);
+//		tempo = tempo->next_trace;
+//	}
+
 // 	for(int k=0; k<number_of_keys;k++){
 // 		free(sort_keys[k]);
 //	}
@@ -1125,28 +1140,28 @@ traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *ke
 
 		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
 
-		new_fetch_traces_header(dfs, oids, &trace_list,daos_mode,number_of_traces);
+		fetch_traces_header_traces_list(dfs, oids, &trace_list,daos_mode,number_of_traces);
 		free(oids);
  	}
 
-	new_window_headers(&trace_list,key,min,max);
+	window_headers(&trace_list,key,min,max);
 
 //	printf("AFTER WINDOW \n");
-//
-//	traces_headers_t *temp = traces_headers_head;
+
+//	traces_headers_t *tempo = trace_list->head;
 //
 // 	int y=0;
-// 	if(temp == NULL){
+// 	if(tempo == NULL){
 // 		printf("FAILURE FAILURE \n");
 // 	}
-// 	while(temp != NULL){
-// 		printf("AFTER WINDOW TRACE Y = %d HAS tracl = %d and fldr = %d \n", y, temp->trace.tracl, temp->trace.fldr);
+// 	while(tempo != NULL){
+// 		printf("AFTER WINDOW TRACE Y = %d HAS tracl = %d and fldr = %d \n", y, tempo->trace.tracl, tempo->trace.fldr);
 // 		y++;
-//		temp = temp->next_trace;
+//		tempo = tempo->next_trace;
 // 	}
-// 	free(temp);
+// 	free(tempo);
 
-	new_fetch_traces_data(dfs, &trace_list, daos_mode);
+	fetch_traces_data(dfs, &trace_list, daos_mode);
 //
 //	for(int k=0; k<number_of_keys; k++){
 //		free(window_keys[k]);
@@ -1261,7 +1276,7 @@ traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_
 
 		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
 
-		new_fetch_traces_header(dfs, oids, &trace_list,daos_mode,number_of_traces);
+		fetch_traces_header_traces_list(dfs, oids, &trace_list,daos_mode,number_of_traces);
 		free(oids);
  	}
 
@@ -1373,7 +1388,7 @@ traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_
 
 		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
 
-		new_fetch_traces_header(dfs, oids, &trace_list_after,daos_mode,number_of_traces);
+		fetch_traces_header_traces_list(dfs, oids, &trace_list_after,daos_mode,number_of_traces);
 		free(oids);
  	}
  	daos_obj_close(seismic_object->oh,NULL);
@@ -1469,7 +1484,7 @@ void daos_seis_range_headers(dfs_t *dfs, seis_root_obj_t *root, int number_of_ke
 
 		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
 
-		new_fetch_traces_header(dfs, oids, &trace_list,daos_mode,number_of_traces);
+		fetch_traces_header_traces_list(dfs, oids, &trace_list,daos_mode,number_of_traces);
 		free(oids);
  	}
  	range_traces_headers(trace_list, number_of_keys, keys, dim);
@@ -1565,7 +1580,7 @@ traces_list_t* daos_seis_get_headers(dfs_t *dfs, seis_root_obj_t *root){
 
 		daos_array_close(seismic_object->seis_gather_trace_oids_obj[i].oh,NULL);
 
-		new_fetch_traces_header(dfs, oids, &trace_list,daos_mode,number_of_traces);
+		fetch_traces_header_traces_list(dfs, oids, &trace_list,daos_mode,number_of_traces);
 		free(oids);
  	}
 

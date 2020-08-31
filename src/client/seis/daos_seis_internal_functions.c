@@ -116,7 +116,6 @@ dfs_obj_t * get_parent_of_file_new(dfs_t *dfs, const char *file_directory, int a
     return parent;
 }
 
-
 int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev){
 
 	d_sg_list_t	sgl;
@@ -163,74 +162,6 @@ int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_ent
 	}
 	return rc;
 }
-//
-//int daos_seis_array_fetch_entry(daos_handle_t oh, daos_handle_t th,int nrecords, struct seismic_entry *entry){
-//
-//	d_sg_list_t	sgl;
-//	d_iov_t		sg_iovs;
-//	daos_iod_t	iod;
-//	daos_recx_t	recx;
-//	daos_key_t	dkey;
-//	int		rc;
-//
-//	d_iov_set(&dkey, (void *)entry->dkey_name, strlen(entry->dkey_name));
-//	d_iov_set(&iod.iod_name, (void *)entry->akey_name, strlen(entry->akey_name));
-//
-//	iod.iod_nr	= nrecords;
-//	recx.rx_idx	= 0;
-//	recx.rx_nr	= nrecords;
-//	iod.iod_recxs	= &recx;
-//	iod.iod_type	= entry->iod_type;
-//	iod.iod_size	= sizeof(daos_obj_id_t);
-//
-//	d_iov_set(&sg_iovs, entry->data, entry->size);
-//
-//	sgl.sg_nr	= nrecords;
-//	sgl.sg_nr_out	= 0;
-//	sgl.sg_iovs	= &sg_iovs;
-//
-//	rc = daos_obj_fetch(oh, th, 0, &dkey, nrecords, &iod, &sgl, NULL, NULL);
-//	if (rc)	{
-//		printf("Failed to fetch arrayy entry %s (%d)\n", entry->dkey_name, rc);
-//		return rc;
-//	}
-//		return rc;
-//}
-//
-//int daos_seis_array_obj_update(daos_handle_t oh, daos_handle_t th, int nrecords, struct seismic_entry entry){
-//
-//	d_sg_list_t	sgl;
-//	d_iov_t		sg_iovs;
-//	daos_iod_t	iod;
-//	daos_recx_t	recx;
-//	daos_key_t	dkey;
-//	int		rc;
-//
-//	d_iov_set(&dkey, (void *)entry.dkey_name, strlen(entry.dkey_name));
-//	d_iov_set(&iod.iod_name, (void *)entry.akey_name, strlen(entry.akey_name));
-//
-//	iod.iod_type	= entry.iod_type;
-//	iod.iod_size	= sizeof(daos_obj_id_t);
-//
-//	d_iov_set(&sg_iovs, (void*)entry.data, nrecords*sizeof(daos_obj_id_t));
-//	recx.rx_idx = 0;
-//	recx.rx_nr = entry.size;
-//
-//	iod.iod_nr	= nrecords;
-//	iod.iod_recxs	= &recx;
-//
-//	sgl.sg_nr	= nrecords;
-//	sgl.sg_nr_out	= 0;
-//	sgl.sg_iovs	= &sg_iovs;
-//
-//	rc = daos_obj_update(oh, th, 0, &dkey, nrecords, &iod, &sgl, NULL);
-//
-//	if (rc) {
-//		printf("Failed to insert in array dkey: %s and akey: %s (%d)\n", entry.dkey_name, entry.akey_name, rc);
-//		return rc;
-//	}
-//	return rc;
-//}
 
 int daos_seis_th_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,char* akey_name ,
 																				char *data, int nbytes){
@@ -252,7 +183,6 @@ int daos_seis_th_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,c
 int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,daos_oclass_id_t cid, char *name, dfs_obj_t *parent){
 
 	int		rc;
-
 	/*Allocate object pointer */
 	D_ALLOC_PTR(*obj);
 	if (*obj == NULL)
@@ -402,13 +332,11 @@ int daos_seis_exth_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name
 
 void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 
-//	printf("ADDING NEW GATHER............................................. \n");
 	if((*head) == NULL){
 		(*head) = (seis_gather_t *) malloc(sizeof(seis_gather_t));
 		(*head)->oids = (daos_obj_id_t *) malloc(50 * sizeof(daos_obj_id_t));
 		(*head)->unique_key = new_gather->unique_key;
 		(*head)->number_of_traces = new_gather->number_of_traces;
-//		(*head)->oids = new_gather->oids;
 		memcpy((*head)->oids, new_gather->oids, sizeof(daos_obj_id_t) * 50);
 		(*head)->next_gather = NULL;
 	} else {
@@ -420,15 +348,16 @@ void add_gather(seis_gather_t **head, seis_gather_t *new_gather) {
 		current->next_gather->oids = (daos_obj_id_t *) malloc(50 * sizeof(daos_obj_id_t));
 		current->next_gather->unique_key = new_gather->unique_key;
 		current->next_gather->number_of_traces = new_gather->number_of_traces;
-//		current->next_gather->oids = new_gather->oids;
 		memcpy(current->next_gather->oids, new_gather->oids, sizeof(daos_obj_id_t) * 50);
 		current->next_gather->next_gather = NULL;
 	}
-//	printf("FINISHED ADDING NEW GATHER \n");
 }
 
 void merge_trace_lists(traces_list_t **headers,traces_list_t **gather_headers){
-
+	if((*gather_headers)->head == NULL){
+		printf("NO HEADERS IN LINKED LIST TO MERGE \n");
+		return;
+	}
 	traces_headers_t *temp = (*headers)->head;
 	if((*headers)->head == NULL){
 		(*headers)->head = (*gather_headers)->head;
@@ -442,99 +371,23 @@ void merge_trace_lists(traces_list_t **headers,traces_list_t **gather_headers){
 }
 
 void add_trace_header(trace_t *trace, traces_list_t **head){
-//	printf("ADDING NEW TRACE HEADER \n");
 	traces_headers_t *new_node = (traces_headers_t *) malloc(sizeof(traces_headers_t));
 	new_node->trace = *trace;
 	new_node->next_trace = NULL;
-//	traces_headers_t *last = *head;
 
 	if((*head)->head == NULL){
 		(*head)->head = new_node;
 		(*head)->tail = new_node;
 		(*head)->size ++;
 		return;
-//		printf("AFTER ADDING NEW TRACE HEADER L.L was EMPTY\n");
 	} else {
 		(*head)->tail->next_trace = new_node;
 		(*head)->tail = new_node;
 		(*head)->size ++;
 	}
-//	while (last->next_trace != NULL) {
-//		last = last->next_trace;
-//	}
-//	last->next_trace = new_node;
-//	printf("AFTER ADDING NEW TRACE HEADER L.L wasNOT EMPTY\n");
-
 }
 
-add_trace_data(trace_t trace, traces_headers_t *head){
-	if((head) == NULL){
-		(head) = (traces_headers_t *) malloc(sizeof(traces_headers_t));
-		(head)->trace.data = trace.data;
-		(head)->next_trace = NULL;
-	} else {
-		traces_headers_t *current = (head);
-		while (current->next_trace != NULL) {
-			current = current->next_trace;
-		}
-		current->next_trace = (traces_headers_t *) malloc(sizeof(traces_headers_t));
-		current->next_trace->trace.data = trace.data;
-		current->next_trace->next_trace = NULL;
-	}
-}
-
-//int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
-//
-//	if(head == NULL){
-//		printf("NO GATHERS EXIST \n");
-//		return 0;
-//	} else {
-//		int z = 0;
-//		while(head != NULL){
-//			int ntraces = head->number_of_traces;
-//			int rc;
-//			int nkeys = head->nkeys;
-//			char temp[200]="";
-//			char gather_dkey_name[200] = "";
-//			if(nkeys==1){
-//				strcat(gather_dkey_name,dkey_name);
-//				sprintf(temp, "%d", head->keys[0]);
-//				strcat(gather_dkey_name,temp);
-//			} else if(nkeys ==2){
-//				strcat(gather_dkey_name,dkey_name);
-//				sprintf(temp, "%d", head->keys[0]);
-//				strcat(gather_dkey_name,temp);
-//				strcat(gather_dkey_name,"_");
-//				sprintf(temp, "%d", head->keys[1]);
-//				strcat(gather_dkey_name,temp);
-//			}
-//			//insert array object_id in gather object...
-//			rc = daos_seis_gather_oids_array_update(dfs, &(object->seis_gather_trace_oids_obj[z]), head);
-//			if(rc != 0) {
-//				printf("ERROR UPDATING %s object TRACE OBJECT IDS ARRAY, error: %d \n",object->name, rc);
-//				return rc;
-//			}
-//			rc = update_gather_object(object, gather_dkey_name, DS_A_GATHER_TRACE_OIDS, (char*)&((object->seis_gather_trace_oids_obj[z]).oid),
-//								sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//			if(rc != 0) {
-//				printf("ERROR UPDATING %s object TRACE OBJECT IDS key, error: %d \n",object->name, rc);
-//				return rc;
-//			}
-//			rc = update_gather_object(object, gather_dkey_name, akey_name, (char*)&ntraces,
-//								sizeof(int), DAOS_IOD_SINGLE);
-//			if(rc != 0) {
-//				printf("ERROR UPDATING %s object number_of_traces key, error: %d \n",object->name, rc);
-//				return rc;
-//			}
-//
-//			head = head->next_gather;
-//			z++;
-//		}
-//	}
-//	return 0;
-//}
-
-int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
+int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name){
 
 	if(head == NULL){
 		printf("NO GATHERS EXIST \n");
@@ -547,11 +400,9 @@ int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object
 			char temp[200]="";
 			char gather_dkey_name[200] = "";
 			strcat(gather_dkey_name,dkey_name);
-//			sprintf(temp, "%ld", head->unique_key);
 			val_sprintf(temp, head->unique_key, object->name);
 
 			strcat(gather_dkey_name,temp);
-//			printf("GATHER_DKEY %s z>>>> %d\n", gather_dkey_name, z);
 
 			//insert array object_id in gather object...
 			rc = daos_seis_gather_oids_array_update(dfs, &(object->seis_gather_trace_oids_obj[z]), head);
@@ -579,50 +430,7 @@ int new_update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object
 	return 0;
 }
 
-//int check_key_value(int *targets,seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
-//
-//	int exists = 0;
-//	if(head == NULL) {
-//		printf("NO GATHERS EXIST \n");
-//		exists =0;
-//		return exists;
-//	} else {
-//		if(head->nkeys == 1) {
-//			while(head != NULL) {
-//				if(head->keys[0] == targets[0]) {
-//					head->oids[head->number_of_traces] = trace_obj_id;
-//					head->number_of_traces++;
-//					*ntraces = head->number_of_traces;
-//					exists = 1;
-//					if(head->number_of_traces % 50 == 0) {
-//						head->oids = (daos_obj_id_t *)realloc(head->oids, (head->number_of_traces + 50) * sizeof(daos_obj_id_t));
-//					}
-//					return exists;
-//				} else {
-//					head = head->next_gather;
-//				}
-//			}
-//		} else {
-//			while(head != NULL){
-//					if(head->keys[0] == targets[0] && head->keys[1] == targets[1]){
-//						head->oids[head->number_of_traces] = trace_obj_id;
-//						head->number_of_traces++;
-//						*ntraces = head->number_of_traces;
-//						exists = 1;
-//						if(head->number_of_traces % 50 == 0) {
-//							   head->oids = (daos_obj_id_t *)realloc(head->oids, (head->number_of_traces + 50) * sizeof(daos_obj_id_t));
-//						}
-//						return exists;
-//				} else {
-//					head = head->next_gather;
-//				}
-//			}
-//		}
-//	}
-//	return exists;
-//}
-
-int new_check_key_value(Value target, char *key, seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
+int check_key_value(Value target, char *key, seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces){
 
 	int exists = 0;
 	if(head == NULL) {
@@ -687,9 +495,7 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t
 	D_ALLOC_PTR(*obj);
 	if (*obj == NULL)
 		return ENOMEM;
-//	strncpy((*obj)->name, "shot_gather", SEIS_MAX_PATH);
 	strcpy((*obj)->name, key);
-//	(*obj)->name[SEIS_MAX_PATH] = '\0';
 	(*obj)->sequence_number = 0;
 	(*obj)->gathers = NULL;
 	(*obj)->number_of_gathers = 0;
@@ -700,8 +506,6 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t
 		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
 		return rc;
 	}
-
-
 	daos_mode = get_daos_obj_mode(O_RDWR);
 
 	rc = daos_obj_open(dfs->coh, (*obj)->oid, daos_mode, &(*obj)->oh, NULL);
@@ -728,69 +532,6 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t
 		return rc;
 	}
 
-//	/*Allocate object pointer */
-//	D_ALLOC_PTR(*cmp_obj);
-//	if (*cmp_obj == NULL)
-//		return ENOMEM;
-//	strncpy((*cmp_obj)->name, "cmp_gather", SEIS_MAX_PATH);
-//	(*cmp_obj)->name[SEIS_MAX_PATH] = '\0';
-//	(*cmp_obj)->sequence_number = 0;
-//	(*cmp_obj)->gathers = NULL;
-//	(*cmp_obj)->number_of_gathers = 0;
-//
-//	/** Get new OID for shot object */
-//	rc = oid_gen(dfs, cid,false, &(*cmp_obj)->oid);
-//	if (rc) {
-//		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
-//		return rc;
-//	}
-//	oid_cp(&parent->cmp_oid, (*cmp_obj)->oid);
-//
-//	daos_mode = get_daos_obj_mode(O_RDWR);
-//
-//	rc = daos_obj_open(dfs->coh, (*cmp_obj)->oid, daos_mode, &(*cmp_obj)->oh, NULL);
-//	if (rc) {
-//		printf("daos_obj_open() Failed (%d)\n", rc);
-//		return rc;
-//	}
-//	rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_CMP_GATHER ,
-//			(char*)&(*cmp_obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//	if(rc){
-//		printf("ERROR UPDATING SEISMIC ROOT ERR = %d", rc);
-//		return rc;
-//	}
-//
-//	/*Allocate object pointer */
-//	D_ALLOC_PTR(*offset_obj);
-//	if (*offset_obj == NULL)
-//		return ENOMEM;
-//	strncpy((*offset_obj)->name, "offset_gather", SEIS_MAX_PATH);
-//	(*offset_obj)->name[SEIS_MAX_PATH] = '\0';
-//	(*offset_obj)->sequence_number = 0;
-//	(*offset_obj)->gathers = NULL;
-//	(*offset_obj)->number_of_gathers = 0;
-//
-//	/** Get new OID for shot object */
-//	rc = oid_gen(dfs, cid,false, &(*offset_obj)->oid);
-//	if (rc) {
-//		printf("ERROR GENERATING OBJECT ID err= %d \n",rc);
-//		return rc;
-//	}
-//	oid_cp(&parent->offset_oid, (*offset_obj)->oid);
-//
-//	daos_mode = get_daos_obj_mode(O_RDWR);
-//
-//	rc = daos_obj_open(dfs->coh, (*offset_obj)->oid, daos_mode, &(*offset_obj)->oh, NULL);
-//	if (rc) {
-//		printf("daos_obj_open() Failed (%d)\n", rc);
-//		return rc;
-//	}
-//	rc = daos_seis_root_update(dfs, parent, DS_D_SORTING_TYPES, DS_A_OFFSET_GATHER ,
-//									(char*)&(*offset_obj)->oid, sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-//	if(rc) {
-//		printf("ERROR UPDATING SEISMIC ROOT ERR = %d", rc);
-//		return rc;
-//	}
 
 	return rc;
 }
@@ -838,15 +579,10 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_oid_oh_t* trace_data_obj, segy *t
 
 	tr_entry.data = (char*)(trace->data);
 
-	sgl.sg_nr = 1; //trace->ns;
+	sgl.sg_nr = 1;
 	sgl.sg_nr_out = 0;
-	d_iov_t iov; //[sgl.sg_nr];
-//	int j=0;
-//	int i;
-//	for(i=0; i < sgl.sg_nr; i++){
-		d_iov_set(&iov, (void*)(tr_entry.data), trace->ns * sizeof(float));
-//		j+=4;
-//	}
+	d_iov_t iov;
+	d_iov_set(&iov, (void*)(tr_entry.data), trace->ns * sizeof(float));
 
 	sgl.sg_iovs = &iov;
 	iod.arr_nr = 1;
@@ -859,79 +595,6 @@ int daos_seis_tr_data_update(dfs_t* dfs, trace_oid_oh_t* trace_data_obj, segy *t
 		printf("ERROR UPDATING TRACE DATA KEY----------------- error = %d \n", rc);
 		return rc;
 	}
-
-
-	/*
-//	printf("Data length %d \n", data_length);
-	while(data_length > 0){
-//		char trace_dkey[200] = "";
-//		sprintf(st_index, "%d",start);
-//		sprintf(end_index, "%d",end);
-//		strcat(trace_dkey, DS_D_TRACE_DATA);
-//		strcat(trace_dkey, st_index);
-//		strcat(trace_dkey, "_");
-//		strcat(trace_dkey, end_index);
-//		printf("DKEY === %s \n", trace_dkey);
-
-
-		daos_array_iod_t iod;
-		daos_range_t		rg;
-		d_sg_list_t sgl;
-
-//		sgl.sg_nr = 1;
-//		sgl.sg_nr_out = 0;
-//	    d_iov_t iov;
-//		    d_iov_set(&iov, (void*)tr_entry.data, sizeof(float) * min(200,data_length));
-//	    sgl.sg_iovs = &iov;
-
-
-		sgl.sg_nr = min(200,data_length);
-		sgl.sg_nr_out = 0;
-		d_iov_t iov[sgl.sg_nr];
-		int j=0;
-		for(int i=0; i < sgl.sg_nr; i++){
-			d_iov_set(&iov[i], (void*)(&tr_entry.data[j+offset]), sizeof(float));
-			j+=4;
-		}
-
-		sgl.sg_iovs = &iov;
-		iod.arr_nr = 1;
-		rg.rg_len = min(200,data_length) * sizeof(float);
-		rg.rg_idx = offset;
-		iod.arr_rgs = &rg;
-
-		rc = daos_array_write(trace_data_obj->oh, DAOS_TX_NONE, &iod, &sgl, NULL);
-		if(rc!=0){
-			printf("ERROR UPDATING TRACE DATA KEY----------------- error = %d \n", rc);
-		}
-//	    rc = dfs_write(dfs, trace_data_obj, &sgl, offset, NULL);
-//	    if(rc!=0){
-//			printf("ERROR UPDATING TRACE DATA KEY----------------- error = %d \n", rc);
-//		}
-
-//		tr_entry.oid = trace_data_obj->oid;
-//		tr_entry.dkey_name = trace_dkey;
-//		tr_entry.akey_name = DS_A_TRACE_DATA;
-//		tr_entry.data = (char*)((trace->data)+offset);
-//		tr_entry.size = min(200,data_length)*sizeof(float);
-//
-//		rc = daos_seis_obj_update(trace_data_obj->oh, th, tr_entry);
-//		if(rc!=0){
-//			printf("ERROR UPDATING TRACE DATA KEY----------------- error = %d \n", rc);
-//		}
-
-		data_length = data_length - 200;
-		offset = offset + 200;
-//		start = end+1;
-//		end = start +199;
-//		if(end > data_length && data_length <= 200)
-//		{
-//			end = start + data_length;
-//		}
-
-	}
-*/
-
 	return rc;
 
 }
@@ -945,15 +608,10 @@ int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_oid_oh_t* object, seis_
 	daos_range_t		rg;
 	d_sg_list_t sgl;
 
-	sgl.sg_nr = 1; //gather->number_of_traces;
+	sgl.sg_nr = 1;
 	sgl.sg_nr_out = 0;
-	d_iov_t iov; //[sgl.sg_nr];
-//	int j=0;
-//	int i;
-//	for(i=0; i < sgl.sg_nr; i++){
-		d_iov_set(&iov, (void*)(tr_entry.data), gather->number_of_traces * sizeof(daos_obj_id_t));
-//		j+=sizeof(daos_obj_id_t);
-//	}
+	d_iov_t iov;
+	d_iov_set(&iov, (void*)(tr_entry.data), gather->number_of_traces * sizeof(daos_obj_id_t));
 
 	sgl.sg_iovs = &iov;
 	iod.arr_nr = 1;
@@ -1012,7 +670,6 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 	char tr_index[50];
 	char trace_hdr_name[200] = "Trace_hdr_obj_";
 	char trace_data_name[200] = "Trace_data_obj_";
-//	trace_obj_t *trace_data_obj;
 	trace_oid_oh_t *trace_data_obj;
 
 	/*Allocate object pointer */
@@ -1048,16 +705,10 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 		return rc;
 	}
 
-
 	D_ALLOC_PTR(trace_data_obj);
 	if ((trace_data_obj) == NULL)
 		return ENOMEM;
 
-//	strcat(trace_data_name, tr_index);
-
-//	strncpy((trace_data_obj)->name, trace_data_name, SEIS_MAX_PATH);
-//	(trace_data_obj)->name[SEIS_MAX_PATH] = '\0';
-//	(trace_data_obj)->trace = malloc(sizeof(trace_t));
 
 	/** Get new OID for trace data object */
 	rc = oid_gen(dfs, cid,true, &(trace_data_obj)->oid);
@@ -1065,9 +716,6 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 		printf("ERROR GENERATING OBJECT ID for trace data %d \n", rc);
 		return rc;
 	}
-
-//	daos_obj_id_t temp_oid;
-//	temp_oid = get_tr_data_oid(&(*trace_hdr_obj)->oid,cid);
 
 	/** Open the array object for the file */
 	rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj)->oid, DAOS_TX_NONE,
@@ -1088,7 +736,6 @@ int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, 
 		printf("ERROR Closing trace data object \n");
 		return rc;
 	}
-//	free((trace_data_obj)->trace);
 	D_FREE_PTR(trace_data_obj);
 	return rc;
 }
@@ -1139,162 +786,17 @@ void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
 	}
 }
 
-//void new_prepare_keys(char *dkey_name, char *akey_name, char *key, long unique_value,
-//								char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix){
-//
-//	new_prepare_keys(dkey_name, akey_name,key, unique_value, &new_gather_data.number_of_traces);
-//
-//	char temp[200]="";
-//	strcat(dkey_name,dkey_prefix);
-//	if(dkey_suffix != NULL) {
-//		sprintf(temp, "%d", dkey_suffix[0]);
-//		strcat(dkey_name,temp);
-//		if(nkeys==2) {
-//			strcat(dkey_name,"_");
-//			sprintf(temp, "%d", dkey_suffix[1]);
-//			strcat(dkey_name,temp);
-//		}
-//	}
-//	strcat(akey_name, akey_prefix);
-//	if(akey_suffix != NULL) {
-//		sprintf(temp, "%d", *akey_suffix);
-//		strcat(akey_name,temp);
-//	}
-//}
-
-//int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, segy *trace,
-//									seis_obj_t *shot_obj, seis_obj_t *cmp_obj, seis_obj_t *off_obj){
-//
-//	int rc = 0;
-//	int shot_id = trace->fldr;
-//	int s_x = trace->sx;
-//	int s_y = trace->sy;
-//	int r_x = trace->gx;
-//	int r_y = trace->gy;
-//	int cmp_x = (s_x + r_x)/2;
-//	int cmp_y = (s_y + r_y)/2;
-//	int off_x = (r_x - s_x)/2;
-//	int off_y = (r_y - s_y)/2;
-//	int shot_exists=0;
-//	int cmp_exists=0;
-//	int offset_exists=0;
-//	int ntraces;
-//	int keys[2];
-//	struct seismic_entry gather_entry = {0};
-//	int no_of_traces;
-//
-//	keys[0]=shot_id;
-//	if(check_key_value(keys,shot_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-//		shot_exists=1;
-//	}
-//
-//	keys[0]=cmp_x;
-//	keys[1] = cmp_y;
-//	if(check_key_value(keys,cmp_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-//			cmp_exists=1;
-//	}
-//
-//	keys[0]=off_x;
-//	keys[1] =off_y;
-//	if(check_key_value(keys,off_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
-//		offset_exists=1;
-//	}
-//
-//	/** if shot id, cmp, and offset doesn't already exist */
-//	if(!shot_exists){
-//		seis_gather_t shot_gather_data = {0};
-//		shot_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
-//		char temp[200]="";
-//		shot_gather_data.oids[0] = trace_obj->oid;
-//		shot_gather_data.number_of_traces = 1;
-//		shot_gather_data.nkeys = 1;
-//		shot_gather_data.keys[0] = shot_id;
-//		char shot_dkey_name[200] = "";
-//		char trace_akey_name[200] = "";
-//
-//		prepare_keys(shot_dkey_name, trace_akey_name, DS_D_SHOT, DS_A_TRACE, 1,
-//								shot_gather_data.keys, &shot_gather_data.number_of_traces);
-//
-//		rc = update_gather_object(shot_obj, shot_dkey_name, DS_A_SHOT_ID, (char*)&shot_id,
-//							sizeof(int), DAOS_IOD_SINGLE);
-//		if(rc) {
-//			printf("ERROR adding shot shot_id key, error: %d", rc);
-//			return rc;
-//		}
-//		add_gather(&(shot_obj->gathers), &shot_gather_data);
-//		shot_obj->sequence_number++;
-//		shot_obj->number_of_gathers++;
-//		free(shot_gather_data.oids);
-//	}
-//
-//	if(!cmp_exists){
-//		char cmp_dkey_name[200] = "";
-//		char temp[200]="";
-//		seis_gather_t cmp_gather_data= {0};
-//		cmp_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
-//		cmp_gather_data.oids[0] = trace_obj->oid;
-//		cmp_gather_data.number_of_traces=1;
-//		cmp_gather_data.nkeys=2;
-//		cmp_gather_data.keys[0] = cmp_x;
-//		cmp_gather_data.keys[1] = cmp_y;
-//		char trace_akey_name[200] = "";
-//
-//		prepare_keys(cmp_dkey_name, trace_akey_name, DS_D_CMP, DS_A_TRACE, 2,
-//								cmp_gather_data.keys, &cmp_gather_data.number_of_traces);
-//
-//		rc = update_gather_object(cmp_obj, cmp_dkey_name, DS_A_CMP_VAL, (char*)cmp_gather_data.keys,
-//							sizeof(int)*2, DAOS_IOD_ARRAY);
-//		if(rc){
-//			printf("ERROR adding cmp value key, error: %d", rc);
-//			return rc;
-//		}
-//		add_gather(&(cmp_obj->gathers), &cmp_gather_data);
-//		cmp_obj->sequence_number++;
-//		cmp_obj->number_of_gathers++;
-//		free(cmp_gather_data.oids);
-//	}
-//
-//	if(!offset_exists){
-//		char off_dkey_name[200] = "";
-//		char temp[200]="";
-//		seis_gather_t off_gather_data= {0};
-//		off_gather_data.oids = malloc(50*sizeof(daos_obj_id_t));
-//		off_gather_data.oids[0] = trace_obj->oid;
-//		off_gather_data.number_of_traces = 1;
-//		off_gather_data.nkeys = 2;
-//		off_gather_data.keys[0] = off_x;
-//		off_gather_data.keys[1] = off_y;
-//
-//		char trace_akey_name[200] = "";
-//
-//		prepare_keys(off_dkey_name, trace_akey_name, DS_D_OFFSET, DS_A_TRACE, 2,
-//								off_gather_data.keys, &off_gather_data.number_of_traces);
-//		rc = update_gather_object(off_obj, off_dkey_name, DS_A_OFF_VAL, (char*)off_gather_data.keys,
-//							sizeof(int)*2, DAOS_IOD_ARRAY);
-//		if(rc){
-//			printf("ERROR adding gather value key, error: %d", rc);
-//			return rc;
-//		}
-//		add_gather(&(off_obj->gathers), &off_gather_data);
-//		off_obj->sequence_number++;
-//		off_obj->number_of_gathers++;
-//		free(off_gather_data.oids);
-//	}
-//	return rc;
-//}
-
-int new_daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key){
+int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key){
 
 	int rc = 0;
-//	long unique_value = get_header_value(*(trace_obj->trace),key);
 	Value unique_value;
-	get_header_value_new(*(trace_obj->trace),key,&unique_value);
+	get_header_value(*(trace_obj->trace),key,&unique_value);
 	int key_exists=0;
 	int ntraces;
 	struct seismic_entry gather_entry = {0};
 	int no_of_traces;
 
-	if(new_check_key_value(unique_value, key, seis_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
+	if(check_key_value(unique_value, key, seis_obj->gathers, trace_obj->oid, &no_of_traces) == 1) {
 		key_exists=1;
 	}
 
@@ -1305,12 +807,10 @@ int new_daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *sei
 		char temp[200]="";
 		new_gather_data.oids[0] = trace_obj->oid;
 		new_gather_data.number_of_traces = 1;
-//		new_gather_data.nkeys = 1;
 		new_gather_data.unique_key = unique_value;
 		char dkey_name[200] = "";
 		strcat(dkey_name, key);
 		strcat(dkey_name,"_");
-//		sprintf(temp, "%ld", unique_value);
 		val_sprintf(temp, unique_value, key);
 		strcat(dkey_name,temp);
 		rc = update_gather_object(seis_obj, dkey_name, DS_A_UNIQUE_VAL, (char*)&new_gather_data.unique_key,
@@ -1409,7 +909,7 @@ segy* trace_to_segy(trace_t *trace){
 	return tp;
 }
 
-void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
+void fetch_traces_header_read_traces(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
 
 	trace_oid_oh_t *trace_hdr_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
 
@@ -1439,7 +939,7 @@ void fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, i
 	free(trace_hdr_obj);
 }
 
-void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_list_t **head_traces, int daos_mode, int number_of_traces){
+void fetch_traces_header_traces_list(dfs_t *dfs, daos_obj_id_t *oids, traces_list_t **head_traces, int daos_mode, int number_of_traces){
 
 	trace_oid_oh_t *trace_hdr_obj = malloc( number_of_traces * sizeof(trace_oid_oh_t));
 	int i;
@@ -1471,53 +971,51 @@ void new_fetch_traces_header(dfs_t *dfs, daos_obj_id_t *oids, traces_list_t **he
 	free(trace_hdr_obj);
 }
 
-void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
+//void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
+//
+//	trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
+//	int i;
+//	int rc;
+//	daos_array_iod_t iod;
+//	daos_range_t		rg;
+//	d_sg_list_t sgl;
+//	struct seismic_entry seismic_entry = {0};
+//	for(i=0 ; i< traces->number_of_traces; i++){
+//		trace_data_obj[i].oid = get_tr_data_oid(&(traces->traces[i].trace_header_obj),OC_SX);
+//
+//		rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj[i]).oid, DAOS_TX_NONE, DAOS_OO_RW,
+//								1,200*sizeof(float), &(trace_data_obj[i].oh), NULL);
+//		if (rc) {
+//			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+//			exit(rc);
+//		}
+//		traces->traces[i].data = malloc(traces->traces[i].ns * sizeof(float));
+//		sgl.sg_nr = 1; // traces->traces[j].ns;
+//		sgl.sg_nr_out = 0;
+//		d_iov_t iov;
+//
+//		seismic_entry.data = (char*)traces->traces[i].data;
+//
+//		d_iov_set(&iov, (void*)(seismic_entry.data), traces->traces[i].ns * sizeof(float));
+//
+//		sgl.sg_iovs = &iov;
+//		iod.arr_nr = 1;
+//		rg.rg_len = traces->traces[i].ns * sizeof(float);
+//		rg.rg_idx = 0;
+//		iod.arr_rgs = &rg;
+//
+//		rc = daos_array_read(trace_data_obj[i].oh, DAOS_TX_NONE, &iod, &sgl, NULL);
+//		if(rc) {
+//			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
+//			exit(rc);
+//		}
+//		daos_array_close(trace_data_obj[i].oh,NULL);
+//	}
+//	free(trace_data_obj);
+//
+//}
 
-	trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
-	int i;
-	int rc;
-	daos_array_iod_t iod;
-	daos_range_t		rg;
-	d_sg_list_t sgl;
-	struct seismic_entry seismic_entry = {0};
-	for(i=0 ; i< traces->number_of_traces; i++){
-		trace_data_obj[i].oid = get_tr_data_oid(&(traces->traces[i].trace_header_obj),OC_SX);
-
-		rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj[i]).oid, DAOS_TX_NONE, DAOS_OO_RW,
-								1,200*sizeof(float), &(trace_data_obj[i].oh), NULL);
-		if (rc) {
-			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
-			exit(rc);
-		}
-		traces->traces[i].data = malloc(traces->traces[i].ns * sizeof(float));
-		sgl.sg_nr = 1; // traces->traces[j].ns;
-		sgl.sg_nr_out = 0;
-		d_iov_t iov;
-
-		seismic_entry.data = (char*)traces->traces[i].data;
-
-		d_iov_set(&iov, (void*)(seismic_entry.data), traces->traces[i].ns * sizeof(float));
-
-		sgl.sg_iovs = &iov;
-		iod.arr_nr = 1;
-		rg.rg_len = traces->traces[i].ns * sizeof(float);
-		rg.rg_idx = 0;
-		iod.arr_rgs = &rg;
-
-		rc = daos_array_read(trace_data_obj[i].oh, DAOS_TX_NONE, &iod, &sgl, NULL);
-		if(rc) {
-			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
-			exit(rc);
-		}
-		daos_array_close(trace_data_obj[i].oh,NULL);
-	}
-	free(trace_data_obj);
-
-}
-
-void new_fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mode){
-
-//	trace_oid_oh_t *trace_data_obj = malloc( number_of_traces * sizeof(trace_oid_oh_t));
+void fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mode){
 
 	traces_headers_t *current = (*head_traces)->head;
 	if(current == NULL){
@@ -1530,7 +1028,6 @@ void new_fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mod
 	daos_array_iod_t iod;
 	daos_range_t		rg;
 	d_sg_list_t sgl;
-//	trace_t temp;
 	struct seismic_entry seismic_entry = {0};
 	trace_oid_oh_t trace_data_obj;
 	while(current!=NULL){
@@ -1542,13 +1039,11 @@ void new_fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mod
 			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
 			exit(rc);
 		}
-//		temp.data = malloc((*head_traces)->trace.ns * sizeof(float));
 		sgl.sg_nr = 1; // traces->traces[j].ns;
 		sgl.sg_nr_out = 0;
 		d_iov_t iov;
 		current->trace.data = malloc(current->trace.ns * sizeof(float));
 		seismic_entry.data = (char*)current->trace.data;
-//printf("HELLO HELLO HELLLOOOOOOO \n");
 		d_iov_set(&iov, (void*)(seismic_entry.data), current->trace.ns * sizeof(float));
 
 		sgl.sg_iovs = &iov;
@@ -1563,11 +1058,9 @@ void new_fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mod
 			exit(rc);
 		}
 		daos_array_close(trace_data_obj.oh,NULL);
-//		add_trace_data(temp,head_traces);
 		current = current->next_trace;
 	}
 	free(current);
-//	free(trace_data_obj);
 }
 
 void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_keys, int direction){
@@ -1579,14 +1072,10 @@ void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_key
     int *positive = malloc(number_of_gathers * sizeof(int));
     char **sorted_keys = malloc(number_of_gathers * sizeof(char *));
     int j=0;
-//    for(int k=0 ; k<number_of_gathers; k++){
-//    	printf("KEY KEY KEY %s \n", unique_keys[k]);
-//    }
+
     for(i=0;i< number_of_gathers;i++){
         strcpy(new_temp, unique_keys[j]);
         token = strtok(new_temp, sep);
-//        printf("TOKEN IS %s \n", token);
-//      	sorted_keys[j] = malloc((strlen(token) + 1) * sizeof(char));
         while( token != NULL ) {
         	token = strtok(NULL, sep);
         	if(token == NULL){
@@ -1631,44 +1120,8 @@ void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_key
  }
 
 void sort_headers(read_traces *gather_traces, char **sort_key, int *direction, int number_of_keys){
-	int i;
-	int j;
-	trace_t temp;
-//	if(strcmp(sort_key,"cdp")==0){
-//		for(i=0; i< gather_traces->number_of_traces;i++){
-//			gather_traces->traces[i].cdp =(gather_traces->traces[i].sx + gather_traces->traces[i].gx)/2;
-//		}
-//	} else if(strcmp(sort_key,"offset")==0){
-//		for(i=0; i< gather_traces->number_of_traces;i++){
-//			gather_traces->traces[i].offset =(gather_traces->traces[i].sx - gather_traces->traces[i].gx)/2;
-//		}
-//	}
-//
-//	printf("BEFORE SORTING BASED ON SX ============================================= \n");
-//	for(i=0; i<gather_traces->number_of_traces; i++){
-//		printf("SX OF TRACE %d issssss %d \n", i, gather_traces->traces[i].gx);
-//	}
 
-
-//	printf("NUMBER OF KEYS ==== %d \n", number_of_keys);
-//	for(int i =1; i <= number_of_keys; i++){
-//		printf("KEY IS ============== %s \n", sort_key[i]);
-//	}
 	MergeSort(gather_traces->traces, 0, gather_traces->number_of_traces-1, sort_key, direction, number_of_keys);
-
-//	for (i = 1; i < gather_traces->number_of_traces; i++){
-//		for (j = 0; j < gather_traces->number_of_traces - i; j++) {
-//			if (gather_traces->traces[j].cdp > gather_traces->traces[j+1]	.cdp) {
-//				temp = gather_traces->traces[j];
-//				gather_traces->traces[j] = gather_traces->traces[j+1];
-//				gather_traces->traces[j+1] = temp;
-//			 }
-//		}
-//	}
-//	printf("AfTER SORTING BASED ON SX ============================================= \n");
-//	for(i=0; i<gather_traces->number_of_traces; i++){
-//		printf("SX OF TRACE %d issssss %d \n", i, gather_traces->traces[i].gx);
-//	}
 }
 
 void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direction, int number_of_keys)
@@ -1681,28 +1134,23 @@ void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direc
     int z=1;
     Value val1;
     Value val2;
-//    printf("SORTKEY IS %s direction is %d \n", sort_key[z], direction[z]);
     while (leftPos <= mid && rightPos <= high)
     {
     	while(z <= number_of_keys){
-    		get_header_value_new(arr[leftPos],sort_key[z],&val1);
-    		get_header_value_new(arr[rightPos],sort_key[z],&val2);
+    		get_header_value(arr[leftPos],sort_key[z],&val1);
+    		get_header_value(arr[rightPos],sort_key[z],&val2);
 
     		if(valcmp(hdtype(sort_key[z]),val1,val2) == -1) {
 				if(direction[z] == 1){
-//					printf("ONE \n");
 					temp[mergePos++] = arr[leftPos++];
 				} else {
-//					printf("TWO \n");
 					temp[mergePos++] = arr[rightPos++];
 				}
 				break;
 			} else if(valcmp(hdtype(sort_key[z]),val1,val2) == 1) {
 				if(direction[z] == 1){
-//					printf("THREE \n");
 					temp[mergePos++] = arr[rightPos++];
 				} else {
-//					printf("FOUR \n");
 					temp[mergePos++] = arr[leftPos++];
 				}
 				break;
@@ -1710,24 +1158,6 @@ void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direc
 				z++;
 			}
     	}
-
-//        if (check_sorting_key(arr[leftPos], arr[rightPos], sort_key)){
-//        	if(direction == 1){
-////            	printf("ONE \n");
-//                temp[mergePos++] = arr[leftPos++];
-//        	} else{
-////            	printf("THREE \n");
-//                temp[mergePos++] = arr[rightPos++];
-//        	}
-//        } else {
-//        	if(direction == 1) {
-////            	printf("two \n");
-//                temp[mergePos++] = arr[rightPos++];
-//        	} else {
-////            	printf("FOUR \n");
-//                temp[mergePos++] = arr[leftPos++];
-//        	}
-//        }
     }
 
     while (leftPos <= mid)
@@ -1739,8 +1169,6 @@ void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direc
     {
         temp[mergePos++] = arr[rightPos++];
     }
-
-//    assert(mergePos == mergedSize);
 
     for (mergePos = 0; mergePos < mergedSize; ++mergePos){
         arr[low + mergePos] = temp[mergePos];
@@ -1762,146 +1190,146 @@ void MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction,
     }
 }
 
-long get_header_value(trace_t trace, char *sort_key){
+//long get_header_value(trace_t trace, char *sort_key){
+//
+//	if(strcmp(sort_key, "tracl") == 0){
+//		return trace.tracl;
+//	} else if(strcmp(sort_key,"tracr")==0){
+//		return trace.tracr;
+//	} else if(strcmp(sort_key,"fldr")==0){
+//		return trace.fldr;
+//	} else if(strcmp(sort_key,"tracf")==0){
+//		return trace.tracf;
+//	} else if(strcmp(sort_key,"ep")==0){
+//		return trace.ep;
+//	} else if(strcmp(sort_key,"cdp")==0){
+//		return trace.cdp;
+//	} else if(strcmp(sort_key,"cdpt")==0){
+//		return trace.cdpt;
+//	} else if(strcmp(sort_key,"nvs")==0){
+//		return trace.nvs;
+//	} else if(strcmp(sort_key,"nhs")==0){
+//		return trace.nhs;
+//	} else if(strcmp(sort_key,"offset")==0){
+//		return trace.offset;
+//	} else if(strcmp(sort_key,"gelev")==0){
+//		return trace.gelev;
+//	} else if(strcmp(sort_key,"selev")==0){
+//		return trace.selev;
+//	} else if(strcmp(sort_key,"sdepth")==0){
+//		return trace.sdepth;
+//	} else if(strcmp(sort_key,"gdel")==0){
+//		return trace.gdel;
+//	} else if(strcmp(sort_key,"sdel")==0){
+//		return trace.sdel;
+//	} else if(strcmp(sort_key,"swdep")==0){
+//		return trace.swdep;
+//	} else if(strcmp(sort_key,"gwdep")==0){
+//		return trace.gwdep;
+//	} else if(strcmp(sort_key,"scalel")==0){
+//		return trace.scalel;
+//	} else if(strcmp(sort_key,"scalco")==0){
+//		return trace.scalco;
+//	} else if(strcmp(sort_key,"sx")==0){
+//		return trace.sx;
+//	} else if(strcmp(sort_key,"sy")==0){
+//		return trace.sy;
+//	} else if(strcmp(sort_key,"gx")==0){
+//		return trace.gx;
+//	} else if(strcmp(sort_key,"gy")==0){
+//		return trace.gy;
+//	} else if(strcmp(sort_key,"wevel")==0){
+//		return trace.wevel;
+//	} else if(strcmp(sort_key,"swevel")==0){
+//		return trace.swevel;
+//	} else if(strcmp(sort_key,"sut")==0){
+//		return trace.sut;
+//	} else if(strcmp(sort_key,"gut")==0){
+//		return trace.gut;
+//	} else if(strcmp(sort_key,"sstat")==0){
+//		return trace.sstat;
+//	} else if(strcmp(sort_key,"gstat")==0){
+//		return trace.gstat;
+//	} else if(strcmp(sort_key,"tstat")==0){
+//		return trace.tstat;
+//	} else if(strcmp(sort_key,"laga")==0){
+//		return trace.laga;
+//	} else if(strcmp(sort_key,"lagb")==0){
+//		return trace.lagb;
+//	} else if(strcmp(sort_key,"delrt")==0){
+//		return trace.delrt;
+//	} else if(strcmp(sort_key,"muts")==0){
+//		return trace.muts;
+//	} else if(strcmp(sort_key,"mute")==0){
+//		return trace.mute;
+//	} else if(strcmp(sort_key,"ns")==0){
+//		return trace.ns;
+//	} else if(strcmp(sort_key,"dt")==0){
+//		return trace.dt;
+//	} else if(strcmp(sort_key,"gain")==0){
+//		return trace.gain;
+//	} else if(strcmp(sort_key,"igc")==0){
+//		return trace.igc;
+//	} else if(strcmp(sort_key,"igi")==0){
+//		return trace.igi;
+//	} else if(strcmp(sort_key,"corr")==0){
+//		return trace.corr;
+//	} else if(strcmp(sort_key,"sfs")==0){
+//		return trace.sfs;
+//	} else if(strcmp(sort_key,"sfe")==0){
+//		return trace.sfe;
+//	} else if(strcmp(sort_key,"slen")==0){
+//		return trace.slen;
+//	} else if(strcmp(sort_key,"styp")==0){
+//		return trace.styp;
+//	} else if(strcmp(sort_key,"stas")==0){
+//		return trace.stas;
+//	} else if(strcmp(sort_key,"stae")==0){
+//		return trace.stae;
+//	} else if(strcmp(sort_key,"tatyp")==0){
+//		return trace.tatyp;
+//	} else if(strcmp(sort_key,"afilf")==0){
+//		return trace.afilf;
+//	} else if(strcmp(sort_key,"afils")==0){
+//		return trace.afils;
+//	} else if(strcmp(sort_key,"nofilf")==0){
+//		return trace.nofilf;
+//	} else if(strcmp(sort_key,"nofils")==0){
+//		return trace.nofils;
+//	} else if(strcmp(sort_key,"lcf")==0){
+//		return trace.lcf;
+//	} else if(strcmp(sort_key,"hcf")==0){
+//		return trace.hcf;
+//	} else if(strcmp(sort_key,"lcs")==0){
+//		return trace.lcs;
+//	} else if(strcmp(sort_key,"hcs")==0){
+//		return trace.hcs;
+//	} else if(strcmp(sort_key,"grnors")==0){
+//		return trace.grnors;
+//	} else if(strcmp(sort_key,"grnofr")==0){
+//		return trace.grnofr;
+//	} else if(strcmp(sort_key,"grnlof")==0){
+//		return trace.grnlof;
+//	} else if(strcmp(sort_key,"gaps")==0){
+//		return trace.gaps;
+//	} else if(strcmp(sort_key,"d1")==0){
+//		return trace.d1;
+//	} else if(strcmp(sort_key,"f1")==0){
+//		return trace.f1;
+//	} else if(strcmp(sort_key,"d2")==0){
+//		return trace.d2;
+//	} else if(strcmp(sort_key,"f2")==0){
+//		return trace.f2;
+//	} else if(strcmp(sort_key,"sfs")==0){
+//		return trace.sfs;
+//	} else if(strcmp(sort_key,"ntr")==0){
+//		return trace.ntr;
+//	} else {
+//		return -1;
+//	}
+//}
 
-	if(strcmp(sort_key, "tracl") == 0){
-		return trace.tracl;
-	} else if(strcmp(sort_key,"tracr")==0){
-		return trace.tracr;
-	} else if(strcmp(sort_key,"fldr")==0){
-		return trace.fldr;
-	} else if(strcmp(sort_key,"tracf")==0){
-		return trace.tracf;
-	} else if(strcmp(sort_key,"ep")==0){
-		return trace.ep;
-	} else if(strcmp(sort_key,"cdp")==0){
-		return trace.cdp;
-	} else if(strcmp(sort_key,"cdpt")==0){
-		return trace.cdpt;
-	} else if(strcmp(sort_key,"nvs")==0){
-		return trace.nvs;
-	} else if(strcmp(sort_key,"nhs")==0){
-		return trace.nhs;
-	} else if(strcmp(sort_key,"offset")==0){
-		return trace.offset;
-	} else if(strcmp(sort_key,"gelev")==0){
-		return trace.gelev;
-	} else if(strcmp(sort_key,"selev")==0){
-		return trace.selev;
-	} else if(strcmp(sort_key,"sdepth")==0){
-		return trace.sdepth;
-	} else if(strcmp(sort_key,"gdel")==0){
-		return trace.gdel;
-	} else if(strcmp(sort_key,"sdel")==0){
-		return trace.sdel;
-	} else if(strcmp(sort_key,"swdep")==0){
-		return trace.swdep;
-	} else if(strcmp(sort_key,"gwdep")==0){
-		return trace.gwdep;
-	} else if(strcmp(sort_key,"scalel")==0){
-		return trace.scalel;
-	} else if(strcmp(sort_key,"scalco")==0){
-		return trace.scalco;
-	} else if(strcmp(sort_key,"sx")==0){
-		return trace.sx;
-	} else if(strcmp(sort_key,"sy")==0){
-		return trace.sy;
-	} else if(strcmp(sort_key,"gx")==0){
-		return trace.gx;
-	} else if(strcmp(sort_key,"gy")==0){
-		return trace.gy;
-	} else if(strcmp(sort_key,"wevel")==0){
-		return trace.wevel;
-	} else if(strcmp(sort_key,"swevel")==0){
-		return trace.swevel;
-	} else if(strcmp(sort_key,"sut")==0){
-		return trace.sut;
-	} else if(strcmp(sort_key,"gut")==0){
-		return trace.gut;
-	} else if(strcmp(sort_key,"sstat")==0){
-		return trace.sstat;
-	} else if(strcmp(sort_key,"gstat")==0){
-		return trace.gstat;
-	} else if(strcmp(sort_key,"tstat")==0){
-		return trace.tstat;
-	} else if(strcmp(sort_key,"laga")==0){
-		return trace.laga;
-	} else if(strcmp(sort_key,"lagb")==0){
-		return trace.lagb;
-	} else if(strcmp(sort_key,"delrt")==0){
-		return trace.delrt;
-	} else if(strcmp(sort_key,"muts")==0){
-		return trace.muts;
-	} else if(strcmp(sort_key,"mute")==0){
-		return trace.mute;
-	} else if(strcmp(sort_key,"ns")==0){
-		return trace.ns;
-	} else if(strcmp(sort_key,"dt")==0){
-		return trace.dt;
-	} else if(strcmp(sort_key,"gain")==0){
-		return trace.gain;
-	} else if(strcmp(sort_key,"igc")==0){
-		return trace.igc;
-	} else if(strcmp(sort_key,"igi")==0){
-		return trace.igi;
-	} else if(strcmp(sort_key,"corr")==0){
-		return trace.corr;
-	} else if(strcmp(sort_key,"sfs")==0){
-		return trace.sfs;
-	} else if(strcmp(sort_key,"sfe")==0){
-		return trace.sfe;
-	} else if(strcmp(sort_key,"slen")==0){
-		return trace.slen;
-	} else if(strcmp(sort_key,"styp")==0){
-		return trace.styp;
-	} else if(strcmp(sort_key,"stas")==0){
-		return trace.stas;
-	} else if(strcmp(sort_key,"stae")==0){
-		return trace.stae;
-	} else if(strcmp(sort_key,"tatyp")==0){
-		return trace.tatyp;
-	} else if(strcmp(sort_key,"afilf")==0){
-		return trace.afilf;
-	} else if(strcmp(sort_key,"afils")==0){
-		return trace.afils;
-	} else if(strcmp(sort_key,"nofilf")==0){
-		return trace.nofilf;
-	} else if(strcmp(sort_key,"nofils")==0){
-		return trace.nofils;
-	} else if(strcmp(sort_key,"lcf")==0){
-		return trace.lcf;
-	} else if(strcmp(sort_key,"hcf")==0){
-		return trace.hcf;
-	} else if(strcmp(sort_key,"lcs")==0){
-		return trace.lcs;
-	} else if(strcmp(sort_key,"hcs")==0){
-		return trace.hcs;
-	} else if(strcmp(sort_key,"grnors")==0){
-		return trace.grnors;
-	} else if(strcmp(sort_key,"grnofr")==0){
-		return trace.grnofr;
-	} else if(strcmp(sort_key,"grnlof")==0){
-		return trace.grnlof;
-	} else if(strcmp(sort_key,"gaps")==0){
-		return trace.gaps;
-	} else if(strcmp(sort_key,"d1")==0){
-		return trace.d1;
-	} else if(strcmp(sort_key,"f1")==0){
-		return trace.f1;
-	} else if(strcmp(sort_key,"d2")==0){
-		return trace.d2;
-	} else if(strcmp(sort_key,"f2")==0){
-		return trace.f2;
-	} else if(strcmp(sort_key,"sfs")==0){
-		return trace.sfs;
-	} else if(strcmp(sort_key,"ntr")==0){
-		return trace.ntr;
-	} else {
-		return -1;
-	}
-}
-
-void get_header_value_new(trace_t trace, char *sort_key, Value *value){
+void get_header_value(trace_t trace, char *sort_key, Value *value){
 
 	if(!strcmp(sort_key, "tracl")){
 		value->i = trace.tracl;
@@ -1935,7 +1363,6 @@ void set_header_value(trace_t *trace, char *sort_key, Value *value){
 
 	if(!strcmp(sort_key, "tracl")){
 		trace->tracl = value->i;
-//		printf("TRACL    %d \n ", value.i);
 	} else if(!strcmp(sort_key,"tracr")){
 		trace->tracr = value->i;
 	} else if(!strcmp(sort_key,"fldr")){
@@ -1945,12 +1372,10 @@ void set_header_value(trace_t *trace, char *sort_key, Value *value){
 	} else if(!strcmp(sort_key,"ep")){
 		trace->ep = value->i;
 	} else if(!strcmp(sort_key,"cdp")){
-//		printf("CDP VALUES IS %d \n", value->i);
 		trace->cdp = value->i;
 	}else if(!strcmp(sort_key,"ns")){
 		trace->ns = value->u;
 	} else if(!strcmp(sort_key,"gx")){
-//		printf("GX VALUES IS %d \n", value->i);
 		trace->gx = value->i;
 	} else if(!strcmp(sort_key,"dt")){
 		trace->dt = value->u;
@@ -2221,47 +1646,6 @@ char* get_dkey(char *key){
 	}
 }
 
-void window_headers(read_traces *window_traces, read_traces *gather_traces, daos_obj_id_t *oids, char *key, long min, long max){
-
-	int i;
-	int k =0;
-	int temp = gather_traces->number_of_traces;
-	window_traces->number_of_traces = 0;
-	daos_obj_id_t *temp_oids = malloc(gather_traces->number_of_traces * sizeof(daos_obj_id_t));
-	memcpy(temp_oids, oids,gather_traces->number_of_traces * sizeof(daos_obj_id_t));
-
-	memset(oids,0,gather_traces->number_of_traces * sizeof(daos_obj_id_t));
-	printf("number of traces before = %d \n", window_traces->number_of_traces);
-
-	long value;
-	for(i=0; i < temp ;i++){
-//		printf("i = %d \n", i);
-		value = get_header_value(gather_traces->traces[i], key);
-		if(value >= min && value <= max) {
-			memcpy(&window_traces->traces[k], &gather_traces->traces[i], sizeof(trace_t));
-			memcpy(&oids[k], &temp_oids[i],sizeof(daos_obj_id_t));
-			window_traces->number_of_traces ++;
-			k++;
-		}
-//		if(check_windowing_key(gather_traces->traces[i], key, min, max) == 0){
-////			for(k=i; k < gather_traces->number_of_traces ; k++){
-////				memcpy(&oids[k],&oids[k+1], sizeof(daos_obj_id_t));
-////				memcpy(&gather_traces->traces[k], &gather_traces->traces[k+1], sizeof(trace_t));
-////			}
-////			gather_traces->number_of_traces--;
-//		} else {
-//			memcpy(&window_traces->traces[k], &gather_traces->traces[i], sizeof(trace_t));
-//			memcpy(&oids[k], &temp_oids[i],sizeof(daos_obj_id_t));
-//			window_traces->number_of_traces ++;
-//			k++;
-//		}
-//		printf("number of traces in loop = %d \n", gather_traces->number_of_traces);
-	}
-
-	printf("number of traces after = %d \n", window_traces->number_of_traces);
-
-}
-
 void set_traces_header(dfs_t *dfs, int daos_mode, traces_list_t **head, int num_of_keys, char **keys_1, char **keys_2, char **keys_3, double *a, double *b, double *c,
 					double *d, double *e, double *f, double *j, header_type_t type){
 	int rc;
@@ -2344,8 +1728,8 @@ void calculate_new_header_value(traces_headers_t *current, char *key1, char *key
 			set_header_value(&(current->trace), key1, &val1);
 			break;
 		case change_header:
-			get_header_value_new(current->trace, key2, &val2);
-			get_header_value_new(current->trace, key3, &val3);
+			get_header_value(current->trace, key2, &val2);
+			get_header_value(current->trace, key3, &val3);
 			changeval(header_data_type_key1, &val1, header_data_type_key2, &val2,
 					header_data_type_key3, &val3, a, b, c, d, e, f);
 			set_header_value(&(current->trace), key1, &val1);
@@ -2356,7 +1740,7 @@ void calculate_new_header_value(traces_headers_t *current, char *key1, char *key
 
 }
 
-void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
+void window_headers(traces_list_t **head, char *keys, char *min, char *max){
 
 	char temp[4096];
 	char min_temp[4096];
@@ -2376,7 +1760,6 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 	Value max_keys[number_of_keys];
 	cwp_String type[number_of_keys];
 
-//	long max_keys[number_of_keys];
 
 	int i=0;
 	strcpy(temp,keys);
@@ -2407,14 +1790,6 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 		i++;
 	}
 
-
-//	for(int k=0; k<number_of_keys; k++) {
-//		printf("KEY is = %s \n", window_keys[k]);
-//		printf("MIN is = %ld \n", min_keys[k]);
-//		printf("MAX is = %ld \n", max_keys[k]);
-//	}
-
-//	long values[number_of_keys];
 	traces_headers_t *current = (*head)->head;
 	traces_headers_t *previous = NULL;
 	if(current == NULL) {
@@ -2428,7 +1803,7 @@ void new_window_headers(traces_list_t **head, char *keys, char *min, char *max){
 	while(current != NULL) {
 		break_loop = 0;
 		for(l = 0; l<number_of_keys && !break_loop; l++){
-			get_header_value_new(current->trace, window_keys[l], &val);
+			get_header_value(current->trace, window_keys[l], &val);
 			if(!(valcmp(type[l], val, min_keys[l]) == 1 || valcmp(type[l], val, min_keys[l]) == 0) ||
 					!(valcmp(type[l], val, max_keys[l]) == -1 || valcmp(type[l], val, max_keys[l]) == 0)) {
 					if(current == (*head)->head){
@@ -2469,7 +1844,6 @@ char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj
 	sglo.sg_iovs = &iov_temp;
 	daos_anchor_t	anchor = { 0 };
 	int rc;
-//printf("BEFORE FETCH %d \n", nr);
 	daos_key_desc_t  *kds= malloc((seismic_object->number_of_gathers + 1) * sizeof(daos_key_desc_t));
 	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds, &sglo, &anchor, NULL);
 	if(rc){
@@ -2555,28 +1929,18 @@ void daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1, int sho
 	seis_obj_t *new_seis_obj;
 	seis_obj_t *existing_obj = malloc(sizeof(seis_obj_t));
 	seismic_entry_t new_entry={0};
-//	printf("SHOT_OID %llu %llu \n", root->shot_oid.lo, root->shot_oid.hi);
-//	printf("CMP_OID %llu %llu \n", root->cmp_oid.lo, root->cmp_oid.hi);
-//	printf("OFFSET_OID %llu %llu \n", root->offset_oid.lo, root->offset_oid.hi);
 		if(shot_header_key){
 			printf("KEY MATCHES FLDR \n");
 			existing_obj->oid = root->shot_oid;
-//			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "fldr");
 		} else if(cmp_header_key){
 			printf("KEY MATCHES CDP \n");
 			existing_obj->oid = root->cmp_oid;
-//			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "cdp");
 		} else if (offset_header_key){
 			printf("KEY MATCHES OFFSET \n");
 			existing_obj->oid = root->offset_oid;
-//			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "offset");
 		} else {
 //			continue;
 		}
-//		if (rc) {
-//			warn("FAILED TO create gather OBJECT");
-////			return rc;
-//		}
 
 		rc = daos_obj_open(dfs->coh, existing_obj->oid, daos_mode, &(existing_obj->oh), NULL);
 		printf("OPENED SEISMIC OBJECT \n");
@@ -2599,7 +1963,6 @@ void daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1, int sho
 
 		char **temp_keys;
 		temp_keys = daos_seis_fetch_dkeys(existing_obj, 0,shot_header_key,cmp_header_key, offset_header_key, 1);
-//		printf("SEG FAULT HERE %d %d %d \n", shot_header_key, cmp_header_key, offset_header_key);
 
 //		for(i=0; i<existing_obj->number_of_gathers; i++){
 //			printf("KEY number %d is %s \n", i, temp_keys[i]);
@@ -2637,46 +2000,36 @@ void daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1, int sho
 		if(rc){
 			printf("Failed to punch existing object \n");
 		}
-//		daos_obj_close(existing_obj->oh,NULL);
 
 		if(shot_header_key){
 			printf("KEY MATCHES FLDR \n");
-//			existing_obj->oid = root->shot_oid;
 			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "fldr");
 		} else if(cmp_header_key){
 			printf("KEY MATCHES CDP \n");
-//			existing_obj->oid = root->cmp_oid;
 			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "cdp");
 		} else if (offset_header_key){
 			printf("KEY MATCHES OFFSET \n");
-//			existing_obj->oid = root->offset_oid;
 			rc = daos_seis_gather_obj_create(dfs,OC_SX, root, &new_seis_obj, "offset");
 		} else {
 			return;
 		}
 		if (rc) {
 			warn("FAILED TO create gather OBJECT");
-//			return rc;
 		}
 		printf("LINKING TRACES ========== \n");
 		traces_headers_t *current= trace_list->head;
 		while(current != NULL){
-//		printf("HELLO \n");
 		trace_obj_t *trace_obj = malloc(sizeof(trace_obj_t));
 		trace_obj->trace = malloc(sizeof(trace_t));
-//		printf("HELLO \n");
-//		*(trace_obj->trace)= current->trace;
 		memcpy(trace_obj->trace, &(current->trace), sizeof(trace_t));
-//		printf("HELLO \n");
 
-//		*(trace_obj->trace) = current->trace;
 		trace_obj->oid = current->trace.trace_header_obj;
 		if(shot_header_key) {
-			rc = new_daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"fldr");
+			rc = daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"fldr");
 		} else if(cmp_header_key) {
-			rc = new_daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"cdp");
+			rc = daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"cdp");
 		} else {
-			rc = new_daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"offset");
+			rc = daos_seis_tr_linking(dfs,trace_obj,new_seis_obj,"offset");
 		}
 		if(rc) {
 			printf("failed in linking trace to new seismic object %d \n", rc);
@@ -2689,21 +2042,19 @@ void daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1, int sho
 						(char*)&new_seis_obj->number_of_gathers, sizeof(int), DAOS_IOD_SINGLE);
 		if(rc){
 			printf("ERROR adding Number of gathers key, error: %d", rc);
-//			return rc;
 		}
 		printf("NEW NUMBER OF GATHERS IS %d \n", new_seis_obj->number_of_gathers);
 		rc = daos_seis_trace_oids_obj_create(dfs,OC_SX, new_seis_obj);
 		if (rc)
 		{
 			warn("FAILED TO CREATE ARRAY OIDs OBJECT");
-//			return rc;
 		}
 		if(shot_header_key){
-			rc = new_update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "fldr_", DS_A_NTRACES);
+			rc = update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "fldr_", DS_A_NTRACES);
 		} else if (cmp_header_key){
-			rc = new_update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "cdp_", DS_A_NTRACES);
+			rc = update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "cdp_", DS_A_NTRACES);
 		} else {
-			rc = new_update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "offset_", DS_A_NTRACES);
+			rc = update_gather_traces(dfs, new_seis_obj->gathers, new_seis_obj, "offset_", DS_A_NTRACES);
 		}
 		if(rc){
 			printf("ERROR UPDATING shot number_of_traces key, error: %d \n", rc);
@@ -2775,7 +2126,7 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys, char **
 
 	if (number_of_keys==0) {
 		for (i = 0; i < SU_NKEYS; ++i) {
-			get_header_value_new(current->trace, keys[i], &val);
+			get_header_value(current->trace, keys[i], &val);
 			set_header_value(trmin, keys[i], &val);
 			set_header_value(trmax, keys[i], &val);
 			set_header_value(trfirst, keys[i], &val);
@@ -2803,7 +2154,7 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys, char **
 		}
 	} else	{
 		for (i=0; i<number_of_keys; i++) {
-			get_header_value_new(current->trace, keys[i], &val);
+			get_header_value(current->trace, keys[i], &val);
 			set_header_value(trmin,keys[i],&val);
 			set_header_value(trmax,keys[i],&val);
 			set_header_value(trfirst,keys[i],&val);
@@ -2821,9 +2172,9 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys, char **
         sx = sy = gx = gy = mx = my = 0.0;
 		if (number_of_keys == 0) {
 			for (i = 0; i < SU_NKEYS; i++) {
-				get_header_value_new(current->trace, keys[i], &val);
-				get_header_value_new(*trmin, keys[i], &valmin);
-				get_header_value_new(*trmax, keys[i], &valmax);
+				get_header_value(current->trace, keys[i], &val);
+				get_header_value(*trmin, keys[i], &valmin);
+				get_header_value(*trmax, keys[i], &valmax);
 
 				if (valcmp(hdr[i].type, val, valmin) < 0) {
 					set_header_value(trmin,keys[i],&val);
@@ -2856,9 +2207,9 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys, char **
 			}
 		} else {
 			for (i=0; i < number_of_keys; i++) {
-				get_header_value_new(current->trace, keys[i], &val);
-				get_header_value_new(*trmin, keys[i], &valmin);
-				get_header_value_new(*trmax, keys[i], &valmax);
+				get_header_value(current->trace, keys[i], &val);
+				get_header_value(*trmin, keys[i], &valmin);
+				get_header_value(*trmax, keys[i], &valmax);
 				if (valcmp(hdtype(keys[i]), val, valmin) < 0) {
 					set_header_value(trmin,keys[i],&val);
 				} else if (valcmp(hdtype(keys[i]), val, valmax) > 0) {
@@ -3007,10 +2358,10 @@ void print_headers_ranges(int number_of_keys, char **keys, trace_t *trmin, trace
 	for(i = 0; i < kmax; i++) {
 //		key = getkey(i);
 //		type = hdtype(key);
-		get_header_value_new(*trmin, keys[i], &valmin);
-		get_header_value_new(*trmax, keys[i], &valmax);
-		get_header_value_new(*trfirst, keys[i], &valfirst);
-		get_header_value_new(*trlast, keys[i], &vallast);
+		get_header_value(*trmin, keys[i], &valmin);
+		get_header_value(*trmax, keys[i], &valmax);
+		get_header_value(*trfirst, keys[i], &valfirst);
+		get_header_value(*trlast, keys[i], &vallast);
 //		type = hdtype(keys[i]);
 		dvalmin = vtod(hdtype(keys[i]), valmin);
 		dvalmax = vtod(hdtype(keys[i]), valmax);

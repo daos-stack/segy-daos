@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
 		} else {
 			while(trace_header != NULL){
 				for(i=0; i<number_of_keys; i++){
-					get_header_value_new(trace_header->trace, header_keys[i], &val);
+					get_header_value(trace_header->trace, header_keys[i], &val);
                     printf("%6s=", header_keys[i]);
                     printfval(hdtype(header_keys[i]), val);
                     putchar('\t');
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
 		} else {
 			while(trace_header != NULL){
 				for(i=0; i<number_of_keys; i++) {
-					get_header_value_new(trace_header->trace, header_keys[i], &val);
+					get_header_value(trace_header->trace, header_keys[i], &val);
 			        char *buffer = malloc(512 * sizeof(char));
 	                sprintf(buffer, "%6s=", header_keys[i]);
 	                efwrite(buffer, strlen(buffer), 1, fd);

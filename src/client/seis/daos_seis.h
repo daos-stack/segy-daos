@@ -97,7 +97,7 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
  * \param[in]   array_keys     array of key headers to sort on.
  * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers after sorting.
  */
-traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys);
+traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys, char *window_keys, char *min, char *max);
 
 /** Window traces headers
  * \param[in]   dfs            pointer to DAOS file system.
@@ -129,7 +129,7 @@ traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *ke
 traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys, char **keys_1, char **keys_2, char **keys_3,
 								double *a, double *b, double *c, double *d, double *j, double *e, double *f, header_type_t type);
 
-/** Fetch range traces headers
+/** Fetch range of traces headers values.
  * \param[in]   dfs            pointer to DAOS file system.
  * \param[in]   root           pointer to root seismic object.
  * \param[in]   num_of_keys    number of header keys to find their range of values.
