@@ -37,13 +37,51 @@ int main(int argc, char *argv[]){
     if (!getparint("verbose", &verbose))    verbose = 0;
     if (!getparint("contcreation", &allow_container_creation))    allow_container_creation = 1;
 
-//    /* Optional */
-//    int verbose =0;                    /* Flag to allow verbose output */
-//    int allow_container_creation =1;   /* Flag to allow container creation if not found */
-//
-//	char pool_id[100]="08b9a6dc-aa4d-42e2-87bd-1d8dc86b3561";
-//	char container_id[100]="08b9a6dc-aa4d-42e2-87bd-1d8dc86b3560";
-//	char svc_list[100]="0";
+
+	char tempo[4096];
+	char min_temp[4096];
+	char max_temp[4096];
+	int number_of_keys = 0;
+	strcpy(tempo, keys);
+	const char *sep = ",";
+	char *token = strtok(tempo, sep);
+	while( token != NULL ) {
+		number_of_keys++;
+		token = strtok(NULL, sep);
+	}
+	printf("NUMBER OF KEYS === %d \n",number_of_keys);
+	char **window_keys = malloc(number_of_keys * sizeof(char*));
+	Value min_keys[number_of_keys];
+	Value max_keys[number_of_keys];
+	cwp_String type[number_of_keys];
+
+
+	int i=0;
+	strcpy(tempo,keys);
+	strcpy(min_temp,min);
+	strcpy(max_temp,max);
+	token =strtok(tempo,sep);
+	while(token != NULL){
+		window_keys[i]= malloc((strlen(token) + 1)*sizeof(char));
+		strcpy(window_keys[i], token);
+		type[i] = hdtype(window_keys[i]);
+		token = strtok(NULL,sep);
+		i++;
+	}
+	char *min_token =strtok(min_temp, sep);
+	i=0;
+	while(min_token != NULL){
+		atoval(type[i], min_token, &min_keys[i]);
+		min_token = strtok(NULL,sep);
+		i++;
+	}
+	char *max_token = strtok(max_temp, sep);
+	i=0;
+	while(max_token != NULL){
+		atoval(type[i], max_token, &max_keys[i]);
+		max_token = strtok(NULL,sep);
+		i++;
+	}
 
     struct timeval tv1, tv2;
     double time_taken;
@@ -55,7 +93,8 @@ int main(int argc, char *argv[]){
 
 	gettimeofday(&tv1, NULL);
 	int ngathers;
-	traces_list_t *trace_list = daos_seis_wind_traces(get_dfs(), segy_root_object, keys, min, max);
+	traces_list_t *trace_list = daos_seis_wind_traces(get_dfs(), segy_root_object, window_keys, number_of_keys,
+												min_keys, max_keys, type);
     FILE *fd = fopen(out_file, "w");
 	traces_headers_t *temp = trace_list->head;
 	if (temp == NULL) {

@@ -129,9 +129,13 @@ char* daos_seis_read_text_header(seis_root_obj_t *root){
 traces_list_t* daos_seis_read_shot_traces(dfs_t* dfs, int shot_id, seis_root_obj_t *root){
 
 	traces_list_t *trace_list;
-	char min[200]="";
-	sprintf(min, "%d", shot_id);
-	trace_list = daos_seis_wind_traces(dfs,root,"fldr",min, min);
+	Value min;
+	min.i = shot_id;
+	char *key = "fldr";
+	char *type = hdtype(key);
+//	printf("KEY TYPE %s \n", hdtype(key));
+	trace_list = daos_seis_wind_traces(dfs, root, &key, 1, &min, &min, &type);
+
 	return trace_list;
 }
 
@@ -743,56 +747,59 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 	return rc;
 }
 
-traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys, char *window_keys, char *min, char *max){
+traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, int number_of_keys, char **sort_keys, int *directions,
+							int number_of_window_keys,char **window_keys, cwp_String *type, Value *min_keys, Value *max_keys){
 
 	traces_list_t *trace_list = malloc(sizeof(traces_list_t));
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
-	char temp[4096];
-    int number_of_keys = 0;
-    strcpy(temp, array_keys);
-    const char *sep = ",";
-    char *token = strtok(temp, sep);
-    while( token != NULL ) {
-    	number_of_keys++;
-        token = strtok(NULL, sep);
-    }
-    int *directions;
-    char **sort_keys;
-    int i;
-    if(number_of_keys == 0){
-    	number_of_keys = 1;
-        directions = malloc(number_of_keys * sizeof(int));
-        sort_keys = malloc(number_of_keys * sizeof(char *));
-    	sort_keys[0] = malloc((strlen("CDP") + 1) * sizeof(char));
-		directions[0]=1;
-		strcpy(sort_keys[0], "CDP");
-		printf("DEFAULT SORTING KEY IS CDP \n");
-    } else {
-        //array of keys
-        directions = malloc(number_of_keys * sizeof(int));
-        sort_keys = malloc(number_of_keys * sizeof(char *));
-        strcpy(temp, array_keys);
-        token = strtok(temp, sep);
+	int i;
 
-        i = 0;
-        while( token != NULL ) {
-        	sort_keys[i] = malloc((strlen(token) + 1) * sizeof(char));
-        	if(token[0]== '-'){
-        		directions[i]= 0;
-        		strcpy(sort_keys[i], &token[1]);
-        	} else if (token[0]== '+'){
-        		directions[i]=1;
-        		strcpy(sort_keys[i], &token[1]);
-        	} else {
-        		directions[i]=1;
-    			strcpy(sort_keys[i], token);
-        	}
-            token = strtok(NULL, sep);
-            i++;
-        }
-    }
+//	char temp[4096];
+//    int number_of_keys = 0;
+//    strcpy(temp, array_keys);
+//    const char *sep = ",";
+//    char *token = strtok(temp, sep);
+//    while( token != NULL ) {
+//    	number_of_keys++;
+//        token = strtok(NULL, sep);
+//    }
+//    int *directions;
+//    char **sort_keys;
+//    int i;
+//    if(number_of_keys == 0){
+//    	number_of_keys = 1;
+//        directions = malloc(number_of_keys * sizeof(int));
+//        sort_keys = malloc(number_of_keys * sizeof(char *));
+//    	sort_keys[0] = malloc((strlen("CDP") + 1) * sizeof(char));
+//		directions[0]=1;
+//		strcpy(sort_keys[0], "CDP");
+//		printf("DEFAULT SORTING KEY IS CDP \n");
+//    } else {
+//        //array of keys
+//        directions = malloc(number_of_keys * sizeof(int));
+//        sort_keys = malloc(number_of_keys * sizeof(char *));
+//        strcpy(temp, array_keys);
+//        token = strtok(temp, sep);
+//
+//        i = 0;
+//        while( token != NULL ) {
+//        	sort_keys[i] = malloc((strlen(token) + 1) * sizeof(char));
+//        	if(token[0]== '-'){
+//        		directions[i]= 0;
+//        		strcpy(sort_keys[i], &token[1]);
+//        	} else if (token[0]== '+'){
+//        		directions[i]=1;
+//        		strcpy(sort_keys[i], &token[1]);
+//        	} else {
+//        		directions[i]=1;
+//    			strcpy(sort_keys[i], token);
+//        	}
+//            token = strtok(NULL, sep);
+//            i++;
+//        }
+//    }
 
     for(int k=0; k<number_of_keys;k++){
     	printf("direction = %d \n",directions[k]);
@@ -944,7 +951,7 @@ traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *a
 		}
 
 		if(window_keys != NULL){
-			window_headers(&gather_trace_list, window_keys, min, max);
+			window_headers(&gather_trace_list, window_keys, number_of_window_keys, type, min_keys, max_keys);
 		}
 		if(gather_trace_list->head != NULL){
 			fetch_traces_data(dfs, &gather_trace_list,daos_mode);
@@ -980,7 +987,8 @@ traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *a
 	return trace_list;
 }
 
-traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max){
+traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char **window_keys, int number_of_keys,
+							Value *min_keys, Value *max_keys, cwp_String *type){
 
 	int daos_mode = get_daos_obj_mode(O_RDWR);
 	seismic_entry_t seismic_entry = {0};
@@ -995,22 +1003,6 @@ traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *ke
 
 	char temp[4096];
 	int rc;
-	int number_of_keys = 0;
-	strcpy(temp, key);
-	const char *sep = ",";
-	char *token = strtok(temp, sep);
-	while( token != NULL ) {
-		number_of_keys++;
-		token = strtok(NULL, sep);
-	}
-	printf("NUMBER OF KEYS === %d \n",number_of_keys);
-	char **window_keys = malloc(number_of_keys * sizeof(char*));
-	long *min_keys = malloc(number_of_keys * sizeof(long));
-	long *max_keys = malloc(number_of_keys * sizeof(long));
-	tokenize_str(window_keys,",", key, 0);
-	tokenize_str(&min_keys,",", min, 1);
-	tokenize_str(&max_keys,",", max, 1);
-
 	int h = 0;
 	while(h < number_of_keys){
 		if(!strcmp(window_keys[h],"cdp")){
@@ -1028,8 +1020,12 @@ traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *ke
 		}
 		if(h >0){
 			char key_temp[200] = "";
-			long min_temp;
-			long max_temp;
+			Value min_temp;
+			Value max_temp;
+			cwp_String type_temp;
+			type_temp = type[h];
+			type[h] = type[0];
+			type[0] = type_temp;
 			min_temp = min_keys[h];
 			min_keys[h] = min_keys[0];
 			min_keys[0] = min_temp;
@@ -1040,7 +1036,6 @@ traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *ke
 			strcpy(window_keys[h],window_keys[0]);
 			strcpy(window_keys[0],key_temp);
 			break;
-//			h++;
 		} else {
 			break;
 		}
@@ -1078,17 +1073,17 @@ traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *ke
 
 	sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys, 1);
 
-	for(int k=0; k<number_of_keys; k++){
-		printf("key is >>>>>> %s \n", window_keys[k]);
-		printf("MIN is >>>>> %ld \n", min_keys[k]);
-		printf("MAX is >>>>>> %ld \n", max_keys[k]);
-	}
+//	for(int k=0; k<number_of_keys; k++){
+//		printf("key is >>>>>> %s \n", window_keys[k]);
+//		printf("MIN is >>>>> %d \n", min_keys[k]);
+//		printf("MAX is >>>>>> %d \n", max_keys[k]);
+//	}
 
 	int i;
 	int number_of_traces = 0;
  	for(i=0; i< seismic_object->number_of_gathers; i++){
 		// Check bool and shot id number out of range --> continue.
- 		if((fldr_key || cdp_key || offset_key) && (first_array[i]< min_keys[0] || first_array[i] >max_keys[0])){
+ 		if((fldr_key || cdp_key || offset_key) && (first_array[i]< vtol(type[0], min_keys[0]) || first_array[i] > vtol(type[0], max_keys[0]))){
  			printf("key is out of range \n");
  			continue;
  		}
@@ -1144,7 +1139,8 @@ traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *ke
 		free(oids);
  	}
 
-	window_headers(&trace_list,key,min,max);
+//	window_headers(&trace_list,window_keys, number_of_keys, min_keys, max_keys);
+	window_headers(&trace_list, window_keys, number_of_keys, type, min_keys, max_keys);
 
 //	printf("AFTER WINDOW \n");
 

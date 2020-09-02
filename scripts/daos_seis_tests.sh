@@ -26,9 +26,9 @@ function run_tests {
 	
 	$tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
 	
-	$tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx window_keys=fldr,tracl min=609,10666 max=610,12010
+	$tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
 	
-#	$tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,610 
+	$tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,610 
 	
 	$main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/Test/shot_601_610 >daos_segyread_temp.su
 	
@@ -36,11 +36,11 @@ function run_tests {
 	
 	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=610 max=610  >daos_segyread.su
 	
-	$main_program_path/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su +fldr +gx >daos_sort_temp.su
+	$main_program_path/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su +fldr +gx >daos_sort.su
 	
-	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_sort_temp.su key=tracl min=10666 max=12010 >daos_window.su
+	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=tracl min=10666 max=12010 >daos_window.su
 
-	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_window.su key=fldr min=609 max=610 >daos_sort.su
+	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_window.su key=fldr min=609 max=610 >daos_wind.su
 
 }
 
@@ -53,7 +53,7 @@ echo 'Running commands...'
 run_tests $1 $2 $3
 
 echo 'Copy commands output...'
-file_list=(segyread sort)
+file_list=(segyread sort wind)
 ## Copy from daos to posix.
 for i in ${file_list[@]};
 do
@@ -68,7 +68,7 @@ done
 ./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
 
 echo 'Compare commands...'
-file_list=(segyread sort)
+file_list=(segyread sort wind)
 ## Compare outputs.
 for i in ${file_list[@]};
 do

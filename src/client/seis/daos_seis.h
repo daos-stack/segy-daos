@@ -97,7 +97,8 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
  * \param[in]   array_keys     array of key headers to sort on.
  * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers after sorting.
  */
-traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *array_keys, char *window_keys, char *min, char *max);
+traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, int number_of_keys, char **sort_keys, int *directions,
+							int number_of_window_keys,char **window_keys, cwp_String *type, Value *min_keys, Value *max_keys);
 
 /** Window traces headers
  * \param[in]   dfs            pointer to DAOS file system.
@@ -107,7 +108,8 @@ traces_list_t* daos_seis_sort_headers(dfs_t *dfs, seis_root_obj_t *root, char *a
  * \param[in]   max            maximum values of key headers to accept.
  * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers after applying window.
  */
-traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char *key, char* min, char* max);
+traces_list_t* daos_seis_wind_traces(dfs_t *dfs, seis_root_obj_t *root, char **window_keys, int number_of_keys,
+							Value *min_keys, Value *max_keys, cwp_String *type);
 
 /** Set traces headers (used with Add_headers/ Set_headers/ Change_headers)
  * \param[in]   dfs            pointer to DAOS file system.

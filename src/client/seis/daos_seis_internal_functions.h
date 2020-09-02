@@ -845,7 +845,7 @@ void calculate_new_header_value(traces_headers_t *current, char *key1, char *key
 /** Function responsible for windowing traces based on min and max of some keys
  * 	It is called while executing daos_seis_window function.
  */
-void window_headers(traces_list_t **head, char *key, char *min, char *max);
+void window_headers(traces_list_t **head, char **window_keys, int number_of_keys, cwp_String *type, Value *min_keys, Value *max_keys);
 
 /** Function responsible for fetching dkeys under seismic object and optionally sort dkeys in ascending or descending order.*/
 char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,

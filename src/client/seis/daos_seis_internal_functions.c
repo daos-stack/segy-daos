@@ -1696,55 +1696,55 @@ void calculate_new_header_value(traces_headers_t *current, char *key1, char *key
 
 }
 
-void window_headers(traces_list_t **head, char *keys, char *min, char *max){
+void window_headers(traces_list_t **head, char **window_keys, int number_of_keys, cwp_String *type, Value *min_keys, Value *max_keys){
 
-	char temp[4096];
-	char min_temp[4096];
-	char max_temp[4096];
-	int number_of_keys = 0;
-	strcpy(temp, keys);
-	const char *sep = ",";
-	char *token = strtok(temp, sep);
-	while( token != NULL ) {
-		number_of_keys++;
-		token = strtok(NULL, sep);
-	}
-	printf("NUMBER OF KEYS === %d \n",number_of_keys);
-	char **window_keys = malloc(number_of_keys * sizeof(char*));
-//	long min_keys[number_of_keys];
-	Value min_keys[number_of_keys];
-	Value max_keys[number_of_keys];
-	cwp_String type[number_of_keys];
-
-
-	int i=0;
-	strcpy(temp,keys);
-	strcpy(min_temp,min);
-	strcpy(max_temp,max);
-	token =strtok(temp,sep);
-	while(token != NULL){
-		window_keys[i]= malloc((strlen(token) + 1)*sizeof(char));
-		strcpy(window_keys[i], token);
-		type[i] = hdtype(window_keys[i]);
-		token = strtok(NULL,sep);
-		i++;
-	}
-	char *min_token =strtok(min_temp, sep);
-	i=0;
-	while(min_token != NULL){
-		atoval(type[i], min_token, &min_keys[i]);
-//		min_keys[i]= atol(min_token);
-		min_token = strtok(NULL,sep);
-		i++;
-	}
-	char *max_token = strtok(max_temp, sep);
-	i=0;
-	while(max_token != NULL){
-		atoval(type[i], max_token, &max_keys[i]);
-//		max_keys[i]= atol(max_token);
-		max_token = strtok(NULL,sep);
-		i++;
-	}
+//	char temp[4096];
+//	char min_temp[4096];
+//	char max_temp[4096];
+//	int number_of_keys = 0;
+//	strcpy(temp, keys);
+//	const char *sep = ",";
+//	char *token = strtok(temp, sep);
+//	while( token != NULL ) {
+//		number_of_keys++;
+//		token = strtok(NULL, sep);
+//	}
+//	printf("NUMBER OF KEYS === %d \n",number_of_keys);
+//	char **window_keys = malloc(number_of_keys * sizeof(char*));
+////	long min_keys[number_of_keys];
+//	Value min_keys[number_of_keys];
+//	Value max_keys[number_of_keys];
+//	cwp_String type[number_of_keys];
+//
+//
+//	int i=0;
+//	strcpy(temp,keys);
+//	strcpy(min_temp,min);
+//	strcpy(max_temp,max);
+//	token =strtok(temp,sep);
+//	while(token != NULL){
+//		window_keys[i]= malloc((strlen(token) + 1)*sizeof(char));
+//		strcpy(window_keys[i], token);
+//		type[i] = hdtype(window_keys[i]);
+//		token = strtok(NULL,sep);
+//		i++;
+//	}
+//	char *min_token =strtok(min_temp, sep);
+//	i=0;
+//	while(min_token != NULL){
+//		atoval(type[i], min_token, &min_keys[i]);
+////		min_keys[i]= atol(min_token);
+//		min_token = strtok(NULL,sep);
+//		i++;
+//	}
+//	char *max_token = strtok(max_temp, sep);
+//	i=0;
+//	while(max_token != NULL){
+//		atoval(type[i], max_token, &max_keys[i]);
+////		max_keys[i]= atol(max_token);
+//		max_token = strtok(NULL,sep);
+//		i++;
+//	}
 
 	traces_headers_t *current = (*head)->head;
 	traces_headers_t *previous = NULL;
