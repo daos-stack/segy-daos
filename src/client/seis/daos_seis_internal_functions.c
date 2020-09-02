@@ -971,50 +971,6 @@ void fetch_traces_header_traces_list(dfs_t *dfs, daos_obj_id_t *oids, traces_lis
 	free(trace_hdr_obj);
 }
 
-//void fetch_traces_data(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode){
-//
-//	trace_oid_oh_t *trace_data_obj = malloc( traces->number_of_traces * sizeof(trace_oid_oh_t));
-//	int i;
-//	int rc;
-//	daos_array_iod_t iod;
-//	daos_range_t		rg;
-//	d_sg_list_t sgl;
-//	struct seismic_entry seismic_entry = {0};
-//	for(i=0 ; i< traces->number_of_traces; i++){
-//		trace_data_obj[i].oid = get_tr_data_oid(&(traces->traces[i].trace_header_obj),OC_SX);
-//
-//		rc = daos_array_open_with_attr(dfs->coh, (trace_data_obj[i]).oid, DAOS_TX_NONE, DAOS_OO_RW,
-//								1,200*sizeof(float), &(trace_data_obj[i].oh), NULL);
-//		if (rc) {
-//			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
-//			exit(rc);
-//		}
-//		traces->traces[i].data = malloc(traces->traces[i].ns * sizeof(float));
-//		sgl.sg_nr = 1; // traces->traces[j].ns;
-//		sgl.sg_nr_out = 0;
-//		d_iov_t iov;
-//
-//		seismic_entry.data = (char*)traces->traces[i].data;
-//
-//		d_iov_set(&iov, (void*)(seismic_entry.data), traces->traces[i].ns * sizeof(float));
-//
-//		sgl.sg_iovs = &iov;
-//		iod.arr_nr = 1;
-//		rg.rg_len = traces->traces[i].ns * sizeof(float);
-//		rg.rg_idx = 0;
-//		iod.arr_rgs = &rg;
-//
-//		rc = daos_array_read(trace_data_obj[i].oh, DAOS_TX_NONE, &iod, &sgl, NULL);
-//		if(rc) {
-//			printf("ERROR READING TRACE DATA KEY----------------- error = %d  \n", rc);
-//			exit(rc);
-//		}
-//		daos_array_close(trace_data_obj[i].oh,NULL);
-//	}
-//	free(trace_data_obj);
-//
-//}
-
 void fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mode){
 
 	traces_headers_t *current = (*head_traces)->head;
@@ -1514,7 +1470,7 @@ char* get_dkey(char *key){
 	} else if(strcmp(key,"tracr")==0){
 		return "Tracr_";
 	} else if(strcmp(key,"fldr")==0){
-		return "Shot_";
+		return "fldr_";
 	} else if(strcmp(key,"tracf")==0){
 		return "Tracf_";
 	} else if(strcmp(key,"ep")==0){

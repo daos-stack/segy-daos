@@ -149,4 +149,11 @@ void daos_seis_range_headers(dfs_t *dfs, seis_root_obj_t *root, int number_of_ke
  */
 traces_list_t* daos_seis_get_headers(dfs_t *dfs, seis_root_obj_t *root);
 
+/** Update traces data
+ * \param[in]   dfs            pointer to DAOS file system.
+ * \param[in]   root           pointer to root seismic object.
+ * \param[in]   trace_list	   pointer to list of updated traces
+ */
+void daos_seis_update_traces_data(dfs_t *dfs,seis_root_obj_t *root, traces_list_t *trace_list);
+
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */

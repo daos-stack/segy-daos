@@ -56,25 +56,52 @@ int main(int argc, char *argv[]){
 	printf("READING SHOT (%d) TRACES==\n",shot_id);
 
 	gettimeofday(&tv1, NULL);
-	traces_list_t *trace_list = daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
-    FILE *fd = fopen(out_file, "w");
+	traces_list_t *src_trace_list = daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
+	traces_list_t *dst_trace_list = daos_seis_read_shot_traces(get_dfs(), 601, segy_root_object);
+
+	FILE *fd = fopen(out_file, "w");
+
+	traces_headers_t *temp_src = src_trace_list->head;
+	traces_headers_t *temp_dst = dst_trace_list->head;
+
+	if (temp_src == NULL) {
+		printf("LINKED LIST EMPTY>>FAILURE\n");
+		return 0;
+	} else{
+		while(temp_src != NULL){
+			memcpy(temp_dst->trace.data, temp_src->trace.data, temp_src->trace.ns * sizeof(float));
+
+			segy* tp = trace_to_segy(&(temp_src->trace));
+	    	fputtr(fd, tp);
+	    	temp_src = temp_src->next_trace;
+	    	temp_dst = temp_dst->next_trace;
+		}
+	}
+
+	printf("NUMBER OF TRACES in linked list == %d \n", src_trace_list->size);
+	int number_of_traces;
+	number_of_traces = daos_seis_get_trace_count(segy_root_object);
+	printf("NUMBER OF TRACES == %d \n", number_of_traces);
+
+
+	daos_seis_update_traces_data(get_dfs(), segy_root_object, dst_trace_list);
+
+	traces_list_t *trace_list = daos_seis_read_shot_traces(get_dfs(), 601, segy_root_object);
+
+	FILE *fdd = fopen("shot_601.su", "w");
 
 	traces_headers_t *temp = trace_list->head;
+
 	if (temp == NULL) {
 		printf("LINKED LIST EMPTY>>FAILURE\n");
 		return 0;
 	} else{
 		while(temp != NULL){
-	    	segy* tp = trace_to_segy(&(temp->trace));
-	    	fputtr(fd, tp);
+			segy* tp = trace_to_segy(&(temp->trace));
+	    	fputtr(fdd, tp);
 	    	temp = temp->next_trace;
 		}
 	}
-	printf("NUMBER OF TRACES in linked list == %d \n", trace_list->size);
-	int number_of_traces;
-	number_of_traces = daos_seis_get_trace_count(segy_root_object);
-	printf("NUMBER OF TRACES == %d \n", number_of_traces);
-
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

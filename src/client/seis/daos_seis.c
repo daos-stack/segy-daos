@@ -623,7 +623,7 @@ int daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name, dfs_obj_t *s
 	            trace_obj_t *trace_obj;
 	            root_obj->number_of_traces++;
 
-	            rc = daos_seis_tr_obj_create(dfs, &trace_obj, itr, &tr, 240);
+	            rc = daos_seis_tr_obj_create(dfs, &trace_obj, itr, &tr, HDRBYTES);
 	            if(rc !=0)
 	            	{
 						printf("ERROR creating and updating trace object, error number = %d  \n", rc);
@@ -1586,3 +1586,34 @@ traces_list_t* daos_seis_get_headers(dfs_t *dfs, seis_root_obj_t *root){
 
  	return trace_list;
 }
+
+void daos_seis_update_traces_data(dfs_t *dfs,seis_root_obj_t *root, traces_list_t *trace_list){
+
+	int i;
+	int rc;
+	trace_oid_oh_t *trace_d_oids = malloc(trace_list->size * sizeof(trace_oid_oh_t));
+	traces_headers_t *current_dest = trace_list->head;
+	for(i=0; i<trace_list->size; i++) {
+		trace_d_oids[i].oid = get_tr_data_oid(&(current_dest->trace.trace_header_obj),OC_SX);
+		segy* trace = trace_to_segy(&current_dest->trace);
+		rc = daos_array_open_with_attr(dfs->coh, trace_d_oids[i].oid, DAOS_TX_NONE,
+								DAOS_OO_RW, 1,200*sizeof(float), &trace_d_oids[i].oh, NULL);
+		if (rc) {
+			printf("daos_array_open_with_attr()-->>Trace data object<<-- failed (%d)\n", rc);
+			exit(rc);
+		}
+		rc = daos_seis_tr_data_update(dfs,&trace_d_oids[i],trace);
+		if(!rc){
+			rc = daos_array_close(trace_d_oids[i].oh, NULL);
+			if(rc) {
+				printf("ERROR Closing trace data object \n");
+				exit(rc);			}
+		} else {
+			printf("FAILED TO UPDATE TRACE DATA OBJECT %d \n", rc);
+		}
+		current_dest = current_dest->next_trace;
+	}
+}
+
+
+
