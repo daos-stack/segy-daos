@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
 	printf("READING SHOT (%d) TRACES==\n",shot_id);
 
 	gettimeofday(&tv1, NULL);
-	traces_list_t *src_trace_list = daos_seis_read_shot_traces(get_dfs(), shot_id, segy_root_object);
+	traces_list_t *src_trace_list = daos_seis_get_shot_traces(shot_id, segy_root_object);
 //	traces_list_t *dst_trace_list = daos_seis_read_shot_traces(get_dfs(), 601, segy_root_object);
 
 	FILE *fd = fopen(out_file, "w");
@@ -102,12 +102,18 @@ int main(int argc, char *argv[]){
 //	    	temp = temp->next_trace;
 //		}
 //	}
+	traces_headers_t *temp = src_trace_list->head;
+	while(temp != NULL){
+		free(temp);
+		temp = temp->next_trace;
+	}
+	free(src_trace_list);
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);
 	gettimeofday(&tv2, NULL);
-    time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
-    printf("TIME TAKEN IN MODIFIED READ FUNCCTION ISSS %f \n", time_taken);
+	time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
+	printf("TIME TAKEN IN MODIFIED READ FUNCCTION ISSS %f \n", time_taken);
 
 	printf("FINI DFS API=== \n");
 

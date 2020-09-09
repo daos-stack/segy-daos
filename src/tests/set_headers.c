@@ -25,7 +25,7 @@ int main(int argc, char *argv[]){
     char *e;
     char *f;
     char *j;
-    header_type_t type = 0;
+    header_operation_type_t type = 0;
     /* Optional */
     int verbose;                    /* Flag to allow verbose output */
     int allow_container_creation;   /* Flag to allow container creation if not found */

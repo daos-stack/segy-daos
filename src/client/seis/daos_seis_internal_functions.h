@@ -50,26 +50,24 @@ typedef struct trace_oid_oh_t {
 	daos_handle_t		oh;
 }trace_oid_oh_t;
 
+/** seismic gather struct that is instantiated for each new gather while creating */
 typedef struct seis_gather{
 	/** number of traces under specific gather key */
 	int number_of_traces;
 	/** array of object ids under specific gather key*/
 	daos_obj_id_t *oids;
-//	/** number of keys
-//	 * =1 if its shot gather
-//	 * =2 if its cmp or offset gather
-//	 */
-//	int nkeys;
 	/** gather unique info */
 	Value unique_key;
 	/** pointer to the next gather */
 	struct seis_gather *next_gather;
 }seis_gather_t;
 
-/** object struct that is instantiated for SEGYROOT open object */
+/** root object struct that is instantiated for SEGYROOT open object */
 typedef struct seis_root_obj {
 	/** root dfs object */
 	dfs_obj_t *root_obj;
+	/** dfs container open handle */
+	daos_handle_t coh;
 	/** DAOS object ID of the CMP object */
 	daos_obj_id_t		cmp_oid;
 	/** DAOS object ID of the SHOT object */
@@ -100,20 +98,25 @@ typedef struct seis_obj {
 	trace_oid_oh_t *seis_gather_trace_oids_obj;
 }seis_obj_t;
 
+/** struct that is instantiated to fetch or write data under seismic object */
 typedef struct seismic_entry {
+	/** dkey name */
 	char 		*dkey_name;
-
+	/** akey name */
 	char 		*akey_name;
-
+	/** daos object id of the seimsic object holding the data to be written or fetched */
 	daos_obj_id_t	oid;
-
+	/** character array which holds address of data that will be fetched or to be written */
 	char		*data;
-
+	/** size of data to be written or fetched */
 	int		size;
-
+	/** Type of the value accessed by an io descriptor*/
 	daos_iod_type_t		iod_type;
 }seismic_entry_t;
 
+/** struct holding trace header fields , id of the array object holding trace data, and array of trace data.
+ * equivalent to segy struct defined in segy.h.
+ */
 typedef struct trace {
 
 	int tracl;	/* Trace sequence number within line
@@ -608,219 +611,547 @@ typedef struct trace_obj {
 	/** entry name of the object */
 	char			name[SEIS_MAX_PATH + 1];
 	/**trace header */
-//	segy *trace;
 	trace_t *trace;
 }trace_obj_t;
 
+/** struct holding array of traces struct previously defined and number of traces in this array
+ *	mainly used while sorting traces headers.
+ */
 typedef struct read_traces{
 	int number_of_traces;
 	trace_t *traces ;
 }read_traces;
 
+/** struct that is used as a linked list holding trace struct holding all trace data
+ *  also holds pointer to next trace.
+ */
 typedef struct traces_headers{
 	trace_t trace;
 	struct traces_headers *next_trace;
 }traces_headers_t;
 
+/** struct of traces list wrapping the linked list of headers defined by defining
+ *  pointer to head (first trace returned to user), pointer to tail (last trace),
+ *  and size of linked list(number of traces).
+ *  This is the main struct returned after sorting/ windowing/ read headers/...
+ */
 typedef struct traces_list{
 	traces_headers_t *head;
 	traces_headers_t *tail;
 	long size;
 }traces_list_t;
 
+/** enum used in set header value.
+ *  0 for SET_HEADERS.
+ *  1 for CHANGE_HEADERS.
+ */
 typedef enum{
-	set_header,
-	change_header
-}header_type_t;
+	SET_HEADERS,
+	CHANGE_HEADERS
+}header_operation_type_t;
 
 
 /** Function responsible for fetching all seismic_root object metadata(seismic_gather object ids/number_of_traces/...)
  *  It is called once at the beginning of the program.
+ *
+ * \param[in]   dfs             pointer to DAOS file system.
+ * \param[in]   root            pointer to DAOS file system.
+ *
+ * \return      pointer to seismic root object
  */
-seis_root_obj_t* daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
+seis_root_obj_t*
+daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
 
 /** Function responsible for finding the parent of file given the path to the directory.
  *  It is called once at the beginning of seismic_object_creation program.
- *  Function is taken from dfs helper api but so it can be called directly but after adding dfs and verbose output to the parameters.!!!!!
+ *  Function is taken from dfs helper api so it can be called directly but after adding dfs and verbose output to the parameters.!!!!!
+ *
+ * \param[in]   dfs             pointer to DAOS file system.
+ * \param[in	file_directory  absolute path of file to be created.
+ * \param[in]	allow_creation  flag to allow creation of directories in case they doesn't exist.
+ * \param[in]	file_name	    array of characters containing name of the file to be created as seismic root object.
+ * \param[in]	verbose_output	Integer to enable verbosity to print messages in case of success.
+ *
+ * \return		pointer to opened parent dfs object, seismic root object will be created later
+ * 				in the parse_segy_file under the opened parent
  */
 dfs_obj_t * get_parent_of_file_new(dfs_t *dfs, const char *file_directory, int allow_creation,
                                char *file_name, int verbose_output);
 
-/** Function responsible for fetching seismic entry(data stored under specific seismic object) */
-int daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev);
-
-/** Function responsible for preparing seismic entry with text header data
- *  It is used to update/insert root seismic text header key
+/** Function responsible for fetching seismic entry(data stored under specific seismic object)
+ *  Set dkey buf→  (name) and buffer length → (size of name)
+ *  Set IOdescriptor name (AKEY) and its length
+ *  Set IOdescriptor number of entries =1 (How many elements will exist in the array of extents,
+ *   (1 if single value))
+ *  Set index of the first record in the extent.
+ *  Set number of contiguous records in the extent
+ *  starting from the index set in previous step(size of mode/ctime/atime/mtime/chunck size).
+ *  Make IOdescriptor array of extents point to the allocated array of extents.
+ *  Set IOdescriptor type value to DAOS_IOD_array.
+ *  Set IOdescriptor size of each record in the array of extents.
+ *  Set sg_iovs(scatter gather iovector)
+ *
+ * \param[in]	oh		opened seismic object connection handle
+ * \param[in]	th		daos transaction handle, if zero then
+ * 				it's independent transaction.
+ * \param[in]	entry		pointer to seimsmic_entry struct holding
+ * 				data/akey/dkey/oid/.. that will be used to fetch.!!!!!!!!!!!!!!!!!!!!!!!
+ * \param[in]	ev		Completion event, it's optional & can be NULL.
+ *				The function will run in blocking
+ *				mode if \a ev is NULL.
+ *
+ * \return      0 on success
+ *		error_code otherwise
  */
-int daos_seis_th_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
+int
+daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th, struct seismic_entry *entry, daos_event_t *ev);
+
+/** Function responsible for calling prepare_seismic_entry and daos_seis_obj_update to update seismic object
+ *  It is used to update/insert root seismic text header key
+ *
+ *  \param[in]	root_obj	pointer to opened root seismic_object.
+ *  \param[in]	dkey_name	string containing name of the dkey that is RESPONSIBLE for the text header under the root seismic object.
+ *  \param[in]	akey_name	string containing name of the akey that exists or will be created under the dkey of the text header
+ *  \param[in]	data		char array containing the address of the text header that will be written/ updated.
+ *  \param[in]	nbytes		number of bytes that will be written starting from the address of the data array under the dkey and akey of the seismic root object.
+ *
+ * \return      0 on success
+ * 				error_code otherwise
+ */
+int daos_seis_th_update(seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char *data, int nbytes);
 
 /** FUnction responsible for creating seismic root object under root dfs or specific dfs object
- * It is called once at the beginning of the parsing function
+ * It is called once at the beginning of the parsing function.
+ *
+ * \param[in]	dfs			pointer to daos file system.
+ * \param[in]	obj			pointer holding the address of the pointer to the seimsic root object to be allocated.
+ * \param[in]	cid			DAOS object class id (pass 0 for default MAX_RW).
+ * \param[in]	name		string containing the name of the root object to be created.
+ * \param[in]	parent		pointer to the opened parent (dfs object) of the new seismic root object.
+ *
+ * \return      0 on success
+ * 				error_code otherwise
  */
 int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,daos_oclass_id_t cid,
 			char *name, dfs_obj_t *parent);
 
 /** Function responsible for updating seismic objects.
  *  It is called after preparing the seismic entry struct.
+ *
+ * \param[in]	oh		opened seismic object connection handle
+ * \param[in]	th		daos transaction handle, if zero then it's independent transaction.
+ * \param[in]	entry	pointer to seimsmic_entry struct holding data/akey/dkey/oid/.. that will be used to update seismic object.!!!!!!!!!!!!!!!!!!!!!!!
+ *
+ * \return      0 on success
+ * 				error_code otherwise
  */
 int daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, struct seismic_entry entry);
 
-/** Function responsible for preparing seismic entry to update keys stored under root seismic object. */
-int daos_seis_root_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
+/** Function responsible for preparing seismic entry to update keys stored under root seismic object.
+ *
+ * \param[in]	root_obj	pointer to opened root seismic_object.
+ * \param[in]	dkey_name	string containing name of the dkey that will be used to update specific entry under root seismic object.
+ * \param[in]	akey_name	string containing name of the akey that exists or will be created.
+ * \param[in]	databuf		char array containing the address of the data that will be written/ updated.
+ * \param[in]	nbytes		number of bytes that will be written starting from the address of the data buffer under the dkey and akey of the seismic root object.
+ * \param[in]	iod_type	type of the value accessed in the IO descriptor(dkey/one value to be updated atomically/ or array of records).
+ *
+ * \return      0 on success
+ * 				error_code otherwise
+ */
+int daos_seis_root_update(seis_root_obj_t* root_obj, char* dkey_name,
 			char* akey_name , char* databuf, int nbytes, daos_iod_type_t iod_type);
 
 /** Function responsible for preparing seismic entry with binary header data.
  *  It is called to update/insert root seismic binary header key
+ *
+ * \param[in]	root_obj	pointer to opened root seismic_object.
+ * \param[in]	dkey_name	string containing name of the dkey that is RESPONSIBLE for the text header under the root seismic object.
+ * \param[in]	akey_name	string containing name of the akey that exists or will be created under the dkey of the text header
+ * \param[in]	bhdr		pointer to binary header struct to be written.
+ * \param[in]	nbytes		number of bytes that will be written the under dkey and akey of the binary header of the seismic root object.
+ *
+ * \return      0 on success
+ * 				error_code otherwise
  */
-int daos_seis_bh_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
-			char* akey_name , bhed *bhdr, int nbytes);
+int daos_seis_bh_update(seis_root_obj_t* root_obj, char* dkey_name, char* akey_name , bhed *bhdr, int nbytes);
 
 /** Function responsible for preparing seismic entry with extended text header data.
  *  It is called to update/insert root seismic extended text header key
+ *
+ * \param[in]	root_obj	pointer to opened root seismic_object.
+ * \param[in]	dkey_name	string containing name of the dkey that is RESPONSIBLE for the extended text header under the root seismic object.
+ * \param[in]	akey_name	string containing name of the akey that exists or will be created under the dkey of the extended text header
+ * \param[in]	ebcbuf		char array containing the address of the extended text header that will be written/ updated.
+ * \param[in]	index		integer containing the index of the extended text header.
+ * \param[in]	nbytes		number of bytes that will be written starting
+ * 							from the address of the ebcbuf array under the dkey
+ * 							and akey of the extended header under the seismic root object.
+ *
+ * \return      0 on success
+ * 				error_code otherwise
  */
-int daos_seis_exth_update(dfs_t* dfs, seis_root_obj_t* root_obj, char* dkey_name,
-			char* akey_name , char *ebcbuf, int index, int nbytes);
+int daos_seis_exth_update(seis_root_obj_t* root_obj, char* dkey_name, char* akey_name,
+							char *ebcbuf, int index, int nbytes);
 
 /** Function responsible for adding one more gather to the existing gathers under (SHOT/CMP/OFFSET)_seismic_objects.
  *  Array of gathers is implemented as a linked list.
  *  It is called if the shot_id/Cmp_Value/Offset_value of any trace doesn't belong to an existing gather in the linked list of gathers.
+ *
+ * \param[in]	head		pointer to pointer to the head of seismic gathers linked list.
+ * \param[in]	new_gather	pointer to a temp seismic gather, a new node will be created and linked to the linked list and this one will be destroyed.
  */
 void add_gather(seis_gather_t **head, seis_gather_t *new_gather);
 
 /** Function responsible for merging two traces lists by making tail of one list points to the head of the other.
  *  It is called only in sorting function after sorting a subgroup of headers.
+ *
+ *  \param[in]	headers		pointer to pointer to the traces list
+ *  				(first part of the linked list)
+ *  \param[in]	temp_list	pointer to pointer to the other part
+ *  				of the traces list that will be linked.
+ *
  */
-void merge_trace_lists(traces_list_t **headers,traces_list_t **gather_headers);
+void
+merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list);
 
-/** Function responsible for adding a new trace header to existing list of headers.
- * 	It is called while fetching traces headers.
+/** Function responsible for adding a new trace header to
+ *  existing list of headers. It is called after sorting traces headers.
+ *  Mainly used to copy traces headers from array of read_traces(that was used
+ *  in sorting) to linked list of traces.
+ *
+ * \param[in]	trace		pointer to the trace header that will be added
+ * 				to the linked list of traces(trace_list)
+ * \param[in]	head		pointer to the pointer of the traces list,
+ * 				new node will be created and linked
+ * 				to this traces list
  */
-void add_trace_header(trace_t *trace, traces_list_t **head);
+void
+add_trace_header(trace_t *trace, traces_list_t **head);
 
 /** Function responsible for updating gather keys at the end of parsing segy file.
  * 	It writes the number_of_traces key(akey) under each gather(dkey).
  * 	It writes the object id of the DAOS_ARRAY object holding the traces oids.
  * 	Writes the array of OIDS_HDR_traces to the DAOS_ARRAY OBJECT.
+ *
+ *	\param[in]	dfs			pointer to the daos file system.
+ *	\param[in]	head		pointer to linked list of gathers holding all gathers data.
+ *	\param[in]	object		pointer to seismic object to be updated.
+ *	\param[in]	dkey_name	string containing the prefix of the gather dkey.
+ *	\param[in]	akey_name	string containing the number of traces akey.
+ *
+ * \return      0 on success
+ * 				error_code otherwise
  */
 int update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object, char *dkey_name, char *akey_name);
 
-/** Function responsible for checking if specific shot_id/ Cmp_Value/Offset_value of a trace exist in any of the existing gathers under (SHOT/CMP/OFFSET)_seismic_objects.
+/** Function responsible for checking specific shot_id/Cmp_value/Offset_value
+ *  of a trace exist in any of the existing gathers under
+ *  (SHOT/CMP/OFFSET)_seismic_objects.
  * 	It is called to check if the target value exists.
  * 	If Yes--> number of traces belonging to this gather increases and the trace header object id is also added.
  * 	ELSE--> it returns with false
+ *
+ * 	\param[in]	target	target value to be checked if it exists or not.
+ * 	\param[in]	key		string containing the header key(cmp_key/ shot_key/ offset_key) of each seismic object to check its value.
+ *	\param[in]	head	pointer to linked list of gathers holding all gathers data.
+ * 	\param[in]	trace_obj_id	id of the trace object that will check its header value.
+ * 	\param[in]	ntraces		????????????????????????????
+ *
+ * 	\return      0 on success
+ * 				error_code otherwise
  */
 int check_key_value(Value target, char *key, seis_gather_t *head, daos_obj_id_t trace_obj_id, int *ntraces);
 
-/** Function responsible for creating trace_OIDS array objects.
+/** Function responsible for creating trace_OIDS array object.
  * 	It is called once after preparing linked list of object gathers.
  * 	It creates number of array objects equal to the number of gathers under seismic object.
+ *
+ * 	\param[in]	dfs	 	 pointer to daos file system.
+ *  \param[in]	cid	  	 DAOS object class id (pass 0 for default MAX_RW).
+ *  \param[in]	seis_obj pointer to seismic object, array objects will be created for each gather under this object.
+ *
+ * 	\return      0 on success
+ * 				error_code otherwise
  */
 int daos_seis_trace_oids_obj_create(dfs_t* dfs,daos_oclass_id_t cid,seis_obj_t *seis_obj);
 
 /** Function responsible for creating seismic gather objects.
- *	Can be extended later to create other gather objects if needed.
+ *	Can be extended later to create other gather objects if needed.!!!!!!!!!!
  *	It only supports (CMP/SHOT/OFFSET) currently.
+ *
+ * 	\param[in]	dfs	 	 pointer to daos file system.
+ *  \param[in]	cid	  	 DAOS object class id (pass 0 for default MAX_RW).
+ *	\param[in]	parent	 pointer to opened root seismic_object.
+ *	\param[in]	obj		 pointer holding the address of the pointer to the seimsic object to be allocated.
+ *	\param[in]	key		 string containing key which will be the name of the seismic object, and will be used
+ *						 to link the seismic object to the root seismic object.
+ *
+ * 	\return      0 on success
+ * 				error_code otherwise
  */
 int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t *parent, seis_obj_t **obj, char* key);
 
 /** Function responsible for preparing seismic entry with trace header data.
  *  It is called to update/insert trace header data under specific trace_header_object.
+ *
+ *  \param[in]	tr_obj		pointer to opened trace header object to update its header.
+ *  \param[in]	tr			segy struct holding all headers and data values to be written to the trace header object.
+ *  						(will only extract trace headers from this struct)
+ *  \param[in]	hdrbytes	number of bytes to be updated in trace header object(240 bytes as defined in segy.h).
+ *
+ * 	\return      0 on success
+ * 				error_code otherwise
+ *
  */
-int daos_seis_trh_update(dfs_t* dfs, trace_obj_t* tr_obj, segy *tr, int hdrbytes);
-int new_daos_seis_trh_update(dfs_t* dfs, trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
+int daos_seis_trh_update(trace_obj_t* tr_obj, segy *tr, int hdrbytes);
+int new_daos_seis_trh_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
 
 /** Function responsible for preparing trace data to be written/stored as DAOS_ARRAY under specific trace data object.
  *  It is called to update/insert trace data under specific trace_data_object.
+ *
+ *  \param[in]	trace_data_obj	pointer to trace_oid_oh_t struct that holds
+ *  							object id and open handle of the trace data object.
+ *  \param[in]	trace			segy struct holding all headers and data values to be written to the trace header object.
+ *  							(will only extract traces data from this struct).
+ *
+ * 	\return      0 on success
+ * 				error_code otherwise
  */
-int daos_seis_tr_data_update(dfs_t* dfs, trace_oid_oh_t* trace_data_obj, segy *trace);
+int daos_seis_tr_data_update(trace_oid_oh_t* trace_data_obj, segy *trace);
 
 /** Function responsible for updating gather_TRACE_OIDS object(SHOT/CMP/OFFSET).
  * It is called mainly at the end of the parsing function and only stores the traces_hdr_oids
+ *
+ *  \param[in]	trace_data_obj	pointer to trace_oid_oh_t struct that holds
+ *  							object id and open handle of the trace data object.
+ *	\param[in]	gather			pointer to linked list of gathers holding all gathers data.
+ *
+ * 	\return      0 on success
+ * 				error_code otherwise
  */
-int daos_seis_gather_oids_array_update(dfs_t* dfs, trace_oid_oh_t* object, seis_gather_t *gather);
+int daos_seis_gather_oids_array_update(trace_oid_oh_t* object, seis_gather_t *gather);
 
 /** Function responsible for calculating the object id of trace_data_object from object_id of trace_header_object.
  * It is called before reading from or writing to trace_data_object.
+ *
+ * 	\param[in]	tr_hdr	id of the trace header object.
+ *  \param[in]	cid	  	DAOS object class id (pass 0 for default MAX_RW).
+ *
+ * 	\return		object id of the trace data object.
  */
 daos_obj_id_t get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid);
 
 /** Function responsible for creating trace_header_object & trace_data_object
- * It is called once for each trace while parsing the segy_file..
+ * It is called once for each trace while parsing the segy_file.
+ *
+ * 	\param[in]	dfs			 	pointer to daos file system.
+ *	\param[in]	trace_hdr_obj	pointer holding the address of the pointer to the trace header object to be allocated.
+ *  \param[in]	index			Integer holding the index of the trace object to be created.
+ *  \param[in]	trace			segy struct holding the trace heades and data.
+ *  \param[in]	nbytes			Integer containing number of header bytes to be used
+ *  							while copying the trace header from the trace struct
+ *  							to the newly allocated trace object.
+ *
+ * 	\return      0 on success
+ * 				error_code otherwise
  */
 int daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index, segy *trace, int nbytes);
 
 /** Function responsible for preparing the seismic entry.
  * It is called before reading from or writing to any seismic object.
+ *
+ * \param[in]	entry		pointer to the seismic entry to be prepared.
+ * \param[in]	oid			object id of the seismic object that will be used.
+ * \param[in]	dkey		string containing dkey that will be used in fetching/ updating the seismic object.
+ * \param[in]	akey		string containing akey that will be used in fetching/ updating the seismic object.
+ * \param[in]	data		byte array to be fetched/updated.
+ * \param[in]	size		Integer containing size(number of bytes) to be fetched/updated in the seismic object.
+ * \param[in]	iod_type	type of the value accessed in the IO descriptor(dkey/one value to be updated atomically/ or array of records).
+ *
  */
-void prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid, char *dkey, char *akey,
-			char *data,int size, daos_iod_type_t iod_type);
+void
+prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid,
+		      char *dkey, char *akey, char *data,int size,
+		      daos_iod_type_t iod_type);
 
 /** Function responsible for updating any gather object.
  * It is called mainly at the end of the parsing function while pushing all gather data under specific keys.
+ *
+ * \param[in]	seis_obj 	pointer to seismic object to be updated.
+ * \param[in]	dkey_name	string containing name of the dkey to be used while updating the seismic gather object.
+ * \param[in]	akey_name	string containing name of the akey to be used while updating the seismic gather object.
+ * \param[in]	data		byte array of data to be written under the akey and dkey of seismic gather object.
+ * \param[in]	nbytes		number of bytes to be written to the seimsic gather object.
+ * \param[in]	iod_type	type of the value accessed in the IO descriptor(dkey/one value to be updated atomically/ or array of records).
+ *
+ * \return      0 on success
+ * 				error_code otherwise
  */
 int update_gather_object(seis_obj_t *gather_obj, char *dkey_name, char *akey_name,
 								char *data, int nbytes, daos_iod_type_t type);
 
-/** Function responsible for preparing the akey and dkey before using them
- * still needs some modification to generalize the function.
- */
-void prepare_keys(char *dkey_name, char *akey_name, char *dkey_prefix,
-						char *akey_prefix, int nkeys, int *dkey_suffix, int *akey_suffix);
-
 /** Function responsible for linking each trace to the seismic object gathers.
  *	It is called once while creating the trace header & data objects.
  *  Also called while replacing objects.
+ *  \param[in]	trace_obj	pointer to trace object to be linked to a specific object gather.
+ *  \param[in]	seis_obj	pointer to the seismic object to which the trace
+ *  						will be linked based on the unique value of the key
+ *  						passed(shot/offset/cmp)of the trace
+ *  \param[in]	key			string containing key which will be used to get the unique value of the trace.
+ *
+ *  \return      0 on success
+ * 		error_code otherwise
  */
-int daos_seis_tr_linking(dfs_t* dfs, trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key);
+int daos_seis_tr_linking(trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key);
 
 /** Function responsible for creating two pipes.
- * It is called while executing any command to enable reading and writing directly through the pipe
+ * It is called to enable reading and writing directly through the pipe
  * No need to go for Posix system.
+ *
+ * \param[in]	fds			array of 2 file descriptors. fd[0] will read from child process
+ * 							and the other will write to it.
+ * \param[in]	command		string containing the command to be executed.
+ * \param[in]	argv		array of arguments to be passed while executing the command.
+ *
+ * \return		id of the process running the command.
+ *
  */
 int pcreate(int fds[2], const char *command, char *const argv[]);
 
-/** Function responsible for executing command passed in argv */
+/** Function responsible for executing command passed in argv
+ *
+ * \param[in]	argv			array of strings containing command and the arguments.
+ * \param[in]	write_buffer	byte array to be written.
+ * \param[in]	write_bytes		number of bytes to be written.
+ * \param[in]	read_buffer		byte array to be read into.
+ * \param[in]	read_bytes		number of bytes to be read
+ *
+ * \return 		number of bytes actually read from the STDOUT of the subprocess.
+ *
+ */
 int execute_command(char *const argv[], char *write_buffer,
 						int write_bytes, char *read_buffer, int read_bytes);
 
-/** Function responsible for converting the trace struct back to the original segy struct */
+/** Function responsible for converting the trace struct back to the original segy struct
+ *
+ *	\param[in]	trace	pointer to the trace struct that will be converted to the original segy struct(defined in segy.h)
+ *
+ * \return	segy struct.
+ *
+ */
 segy* trace_to_segy(trace_t *trace);
 
-/** Function responsible for fetching traces headers to read_traces struct
- * 	It is only used in sorting headers function.
+/** Function responsible for fetching traces headers in read_traces struct
+ *  It is only used in sorting headers function.
+ *
+ * \param[in]	coh		opened container handle
+ * \param[in]	oids		array holding trace_headers oids to be fetched.
+ * \param[in]	traces 		pointer to allocated array traces.
+ * \param[in]	daos_mode 	daos object mode(read only or read/write).
+ *
  */
-void fetch_traces_header_read_traces(dfs_t *dfs, daos_obj_id_t *oids, read_traces *traces, int daos_mode);
+void
+fetch_traces_header_read_traces(daos_handle_t coh, daos_obj_id_t *oids,
+				read_traces *traces, int daos_mode);
 
 /** Function responsible for fetching traces headers to traces list.
- * 	It is called in get headers and window functions.
+ * It is called in get headers and window functions.
+ *
+ * \param[in]	coh		opened container handle
+ * \param[in]	oids		array holding trace_headers oids to be fetched.
+ * \param[in]	head_traces 	pointer to linked list of traces.
+ * \param[in]	daos_mode 	daos object mode(read only or read/write).
+ * \param[in]	num_of_traces	number of traces to fetch headers.
+ *
  */
-void fetch_traces_header_traces_list(dfs_t *dfs, daos_obj_id_t *oids, traces_list_t **head_traces, int daos_mode, int number_of_traces);
+void
+fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
+				traces_list_t **head_traces, int daos_mode,
+				int num_of_traces);
 
 /** Function responsible for fetching traces data to traces list
- * 	It is called at the end of sorting/ windowing functions.
+ *  It is called at the end of sorting/ windowing functions.
+ *
+ *  \param[in]	coh		daos container open handle.
+ *  \param[in]	head_traces	pointer to linked list of traces.
+ *  \param[in]	daos_mode	array object mode(read only or read/write)
+ *
  */
-void fetch_traces_data(dfs_t *dfs, traces_list_t **head_traces, int daos_mode);
+void
+fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
+		  int daos_mode);
 
 /** Function responsible for sorting dkeys in ascending order.
- *  Should be extended to sort in descending order if needed.
+ *  dkeys will be sorted in the array of values.
+ *
+ *  \param[in]	values		 array of long values that will be set and used
+ *  				 to sort dkeys unique values.
+ *  \param[in]	number_of_gathers seismic_object number of gathers,
+ *  				  size of the array of values.
+ *  \param[in]	unique_keys	 array of strings having fetched dkeys.
+ *  \param[in]	direction	 direction of sorting
+ *  				 (1 >> ascending 0 >> descending)
  */
-void sort_dkeys_list(long *first_array, int number_of_gathers, char** unique_keys, int direction);
+void
+sort_dkeys_list(long *values, int number_of_gathers, char** unique_keys,
+		int direction);
 
 /** Function responsible for sorting traces headers
- * 	It is called while sorting headers and internally merge sort the headers based on their key value.
+ *  It is called while sorting headers and internally merge sort the headers
+ *  based on their key value.
+ *
+ * \param[in]	gather_traces	pointer to gather array of traces to be sorted.
+ * \param[in]	sort_key	array of strings holding primary and secondary
+ * 				keys of sorting.
+ * \param[in]	direction	direction of sorting(ascending or descending).
+ * \param[in]	number_of_keys	number of keys to sort headers on.
+ *
  */
-void sort_headers(read_traces *gather_traces, char **sort_key, int *direction, int number_of_keys);
+void
+sort_headers(read_traces *gather_traces, char **sort_key, int *direction, int number_of_keys);
 
 /** Function responsible for sorting two halves of traces headers based on the direction.
  *  It is called while sorting headers.
+ *
+ *  \param[in]	arr		pointer to array of traces to be sorted.
+ *  \param[in]	low		index of the first element of the array(0),
+ *  				will be used to set the left position
+ *  				to start from.
+ *  \param[in]	mid		index of the middle element, will be used
+ *  				to set the right position of the array.
+ *  \param[in]	high		index of the last element of the array
+ *  				(number of traces) that will be merged.
+ *  \param[in]	sort_key 	array of string holding the keys which traces
+ *  			 	are sorted on.
+ *  \param[in]	direction 	direction of sorting, ascending(1) or
+ *  				descending(0), will be used while
+ *  				merging the two arrays.
+ *  \param[in]	num_of_keys	number of keys to sort traces on.
  */
-void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direction, int number_of_keys);
+void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direction, int num_of_keys);
 
-/** Function responsible for dividing/ splitting the traces headers.
- *  It is called while sorting headers.
+/** Function responsible recursively called to split array of traces headers.
+ *  It is called only while sorting headers.
+ *
+ *  \param[in]	arr		pointer to array of traces to be sorted.
+ *  \param[in]	low		index of the first element of the array(0),
+ *  				will be used to calculate the midpoint
+ *  				and split the array.
+ *  \param[in]	high		index of the last element of the array
+ *  				(number of traces), will be used to calculate
+ *  				the midpoint and split the array of traces.
+ *  \param[in]	sort_key 	array of string holding the keys which traces
+ *  			 	will be sorted on.
+ *  \param[in]	direction 	direction of sorting,
+ *  				ascending(1) or descending(0).
+ *  \param[in]	num_of_keys	number of keys to sort traces on.
+ *
  */
-void MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction, int number_of_keys);
+void
+MergeSort(trace_t *arr, int low, int high, char **sort_key,
+	  int *direction, int numof_keys);
 
 /** Function responsible for getting trace header value */
 void get_header_value(trace_t trace, char *sort_key, Value *value);
@@ -834,22 +1165,50 @@ char* get_dkey(char *key);
 /** Function responsible for calculating and setting trace header value
  * 	It is called while setting/ changing traces headers values
  */
-void set_traces_header(dfs_t *dfs, int daos_mode, traces_list_t **head, int num_of_keys, char **keys_1, char **keys_2, char **keys_3, double *a, double *b, double *c,
-				double *d, double *e, double *f, double *j, header_type_t type);
+void set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head, int num_of_keys, char **keys_1, char **keys_2, char **keys_3, double *a, double *b, double *c,
+				double *d, double *e, double *f, double *j, header_operation_type_t type);
 
 /** Function responsible for calculating new trace header value */
 void calculate_new_header_value(traces_headers_t *current, char *key1, char *key2, char *key3, double a, double b,
-							double c, double d,double e, double f, double j, int itr, header_type_t type,
+							double c, double d,double e, double f, double j, int itr, header_operation_type_t type,
 							cwp_String header_data_type_key1, cwp_String header_data_type_key2, cwp_String header_data_type_key3);
 
 /** Function responsible for windowing traces based on min and max of some keys
- * 	It is called while executing daos_seis_window function.
+ *  It is called while executing daos_seis_window function.
+ *
+ *  \param[in]	head		pointer to linked list of traces headers.
+ *  \param[in]	window_keys	array of strings containing the header keys
+ *  				to window on.
+ *  \param[in]	num_of_keys	number of keys in the array of window keys.
+ *  \param[in]	type		type of window header keys
+ *  				as defined in su_helpers.h
+ *  \param[in]  min_keys        array of VALUE(su_helpers.h) containing window
+ *  				header keys minimum values based on key type.
+ *  \param[in]  max_keys        array of VALUE(su_helpers.h) containing window
+ *  				header keys maximum values based on key type.
+ *
  */
-void window_headers(traces_list_t **head, char **window_keys, int number_of_keys, cwp_String *type, Value *min_keys, Value *max_keys);
+void
+window_headers(traces_list_t **head, char **window_keys, int number_of_keys,
+	       cwp_String *type, Value *min_keys, Value *max_keys);
 
-/** Function responsible for fetching dkeys under seismic object and optionally sort dkeys in ascending or descending order.*/
-char ** daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,
-																int cmp_obj, int off_obj, int direction);
+/** Function responsible for fetching dkeys under seismic object
+ *  and optionally sort dkeys in ascending or descending order.
+ *
+ *  \param[in]	seismic_object	pointer to opened seismic object,
+ *  				will be used to list dkeys.
+ *  \param[in]	sort		sorting flag, if set then dkeys will be sorted.
+ *  \param[in]	shot_obj	shot_obj flag, it is only used in case of sorting..
+ *  \param[in]	cmp_obj		cmp_obj flag, it is only used in case of sorting..
+ *  \param[in]	off_obj		off_obj flag, it is only used in case of sorting..
+ *  \param[in]	direction	only used in case of sorting to check the direction
+ *  				of sorting (ascending or descending)
+ *
+ *  \return	array of strings containing seismic object dkeys(only gather dkeys).
+ *  */
+char **
+daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,
+		      int cmp_obj, int off_obj, int direction);
 
 /** Function responsible for destroying existing seismic object and creating new one.
  *  It creates new object after destroying all array objects holding traces headers oids.
@@ -874,5 +1233,23 @@ void print_headers_ranges(int number_of_keys, char **keys, trace_t *trmin, trace
 
 /** Fucntion responsible for storing the unique value in character array based on its type */
 void val_sprintf(char *temp, Value unique_value, char *key);
+
+/** Function responsible for fetching array of traces headers object ids
+ *
+ * \param[in]	root			pointer to opened seismic root object.
+ * \param[in]	oids			pointer to allocated array of
+ * 					traces headers oids.
+ * \param[in] 	gather_oid_oh		pointer to struct holding object id
+ * 					and open handle of the array object.
+ * \param[in]	number_of_traces	number of header object ids
+ * 					that will be fetched.
+ *
+ *  \return      0 on success
+ *  		 error_code otherwise
+ */
+int
+fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
+			     trace_oid_oh_t *gather_oid_oh,
+			     int number_of_traces);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

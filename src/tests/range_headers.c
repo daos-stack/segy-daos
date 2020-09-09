@@ -106,7 +106,7 @@ int main(int argc, char *argv[]){
 //													d_values, NULL, e_values, f_values, type);
 	gettimeofday(&tv1, NULL);
 
-	daos_seis_range_headers(get_dfs(), segy_root_object, number_of_keys, range_keys, dim);
+	daos_seis_range_headers(segy_root_object, number_of_keys, range_keys, dim);
 
 	printf("AFTER RANGE HEADERS \n");
 //	int tracl_mod = 1;

@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
     char *d;
     char *e;
     char *f;
-    header_type_t type = 1;
+    header_operation_type_t type = 1;
 
     /* Optional */
     int verbose;                    /* Flag to allow verbose output */

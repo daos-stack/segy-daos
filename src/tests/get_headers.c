@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
 	gettimeofday(&tv1, NULL);
 	int ngathers;
 
-	traces_list_t *trace_list = daos_seis_get_headers(get_dfs(), segy_root_object);
+	traces_list_t *trace_list = daos_seis_get_headers( segy_root_object);
 	traces_headers_t *trace_header = trace_list->head;
 	int i;
 	Value val;

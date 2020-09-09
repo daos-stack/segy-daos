@@ -93,7 +93,7 @@ int main(int argc, char *argv[]){
 
 	gettimeofday(&tv1, NULL);
 	int ngathers;
-	traces_list_t *trace_list = daos_seis_wind_traces(get_dfs(), segy_root_object, window_keys, number_of_keys,
+	traces_list_t *trace_list = daos_seis_wind_traces(segy_root_object, window_keys, number_of_keys,
 												min_keys, max_keys, type);
     FILE *fd = fopen(out_file, "w");
 	traces_headers_t *temp = trace_list->head;

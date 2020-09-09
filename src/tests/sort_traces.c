@@ -147,7 +147,7 @@ int main(int argc, char *argv[]){
 
 	gettimeofday(&tv1, NULL);
 	int ngathers;
-	traces_list_t *trace_list = daos_seis_sort_headers(get_dfs(), segy_root_object, number_of_keys, sort_keys, directions, number_of_window_keys,
+	traces_list_t *trace_list = daos_seis_sort_traces(segy_root_object, number_of_keys, sort_keys, directions, number_of_window_keys,
 									window_keys, type, min_keys, max_keys);
 //	if(window_keys != NULL){
 ////		printf("HELLO Hello  \n");
@@ -163,7 +163,7 @@ int main(int argc, char *argv[]){
 		return 0;
 	} else {
 		while(tempo != NULL){
-			printf("tracl  === %d , fldr === %d \n", tempo->trace.tracl, tempo->trace.fldr);
+		printf("tracl  === %d , fldr === %d \n", tempo->trace.tracl, tempo->trace.fldr);
 	    	segy* tp = trace_to_segy(&(tempo->trace));
 	    	tp->tracl = tp->tracr = tracl_mod;
 	    	tracl_mod++;
@@ -171,10 +171,16 @@ int main(int argc, char *argv[]){
 	    	tempo = tempo->next_trace;
 		}
 	}
+	traces_headers_t *temp_list = trace_list->head;
+	while(temp_list != NULL){
+		free(temp_list);
+		temp_list = temp_list->next_trace;
+	}
+	free(trace_list);
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
-	daos_seis_close_root(segy_root_object);
-	gettimeofday(&tv2, NULL);
+    daos_seis_close_root(segy_root_object);
+    gettimeofday(&tv2, NULL);
     time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
     printf("TIME TAKEN IN SORT FUNCCTION ISSS %f \n", time_taken);
 
