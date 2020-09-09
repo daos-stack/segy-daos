@@ -171,12 +171,7 @@ int main(int argc, char *argv[]){
 	    	tempo = tempo->next_trace;
 		}
 	}
-	traces_headers_t *temp_list = trace_list->head;
-	while(temp_list != NULL){
-		free(temp_list);
-		temp_list = temp_list->next_trace;
-	}
-	free(trace_list);
+	release_traces_list(trace_list);
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
     daos_seis_close_root(segy_root_object);

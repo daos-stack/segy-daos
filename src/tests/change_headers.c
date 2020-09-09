@@ -174,24 +174,26 @@ int main(int argc, char *argv[]){
 //	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
 //	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
 //	printf("CMP_OID %llu %llu \n", segy_root_object->cmp_oid.lo, segy_root_object->cmp_oid.hi);
+	daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, keys_1, keys_2, keys_3, a_values, b_values, c_values,
+														d_values, NULL, e_values, f_values, type);
 
-	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, keys_1, keys_2, keys_3, a_values, b_values, c_values,
-													d_values, NULL, e_values, f_values, type);
-
-	FILE *fd = fopen(out_file, "w");
-
-	int tracl_mod = 1;
-	traces_headers_t *tempo = trace_list->head;
-	if (tempo == NULL) {
-		printf("LINKED LIST EMPTY>>FAILURE\n");
-		return 0;
-	} else{
-		while(tempo != NULL){
-			printf("TRACE GX ==== %d \n", tempo->trace.gx);
-			printf("TRACE CDP ==== %d \n", tempo->trace.cdp);
-	    	tempo = tempo->next_trace;
-		}
-	}
+//	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, keys_1, keys_2, keys_3, a_values, b_values, c_values,
+//													d_values, NULL, e_values, f_values, type);
+//
+//	FILE *fd = fopen(out_file, "w");
+//
+//	int tracl_mod = 1;
+//	traces_headers_t *tempo = trace_list->head;
+//	if (tempo == NULL) {
+//		printf("LINKED LIST EMPTY>>FAILURE\n");
+//		return 0;
+//	} else{
+//		while(tempo != NULL){
+//			printf("TRACE GX ==== %d \n", tempo->trace.gx);
+//			printf("TRACE CDP ==== %d \n", tempo->trace.cdp);
+//	    	tempo = tempo->next_trace;
+//		}
+//	}
 
 //	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
 //	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);

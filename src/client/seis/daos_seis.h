@@ -151,28 +151,47 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
  * \param[in]   dfs            pointer to DAOS file system.
  * \param[in]   root           pointer to opened root seismic object.
  * \param[in]   num_of_keys    number of header keys to set their value.
- * \param[in]	keys_1		array of strings containing header keys to set their header value.
- * \param[in]	keys_2		   array of strings containing header keys to use their header value while setting keys_1(change headers case)
- * \param[in]	keys_3		   array of strings containing header keys to use their header value while setting keys_1(change headers case)
- * \param[in] 	a		array of doubles containing values on first trace(set_headers case) or overall shift(change headers case)
- * \param[in] 	b			   array of doubles containing increments values within group(set_headers case) or scale on first input key(change headers case)
- * \param[in] 	c			   array of doubles containing group increments(set_headers case) or scale on second input key(change headers case)
- * \param[in] 	d			   array of doubles containing trace number shifts(set_headers case) or overall scale (change headers case)
- * \param[in] 	j			   array of doubles containing number of elements in group (set headers case only)
- * \param[in]	e			   array of doubles containing exponent on first input key(change headers case only)
- * \param[in] 	f			   array of doubles containing exponent on second input keys(change headers case only)
- * \param[in]   type           type of operation requested whether it is set headers or change headers defined in the enum header_operation_type_t(SET_HEADERS/ CHANGE_VALUES).
+ * \param[in]	keys_1	       array of strings containing header keys
+ * 			       to set their header value.
+ * \param[in]	keys_2	       array of strings containing header keys
+ * 			       to use their header value while setting
+ * 			       keys_1(change headers case)
+ * \param[in]	keys_3         array of strings containing header keys
+ * 			       to use their header value while setting
+ * 			       keys_1(change headers case)
+ * \param[in] 	a	       array of doubles containing values on first
+ * 			       trace(set_headers case)
+ * 			       or overall shift(change headers case)
+ * \param[in] 	b	       array of doubles containing increments values
+ * 			       within group(set_headers case)
+ * 			       or scale on first input key(change headers case)
+ * \param[in] 	c	       array of doubles containing group increments
+ * 			       (set_headers case) or scale on second input key
+ * 			       (change headers case)
+ * \param[in] 	d	       array of doubles containing trace number shifts
+ * 			       (set_headers case) or overall scale
+ * 			       (change headers case)
+ * \param[in] 	j	       array of doubles containing number of elements
+ * 			       in group (set headers case only)
+ * \param[in]	e	       array of doubles containing exponent on first
+ * 			       input key(change headers case only)
+ * \param[in] 	f	       array of doubles containing exponent on second
+ * 			       input keys(change headers case only)
+ * \param[in]   type           type of operation requested whether it is set
+ * 			       headers or change headers defined in the enum
+ * 			       header_operation_type_t
+ * 			       (SET_HEADERS/ CHANGE_VALUES).
  *
- * \return      pointer to traces_list including pointers to head, tail and size of linked list of
- * 				 traces headers and data after setting header keys of each trace.
+ * \return      pointer to traces_list including pointers to head, tail
+ * 		and size of linked list of traces headers and data
+ * 		after setting header key values of each trace.
  */
-traces_list_t* daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
-				     int num_of_keys, char **keys_1,
-				     char **keys_2, char **keys_3,
-				     double *a, double *b, double *c,
-				     double *d, double *j,
-				     double *e, double *f,
-				     header_operation_type_t type);
+void
+daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys,
+		      char **keys_1, char **keys_2, char **keys_3,
+	 	      double *a, double *b, double *c,
+		      double *d, double *j, double *e,
+		      double *f, header_operation_type_t type);
 
 /** Get max and min values for non-zero header entries and display these values.
  *

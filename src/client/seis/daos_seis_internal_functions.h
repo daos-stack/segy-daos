@@ -896,13 +896,17 @@ int daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid, seis_root_obj_t
 /** Function responsible for preparing seismic entry with trace header data.
  *  It is called to update/insert trace header data under specific trace_header_object.
  *
- *  \param[in]	tr_obj		pointer to opened trace header object to update its header.
- *  \param[in]	tr			segy struct holding all headers and data values to be written to the trace header object.
- *  						(will only extract trace headers from this struct)
- *  \param[in]	hdrbytes	number of bytes to be updated in trace header object(240 bytes as defined in segy.h).
+ *  \param[in]	tr_obj		pointer to opened trace header object
+ *  				to update its header.
+ *  \param[in]	tr		segy struct holding all headers and data
+ *  				values to be written to the trace header.
+ *  				(will only extract trace headers
+ *  				from this struct)
+ *  \param[in]	hdrbytes	number of bytes to be updated in trace header
+ *  				object(240 bytes as defined in segy.h).
  *
- * 	\return      0 on success
- * 				error_code otherwise
+ *  \return      0 on success
+ * 		 error_code otherwise
  *
  */
 int daos_seis_trh_update(trace_obj_t* tr_obj, segy *tr, int hdrbytes);
@@ -1153,25 +1157,116 @@ void
 MergeSort(trace_t *arr, int low, int high, char **sort_key,
 	  int *direction, int numof_keys);
 
-/** Function responsible for getting trace header value */
-void get_header_value(trace_t trace, char *sort_key, Value *value);
+/** Function responsible for getting trace header value
+ *
+ * \param[in]	trace		trace struct.
+ * \param[in]	sort_key	Key header to get its value.
+ * \param[in]	value		value of the header to be returned.
+ *
+ */
+void
+get_header_value(trace_t trace, char *sort_key, Value *value);
 
-/** Function responsible for setting trace header value */
+/** Function responsible for setting trace header value
+ *
+ * \param[in]	trace		pointer to trace header struct.
+ * \param[in]	sort_key	Key header to set its value.
+ * \param[in]	value		value of the header to be set.
+ *
+ */
 void set_header_value(trace_t *trace, char *sort_key, Value *value);
 
 /** Function responsible for getting dkey name given specific key */
 char* get_dkey(char *key);
 
 /** Function responsible for calculating and setting trace header value
- * 	It is called while setting/ changing traces headers values
+ *  It is called while setting/ changing traces headers values
+ *
+ * \param[in]	coh	       container open handle
+ * \param[in]	daos_mode      daos object mode(read only or read/write).
+ * \param[in[	head	       pointer to linked list of traces.
+ * \param[in]   num_of_keys    number of header keys to set their value.
+ * \param[in]	keys_1	       array of strings containing header keys
+ * 			       to set their header value.
+ * \param[in]	keys_2	       array of strings containing header keys
+ * 			       to use their header value while setting
+ * 			       keys_1(change headers case)
+ * \param[in]	keys_3         array of strings containing header keys
+ * 			       to use their header value while setting
+ * 			       keys_1(change headers case)
+ * \param[in] 	a	       array of doubles containing values on first
+ * 			       trace(set_headers case)
+ * 			       or overall shift(change headers case)
+ * \param[in] 	b	       array of doubles containing increments values
+ * 			       within group(set_headers case)
+ * 			       or scale on first input key(change headers case)
+ * \param[in] 	c	       array of doubles containing group increments
+ * 			       (set_headers case) or scale on second input key
+ * 			       (change headers case)
+ * \param[in] 	d	       array of doubles containing trace number shifts
+ * 			       (set_headers case) or overall scale
+ * 			       (change headers case)
+ * \param[in] 	j	       array of doubles containing number of elements
+ * 			       in group (set headers case only)
+ * \param[in]	e	       array of doubles containing exponent on first
+ * 			       input key(change headers case only)
+ * \param[in] 	f	       array of doubles containing exponent on second
+ * 			       input keys(change headers case only)
+ * \param[in]   type           type of operation requested whether it is set
+ * 			       headers or change headers defined in the enum
+ * 			       header_operation_type_t
+ * 			       (SET_HEADERS/ CHANGE_VALUES).
  */
-void set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head, int num_of_keys, char **keys_1, char **keys_2, char **keys_3, double *a, double *b, double *c,
-				double *d, double *e, double *f, double *j, header_operation_type_t type);
+void
+set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head,
+		  int num_of_keys, char **keys_1, char **keys_2, char **keys_3,
+		  double *a, double *b, double *c, double *d, double *e,
+		  double *f, double *j, header_operation_type_t type);
 
-/** Function responsible for calculating new trace header value */
-void calculate_new_header_value(traces_headers_t *current, char *key1, char *key2, char *key3, double a, double b,
-							double c, double d,double e, double f, double j, int itr, header_operation_type_t type,
-							cwp_String header_data_type_key1, cwp_String header_data_type_key2, cwp_String header_data_type_key3);
+/** Function responsible for calculating new trace header value
+ *
+ * \param[in]	current	       pointer to trace struct to set its header value.
+ * \param[in]	keys_1	       array of strings containing header keys
+ * 			       to set their header value.
+ * \param[in]	keys_2	       array of strings containing header keys
+ * 			       to use their header value while setting
+ * 			       keys_1(change headers case)
+ * \param[in]	keys_3         array of strings containing header keys
+ * 			       to use their header value while setting
+ * 			       keys_1(change headers case)
+ * \param[in] 	a	       array of doubles containing values on first
+ * 			       trace(set_headers case)
+ * 			       or overall shift(change headers case)
+ * \param[in] 	b	       array of doubles containing increments values
+ * 			       within group(set_headers case)
+ * 			       or scale on first input key(change headers case)
+ * \param[in] 	c	       array of doubles containing group increments
+ * 			       (set_headers case) or scale on second input key
+ * 			       (change headers case)
+ * \param[in] 	d	       array of doubles containing trace number shifts
+ * 			       (set_headers case) or overall scale
+ * 			       (change headers case)
+ * \param[in] 	j	       array of doubles containing number of elements
+ * 			       in group (set headers case only)
+ * \param[in]	e	       array of doubles containing exponent on first
+ * 			       input key(change headers case only)
+ * \param[in] 	f	       array of doubles containing exponent on second
+ * 			       input keys(change headers case only)
+ * \param[in]   type           type of operation requested whether it is set
+ * 			       headers or change headers defined in the enum
+ * 			       header_operation_type_t
+ * 			       (SET_HEADERS/ CHANGE_VALUES).
+ * \param[in]	type_key1	header type of first key.
+ * \param[in]	type_key2	header type of second key.
+ * \param[in]	type_key3	header type of third key.
+ *
+ */
+void
+calculate_new_header_value(traces_headers_t *current, char *key1, char *key2,
+			   char *key3, double a, double b, double c, double d,
+			   double e, double f, double j, int itr,
+			   header_operation_type_t type, cwp_String type_key1,
+			   cwp_String type_key2, cwp_String type_key3);
 
 /** Function responsible for windowing traces based on min and max of some keys
  *  It is called while executing daos_seis_window function.
@@ -1251,5 +1346,7 @@ int
 fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
 			     trace_oid_oh_t *gather_oid_oh,
 			     int number_of_traces);
+
+void release_traces_list(traces_list_t *trace_list);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

@@ -150,28 +150,30 @@ int main(int argc, char *argv[]){
 
 
 	gettimeofday(&tv1, NULL);
-	int ngathers;
-	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, header_keys, NULL, NULL, a_values, b_values, c_values,
-													d_values, j_values, NULL, NULL, type);
-
-	FILE *fd = fopen(out_file, "w");
-
-	int tracl_mod = 1;
-	traces_headers_t *tempo = trace_list->head;
-	if (tempo == NULL) {
-		printf("LINKED LIST EMPTY>>FAILURE\n");
-		return 0;
-	} else{
-		while(tempo != NULL){
-			printf("TRACE FLDR  ==== %d          ", tempo->trace.fldr);
-			printf("TRACE DT ==== %hu       ", tempo->trace.dt);
-			printf("TRACE NS ==== %hu      ", tempo->trace.ns);
-			printf("TRACEL ==== %d      \n", tempo->trace.tracl);
-	    	tempo = tempo->next_trace;
-		}
-	}
-	printf("NUMBER OF TRACES in linked list == %d \n", trace_list->size);
-
+	daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, header_keys, NULL, NULL, a_values, b_values, c_values,
+														d_values, j_values, NULL, NULL, type);
+//	int ngathers;
+//	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, header_keys, NULL, NULL, a_values, b_values, c_values,
+//													d_values, j_values, NULL, NULL, type);
+//
+//	FILE *fd = fopen(out_file, "w");
+//
+//	int tracl_mod = 1;
+//	traces_headers_t *tempo = trace_list->head;
+//	if (tempo == NULL) {
+//		printf("LINKED LIST EMPTY>>FAILURE\n");
+//		return 0;
+//	} else{
+//		while(tempo != NULL){
+//			printf("TRACE FLDR  ==== %d          ", tempo->trace.fldr);
+//			printf("TRACE DT ==== %hu       ", tempo->trace.dt);
+//			printf("TRACE NS ==== %hu      ", tempo->trace.ns);
+//			printf("TRACEL ==== %d      \n", tempo->trace.tracl);
+//	    	tempo = tempo->next_trace;
+//		}
+//	}
+//	printf("NUMBER OF TRACES in linked list == %d \n", trace_list->size);
+//
 ////	int shot_gathers;
 //	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
 //	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
@@ -180,8 +182,9 @@ int main(int argc, char *argv[]){
 	number_of_traces = daos_seis_get_trace_count(segy_root_object);
 	printf("NUMBER OF TRACES == %d \n", number_of_traces);
 
+//	release_traces_list(trace_list);
 
-    printf("CLOSE SEGY ROOT OBJECT== \n");
+	printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);
 	gettimeofday(&tv2, NULL);
     time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
