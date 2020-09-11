@@ -96,17 +96,19 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root);
 
 /** Parse segy file and build equivalent daos-seismic graph
  *
- * \param[in]   dfs            pointer to DAOS file system.
- * \param[in]   parent         pointer to parent DAOS file system object.
- * \param[in]   name           name of root object that will be create.
- * \param[in]   segy_root      pointer to file that will be parsed.
- *
+ * \param[in]   dfs            	pointer to DAOS file system.
+ * \param[in]   parent         	pointer to parent DAOS file system object.
+ * \param[in]   name          	name of root object that will be create.
+ * \param[in]   segy_root     	pointer to file that will be parsed.
+ * \param[in]	num_of_keys	Number of strings(keys) in the array of keys.
+ * \param[in]	keys		array of strings containing header_keys that
+ * 				will be used to create gather objects.
  * \return      0 on success
  * 		error_code otherwise
  */
 int
 daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
-			dfs_obj_t *segy_root);
+		     dfs_obj_t *segy_root, int num_of_keys, char **keys);
 
 /** Sort traces headers based on any number of (secondary) keys with either,
  * ascending (+) or descending (-) directions for each.
@@ -193,36 +195,47 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys,
 		      double *d, double *j, double *e,
 		      double *f, header_operation_type_t type);
 
-/** Get max and min values for non-zero header entries and display these values.
+/** Get max and min values for non-zero header entries.
  *
- * \param[in]   root           pointer to opened root seismic object.
- * \param[in]   number_of_keys number of header keys to find their
- * 							   range of values otherwise it finds all non-zero header entries values'.
- * \param[in]	keys		   array of strings containing keys to get their header keys min and max ranges.
- * \param[in]	dim			   dim seismic flag (0 -> not dim)(1 -> coord in ft) (2 -> coord in m)
+ * \param[in]   root           	pointer to opened root seismic object.
+ * \param[in]   number_of_keys 	number of header keys to find their range of
+ * 				values otherwise it finds all non-zero
+ * 				header entries values.
+ * \param[in]	keys		array of strings containing keys to get their
+ * 				header keys min and max ranges.
+ * \param[in]	dim		dim seismic flag (0 -> not dim)
+ * 				(1 -> coord in ft) (2 -> coord in m)
  *
- * \return      number of traces.
- * 				key min max (first - last).
- * 				north-south-east-west limits of shot/receiver/midpoint.
- * 				midpoint interval and line length if dim.
+ * \return      headers ranges struct holding:
+ * 					number of traces
+ * 					key min max (first - last).
+ * 					north-south-east-west limits of
+ * 					 shot/receiver/midpoint.
+ * 					midpoint interval and
+ * 					 line length if dim.
  */
-void daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
-		char **keys, int dim);
+headers_ranges_t
+daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
+			char **keys, int dim);
 
 /** Get all traces headers key values.
  *
  * \param[in]   root           pointer to opened root seismic object.
  *
- * \return      pointer to traces_list including pointers to head, tail and size of linked list of headers values.
+ * \return      pointer to traces_list including pointers to head, tail
+ * 		and size of linked list of headers values.
  */
-traces_list_t* daos_seis_get_headers(seis_root_obj_t *root);
+traces_list_t*
+daos_seis_get_headers(seis_root_obj_t *root);
 
 /** Update traces data
  *
- * \param[in]   root           pointer to open root seismic object.
- * \param[in]   trace_list	   pointer to list of updated traces data ready to be written in Traces data objects,
- * 							   oids of theses objects is defined in each trace header.
+ * \param[in]   root           pointer to opened root seismic object.
+ * \param[in]   trace_list     pointer to list of updated traces data ready
+ * 			       to be written in Traces data objects, oids of
+ * 			       theses objects is defined in each trace header.
  */
-void daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list);
+void
+daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list);
 
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */

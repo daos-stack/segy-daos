@@ -106,24 +106,9 @@ int main(int argc, char *argv[]){
 //													d_values, NULL, e_values, f_values, type);
 	gettimeofday(&tv1, NULL);
 
-	daos_seis_range_headers(segy_root_object, number_of_keys, range_keys, dim);
+	headers_ranges_t ranges = daos_seis_range_headers(segy_root_object, number_of_keys, range_keys, dim);
 
-	printf("AFTER RANGE HEADERS \n");
-//	int tracl_mod = 1;
-//	traces_headers_t *tempo = trace_list->head;
-//	if (tempo == NULL) {
-//		printf("LINKED LIST EMPTY>>FAILURE\n");
-//		return 0;
-//	} else{
-//		while(tempo != NULL){
-//			printf("TRACE GX ==== %d \n", tempo->trace.gx);
-//			printf("TRACE CDP ==== %d \n", tempo->trace.cdp);
-//	    	tempo = tempo->next_trace;
-//		}
-//	}
-
-//	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
-//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+	print_headers_ranges(ranges);
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

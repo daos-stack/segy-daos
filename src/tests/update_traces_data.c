@@ -1,10 +1,9 @@
 /*
- * read_traces.c
+ * update_traces_data.c
  *
- *  Created on: Jul 5, 2020
+ *  Created on: Sep 11, 2020
  *      Author: mirnamoawad
  */
-
 #include <daos_seis.h>
 #include <daos_seis_internal_functions.h>
 
@@ -12,12 +11,12 @@
 
 int main(int argc, char *argv[]){
 
-	char *pool_id;      /* string of the pool uuid to connect to */
+    char *pool_id;      /* string of the pool uuid to connect to */
     char *container_id; /* string of the container uuid to connect to */
     char *svc_list;     /* string of the service rank list to connect to */
     char *in_file;      /* string of the path of the file that will be read */
     char *out_file;     /* string of the path of the file that will be written */
-	int shot_id;
+    int shot_id;
 
     /* Optional */
     int verbose;                    /* Flag to allow verbose output */
@@ -34,16 +33,6 @@ int main(int argc, char *argv[]){
     if (!getparint("verbose", &verbose))    verbose = 0;
     if (!getparint("contcreation", &allow_container_creation))    allow_container_creation = 1;
 
-//    /* Optional */
-//    int verbose =0;                    /* Flag to allow verbose output */
-//    int allow_container_creation =1;   /* Flag to allow container creation if not found */
-//
-//
-//
-//	char pool_id[100]="08b9a6dc-aa4d-42e2-87bd-1d8dc86b3561";
-//	char container_id[100]="08b9a6dc-aa4d-42e2-87bd-1d8dc86b3560";
-//	char svc_list[100]="0";
-
     struct timeval tv1, tv2;
     double time_taken;
 
@@ -56,24 +45,23 @@ int main(int argc, char *argv[]){
 
 	gettimeofday(&tv1, NULL);
 	traces_list_t *src_trace_list = daos_seis_get_shot_traces(shot_id, segy_root_object);
-//	traces_list_t *dst_trace_list = daos_seis_read_shot_traces(get_dfs(), 601, segy_root_object);
+	traces_list_t *dst_trace_list = daos_seis_get_shot_traces( 601, segy_root_object);
 
 	FILE *fd = fopen(out_file, "w");
 
 	traces_headers_t *temp_src = src_trace_list->head;
-//	traces_headers_t *temp_dst = dst_trace_list->head;
+	traces_headers_t *temp_dst = dst_trace_list->head;
 
 	if (temp_src == NULL) {
 		printf("LINKED LIST EMPTY>>FAILURE\n");
 		return 0;
 	} else{
 		while(temp_src != NULL){
-//			memcpy(temp_dst->trace.data, temp_src->trace.data, temp_src->trace.ns * sizeof(float));
-
+			memcpy(temp_dst->trace.data, temp_src->trace.data, temp_src->trace.ns * sizeof(float));
 			segy* tp = trace_to_segy(&(temp_src->trace));
 	    	fputtr(fd, tp);
 	    	temp_src = temp_src->next_trace;
-//	    	temp_dst = temp_dst->next_trace;
+	    	temp_dst = temp_dst->next_trace;
 		}
 	}
 
@@ -83,25 +71,26 @@ int main(int argc, char *argv[]){
 	printf("NUMBER OF TRACES == %d \n", number_of_traces);
 
 
-//	daos_seis_update_traces_data(get_dfs(), segy_root_object, dst_trace_list);
-//
-//	traces_list_t *trace_list = daos_seis_read_shot_traces(get_dfs(), 601, segy_root_object);
-//
-//	FILE *fdd = fopen("shot_601.su", "w");
-//
-//	traces_headers_t *temp = trace_list->head;
-//
-//	if (temp == NULL) {
-//		printf("LINKED LIST EMPTY>>FAILURE\n");
-//		return 0;
-//	} else{
-//		while(temp != NULL){
-//			segy* tp = trace_to_segy(&(temp->trace));
-//	    	fputtr(fdd, tp);
-//	    	temp = temp->next_trace;
-//		}
-//	}
-	traces_headers_t *temp = src_trace_list->head;
+	daos_seis_set_data(segy_root_object, dst_trace_list);
+
+	traces_list_t *trace_list = daos_seis_get_shot_traces(601, segy_root_object);
+
+	FILE *fdd = fopen("shot_601.su", "w");
+
+	traces_headers_t *temp = trace_list->head;
+
+	if (temp == NULL) {
+		printf("LINKED LIST EMPTY>>FAILURE\n");
+		return 0;
+	} else{
+		while(temp != NULL){
+			segy* tp = trace_to_segy(&(temp->trace));
+	    	fputtr(fdd, tp);
+	    	temp = temp->next_trace;
+		}
+	}
+
+	temp = src_trace_list->head;
 	while(temp != NULL){
 		free(temp);
 		temp = temp->next_trace;
@@ -120,3 +109,5 @@ int main(int argc, char *argv[]){
 
 	return 0;
 }
+
+

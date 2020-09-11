@@ -214,11 +214,16 @@ int daos_seis_th_update(seis_root_obj_t *root_obj, char *dkey_name,
 	return rc;
 }
 
-int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
-		daos_oclass_id_t cid, char *name, dfs_obj_t *parent)
+int
+daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
+			  daos_oclass_id_t cid, char *name,
+			  dfs_obj_t *parent, int num_of_keys, char **keys)
 {
+	struct dfs_entry 	dfs_entry = {0};
+	int 			daos_mode;
+	int 			rc;
+	int 			i;
 
-	int rc;
 	/*Allocate object pointer */
 	D_ALLOC_PTR(*obj);
 	if (*obj == NULL)
@@ -233,28 +238,35 @@ int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
 	(*obj)->root_obj->mode = S_IFDIR | S_IWUSR | S_IRUSR;
 	(*obj)->root_obj->flags = O_RDWR;
 	(*obj)->number_of_traces = 0;
+	(*obj)->num_of_keys = num_of_keys;
+	(*obj)->keys = malloc(num_of_keys * sizeof(char*));
+
+	for(i = 0; i < num_of_keys; i++){
+		(*obj)->keys[i] = malloc((strlen(keys[i]) + 1) * sizeof(char));
+		strcpy((*obj)->keys[i], keys[i]);
+	}
+
 	if (parent == NULL)
 		parent = &dfs->root;
 
 	/** Get new OID for root object */
 	rc = oid_gen(dfs, cid, false, &((*obj)->root_obj->oid));
-	if (rc) {
-		printf(
-				"ERROR GENERATING OBJECT ID FOR SEISMIC ROOT OBJECT ERR= %d \n",
-				rc);
+	if (rc != 0) {
+		err("Generating OID for seismic root object failed,"
+		    " error code = %d \n",rc);
 		return rc;
 	}
 
-	int daos_mode = get_daos_obj_mode((*obj)->root_obj->flags);
+	daos_mode = get_daos_obj_mode((*obj)->root_obj->flags);
 
 	rc = daos_obj_open(dfs->coh, (*obj)->root_obj->oid, daos_mode,
-			&((*obj)->root_obj->oh), NULL);
-	if (rc) {
-		printf("daos_obj_open() Failed (%d)\n", rc);
+			   &((*obj)->root_obj->oh), NULL);
+	if (rc != 0) {
+		err("Opening seismic root object failed,"
+		    " error code = %d \n",rc);
 		return rc;
 	}
 
-	struct dfs_entry dfs_entry = { 0 };
 	dfs_entry.oid = (*obj)->root_obj->oid;
 	dfs_entry.mode = (*obj)->root_obj->mode;
 	dfs_entry.chunk_size = 0;
@@ -262,9 +274,10 @@ int daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
 
 	/** insert Seismic root object created under parent */
 	rc = insert_entry(parent->oh, DAOS_TX_NONE, (*obj)->root_obj->name,
-			dfs_entry);
-	if (rc) {
-		printf("SEISMIC ROOT INSERTION FAILED err = %d \n", rc);
+			  dfs_entry);
+	if (rc != 0) {
+		err("Inserting seismic root object under parent failed,"
+		    " error code = %d \n",rc);
 		return rc;
 	}
 
@@ -682,22 +695,20 @@ new_daos_seis_trh_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
 }
 
 
-int daos_seis_tr_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
+int
+daos_seis_tr_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
 {
-
-	int rc;
-	int offset = 0;
-	struct seismic_entry tr_entry = { 0 };
-	daos_array_iod_t iod;
-	daos_range_t rg;
-	d_sg_list_t sgl;
-
-	tr_entry.data = (char*) (trace->data);
+	daos_array_iod_t 	iod;
+	daos_range_t 		rg;
+	d_sg_list_t 		sgl;
+	d_iov_t 		iov;
+	int 			offset = 0;
+	int 			rc;
 
 	sgl.sg_nr = 1;
 	sgl.sg_nr_out = 0;
-	d_iov_t iov;
-	d_iov_set(&iov, (void*) (tr_entry.data), trace->ns * sizeof(float));
+	d_iov_set(&iov, (void*)(char*)(trace->data),
+		  trace->ns * sizeof(float));
 
 	sgl.sg_iovs = &iov;
 	iod.arr_nr = 1;
@@ -705,16 +716,14 @@ int daos_seis_tr_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
 	rg.rg_idx = offset;
 	iod.arr_rgs = &rg;
 
-	rc = daos_array_write(trace_data_obj->oh, DAOS_TX_NONE, &iod, &sgl,
-	NULL);
-	if (rc) {
-		printf(
-				"ERROR UPDATING TRACE DATA KEY----------------- error = %d \n",
-				rc);
+	rc = daos_array_write(trace_data_obj->oh, DAOS_TX_NONE, &iod,
+			      &sgl, NULL);
+	if (rc != 0) {
+		err("Updating trace data failed, error code = %d \n", rc);
 		return rc;
 	}
-	return rc;
 
+	return rc;
 }
 
 
@@ -754,17 +763,19 @@ int daos_seis_gather_oids_array_update(trace_oid_oh_t *object,
 }
 
 
-daos_obj_id_t get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
+daos_obj_id_t
+get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
 {
 
-	daos_obj_id_t tr_data_oid = *tr_hdr;
-	tr_data_oid.hi++;
+	daos_obj_id_t 		tr_data_oid;
+	uint64_t 		ofeats;
+	uint64_t 		hdr;
 
-	uint64_t ofeats;
+	tr_data_oid= *tr_hdr;
+	tr_data_oid.hi++;
 
 	ofeats = DAOS_OF_DKEY_UINT64 | DAOS_OF_KV_FLAT | DAOS_OF_ARRAY_BYTE;
 
-	uint64_t hdr;
 
 	/* TODO: add check at here, it should return error if user specified
 	 * bits reserved by DAOS
@@ -1032,15 +1043,27 @@ int execute_command(char *const argv[], char *write_buffer, int write_bytes,
 }
 
 
-segy* trace_to_segy(trace_t *trace)
+segy*
+trace_to_segy(trace_t *trace)
 {
+	segy 		*tp;
 
-	segy *tp = malloc(sizeof(segy));
+	tp = malloc(sizeof(segy));
 	memcpy(tp, trace, HDRBYTES);
 	memcpy(tp->data, trace->data, tp->ns * sizeof(float));
 	return tp;
 }
 
+trace_t*
+segy_to_trace(segy *segy, daos_obj_id_t hdr_oid)
+{
+	trace_t		*trace;
+	trace = malloc(sizeof(trace_t));
+	memcpy(trace, segy, HDRBYTES);
+	trace->trace_header_obj = hdr_oid;
+	memcpy(trace->data, segy->data, segy->ns * sizeof(float));
+	return trace;
+}
 
 void
 fetch_traces_header_read_traces(daos_handle_t coh, daos_obj_id_t *oids,
@@ -1981,7 +2004,7 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, int shot_obj,
 
 
 void
-daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char **keys_1,
+daos_seis_replace_objects(dfs_t *dfs, int daos_mode,
 			  int shot_header_key, int cmp_header_key,
 			  int offset_header_key, traces_list_t *trace_list,
 			  seis_root_obj_t *root)
@@ -2186,38 +2209,64 @@ void tokenize_str(void **str, char *sep, char *string, int type)
 }
 
 
-void range_traces_headers(traces_list_t *trace_list, int number_of_keys,
-		char **keys, int dim)
+headers_ranges_t
+range_traces_headers(traces_list_t *trace_list, int number_of_keys,
+		     char **keys, int dim)
 {
-	int i;
-	traces_headers_t *current = trace_list->head;
-	Value val;
-	Value valmin;
-	Value valmax;
-	trace_t *trmin = malloc(sizeof(trace_t));
-	trace_t *trmax = malloc(sizeof(trace_t));
-	trace_t *trfirst = malloc(sizeof(trace_t));
-	trace_t *trlast = malloc(sizeof(trace_t));
-	double eastShot[2], westShot[2], northShot[2], southShot[2];
-	double eastRec[2], westRec[2], northRec[2], southRec[2];
-	double eastCmp[2], westCmp[2], northCmp[2], southCmp[2];
-	double dcoscal = 1.0;
-	double sx, sy, gx, gy, mx, my;
-	double mx1 = 0.0, my1 = 0.0;
-	double mx2 = 0.0, my2 = 0.0, dm = 0.0, dmin = 0.0, dmax = 0.0, davg =
-			0.0;
-	int coscal = 1;
+	traces_headers_t 	*current;
+	headers_ranges_t	headers_ranges;
+	trace_t 		*trmin;
+	trace_t 		*trmax;
+	trace_t 		*trfirst;
+	trace_t 		*trlast;
+	double 			east_shot[2];
+	double 			west_shot[2];
+	double			north_shot[2];
+	double			south_shot[2];
+	double 			east_rec[2];
+	double			west_rec[2];
+	double			north_rec[2];
+	double			south_rec[2];
+	double 			east_cmp[2];
+	double			west_cmp[2];
+	double			north_cmp[2];
+	double			south_cmp[2];
+	double 			dcoscal = 1.0;
+	double 			sx = 0.0;
+	double			sy = 0.0;
+	double			gx = 0.0;
+	double			gy = 0.0;
+	double			mx = 0.0;
+	double			my = 0.0;
+	double 			mx1 = 0.0;
+	double			my1 = 0.0;
+	double 			mx2 = 0.0;
+	double			my2 = 0.0;
+	double			dm = 0.0;
+	double			dmin = 0.0;
+	double			dmax = 0.0;
+	double			davg = 0.0;
+	int 			coscal = 1;
+	Value 			 val;
+	Value 			 valmin;
+	Value 			 valmax;
+	int 			 i;
 
-	northShot[0] = southShot[0] = eastShot[0] = westShot[0] = 0.0;
-	northShot[1] = southShot[1] = eastShot[1] = westShot[1] = 0.0;
-	northRec[0] = southRec[0] = eastRec[0] = westRec[0] = 0.0;
-	northRec[1] = southRec[1] = eastRec[1] = westRec[1] = 0.0;
-	northCmp[0] = southCmp[0] = eastCmp[0] = westCmp[0] = 0.0;
-	northCmp[1] = southCmp[1] = eastCmp[1] = westCmp[1] = 0.0;
-	sx = sy = gx = gy = mx = my = 0.0;
+	current = trace_list->head;
+	trmin = malloc(sizeof(trace_t));
+	trmax = malloc(sizeof(trace_t));
+	trfirst = malloc(sizeof(trace_t));
+	trlast = malloc(sizeof(trace_t));
+
+	north_shot[0] = south_shot[0] = east_shot[0] = west_shot[0] = 0.0;
+	north_shot[1] = south_shot[1] = east_shot[1] = west_shot[1] = 0.0;
+	north_rec[0] = south_rec[0] = east_rec[0] = west_rec[0] = 0.0;
+	north_rec[1] = south_rec[1] = east_rec[1] = west_rec[1] = 0.0;
+	north_cmp[0] = south_cmp[0] = east_cmp[0] = west_cmp[0] = 0.0;
+	north_cmp[1] = south_cmp[1] = east_cmp[1] = west_cmp[1] = 0.0;
 
 	if (number_of_keys == 0) {
-		for (i = 0; i < SU_NKEYS; ++i) {
+		for (i = 0; i < SU_NKEYS; i++) {
 			get_header_value(current->trace, keys[i], &val);
 			set_header_value(trmin, keys[i], &val);
 			set_header_value(trmax, keys[i], &val);
@@ -2233,17 +2282,17 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 					dcoscal = 1.0 / coscal;
 				}
 			} else if (i == 21) {
-				sx = eastShot[0] = westShot[0] = northShot[0] =
-						southShot[0] = val.i * dcoscal;
+				sx = east_shot[0] = west_shot[0] = north_shot[0] =
+						south_shot[0] = val.i * dcoscal;
 			} else if (i == 22) {
-				sy = eastShot[1] = westShot[1] = northShot[1] =
-						southShot[1] = val.i * dcoscal;
+				sy = east_shot[1] = west_shot[1] = north_shot[1] =
+						south_shot[1] = val.i * dcoscal;
 			} else if (i == 23) {
-				gx = eastRec[0] = westRec[0] = northRec[0] =
-						southRec[0] = val.i * dcoscal;
+				gx = east_rec[0] = west_rec[0] = north_rec[0] =
+						south_rec[0] = val.i * dcoscal;
 			} else if (i == 24) {
-				gy = eastRec[1] = westRec[1] = northRec[1] =
-						southRec[1] = val.i * dcoscal;
+				gy = east_rec[1] = west_rec[1] = north_rec[1] =
+						south_rec[1] = val.i * dcoscal;
 			} else {
 				continue;
 			}
@@ -2257,27 +2306,28 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 		}
 	}
 	if (number_of_keys == 0) {
-		mx = eastCmp[0] = westCmp[0] = northCmp[0] = southCmp[0] = 0.5
-				* (eastShot[0] + eastRec[0]);
-		my = eastCmp[1] = westCmp[1] = northCmp[1] = southCmp[1] = 0.5
-				* (eastShot[1] + eastRec[1]);
+		mx = east_cmp[0] = west_cmp[0] = north_cmp[0] = south_cmp[0] = 0.5 *
+				  (east_shot[0] + east_rec[0]);
+		my = east_cmp[1] = west_cmp[1] = north_cmp[1] = south_cmp[1] = 0.5 *
+				  (east_shot[1] + east_rec[1]);
 	}
 
-	int ntr = 1;
+	int 		ntr = 1;
 	current = current->next_trace;
 
 	while (current != NULL) {
 		sx = sy = gx = gy = mx = my = 0.0;
 		if (number_of_keys == 0) {
 			for (i = 0; i < SU_NKEYS; i++) {
-				get_header_value(current->trace, keys[i], &val);
+				get_header_value(current->trace, keys[i],
+						 &val);
 				get_header_value(*trmin, keys[i], &valmin);
 				get_header_value(*trmax, keys[i], &valmax);
 
 				if (valcmp(hdr[i].type, val, valmin) < 0) {
 					set_header_value(trmin, keys[i], &val);
-				} else if (valcmp(hdr[i].type, val, valmax)
-						> 0) {
+				} else if (valcmp(hdr[i].type, val, valmax) >
+					   0) {
 					set_header_value(trmax, keys[i], &val);
 				}
 
@@ -2306,7 +2356,8 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 			}
 		} else {
 			for (i = 0; i < number_of_keys; i++) {
-				get_header_value(current->trace, keys[i], &val);
+				get_header_value(current->trace, keys[i],
+						 &val);
 				get_header_value(*trmin, keys[i], &valmin);
 				get_header_value(*trmax, keys[i], &valmax);
 				if (valcmp(hdtype(keys[i]), val, valmin) < 0) {
@@ -2322,75 +2373,68 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 		if (number_of_keys == 0) {
 			mx = 0.5 * (sx + gx);
 			my = 0.5 * (sy + gy);
-			if (eastShot[0] < sx) {
-				eastShot[0] = sx;
-				eastShot[1] = sy;
+			if (east_shot[0] < sx) {
+				east_shot[0] = sx;
+				east_shot[1] = sy;
 			}
-			if (westShot[0] > sx) {
-				westShot[0] = sx;
-				westShot[1] = sy;
+			if (west_shot[0] > sx) {
+				west_shot[0] = sx;
+				west_shot[1] = sy;
 			}
-			if (northShot[1] < sy) {
-				northShot[0] = sx;
-				northShot[1] = sy;
+			if (north_shot[1] < sy) {
+				north_shot[0] = sx;
+				north_shot[1] = sy;
 			}
-			if (southShot[1] > sy) {
-				southShot[0] = sx;
-				southShot[1] = sy;
+			if (south_shot[1] > sy) {
+				south_shot[0] = sx;
+				south_shot[1] = sy;
 			}
-			if (eastRec[0] < gx) {
-				eastRec[0] = gx;
-				eastRec[1] = gy;
+			if (east_rec[0] < gx) {
+				east_rec[0] = gx;
+				east_rec[1] = gy;
 			}
-			if (westRec[0] > gx) {
-				westRec[0] = gx;
-				westRec[1] = gy;
+			if (west_rec[0] > gx) {
+				west_rec[0] = gx;
+				west_rec[1] = gy;
 			}
-			if (northRec[1] < gy) {
-				northRec[0] = gx;
-				northRec[1] = gy;
+			if (north_rec[1] < gy) {
+				north_rec[0] = gx;
+				north_rec[1] = gy;
 			}
-			if (southRec[1] > gy) {
-				southRec[0] = gx;
-				southRec[1] = gy;
+			if (south_rec[1] > gy) {
+				south_rec[0] = gx;
+				south_rec[1] = gy;
 			}
-			if (eastCmp[0] < mx) {
-				eastCmp[0] = mx;
-				eastCmp[1] = my;
+			if (east_cmp[0] < mx) {
+				east_cmp[0] = mx;
+				east_cmp[1] = my;
 			}
-			if (westCmp[0] > mx) {
-				westCmp[0] = mx;
-				westCmp[1] = my;
+			if (west_cmp[0] > mx) {
+				west_cmp[0] = mx;
+				west_cmp[1] = my;
 			}
-			if (northCmp[1] < my) {
-				northCmp[0] = mx;
-				northCmp[1] = my;
+			if (north_cmp[1] < my) {
+				north_cmp[0] = mx;
+				north_cmp[1] = my;
 			}
-			if (southCmp[1] > my) {
-				southCmp[0] = mx;
-				southCmp[1] = my;
+			if (south_cmp[1] > my) {
+				south_cmp[0] = mx;
+				south_cmp[1] = my;
 			}
 		}
 
 		if (ntr == 1) {
-			/* get midpoint (mx1,my1) on trace 1 */
+			/** get midpoint (mx1,my1) on trace 1 */
 			mx1 = 0.5 * (current->trace.sx + current->trace.gx);
 			my1 = 0.5 * (current->trace.sy + current->trace.gy);
 		} else if (ntr == 2) {
-			/* get midpoint (mx2,my2) on trace 2 */
+			/** get midpoint (mx2,my2) on trace 2 */
 			mx2 = 0.5 * (current->trace.sx + current->trace.gx);
 			my2 = 0.5 * (current->trace.sy + current->trace.gy);
-			/* midpoint interval between traces 1 and 2 */
-			dm =
-					sqrt(
-							(mx1 - mx2)
-									* (mx1
-											- mx2)
-									+ (my1
-											- my2)
-											* (my1
-													- my2));
-			/* set min, max and avg midpoint interval holders */
+			/** midpoint interval between traces 1 and 2 */
+			dm = sqrt((mx1 - mx2) * (mx1 - mx2) +
+				  (my1 - my2) * (my1 - my2));
+			/** set min, max and avg midpoint interval holders */
 			dmin = dm;
 			dmax = dm;
 			davg = (dmin + dmax) / 2.0;
@@ -2398,20 +2442,17 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 			mx1 = mx2;
 			my1 = my2;
 		} else if (ntr > 2) {
-			/* get midpoint (mx,my) on this trace */
+			/** get midpoint (mx,my) on this trace */
 			mx2 = 0.5 * (current->trace.sx + current->trace.gx);
 			my2 = 0.5 * (current->trace.sy + current->trace.gy);
-			/* get midpoint (mx,my) between this and previous trace */
-			dm =
-					sqrt(
-							(mx1 - mx2)
-									* (mx1
-											- mx2)
-									+ (my1
-											- my2)
-											* (my1
-													- my2));
-			/* reset min, max and avg midpoint interval holders, if needed */
+			/** get midpoint (mx,my) between this
+			 * and previous trace
+			 */
+			dm = sqrt((mx1 - mx2) * (mx1 - mx2) +
+				  (my1 - my2) * (my1 - my2));
+			/** reset min, max and avg midpoint interval holders,
+			 *  if needed
+			 */
 			if (dm < dmin)
 				dmin = dm;
 			if (dm > dmax)
@@ -2425,102 +2466,176 @@ void range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 		current = current->next_trace;
 	}
 
-	printf("%ld traces: \n", trace_list->size);
 
-	print_headers_ranges(number_of_keys, keys, trmin, trmax, trfirst,
-			trlast);
+	headers_ranges.east_cmp[0] = east_cmp[0];
+	headers_ranges.east_cmp[1] = east_cmp[1];
+	headers_ranges.east_rec[0] = east_rec[0];
+	headers_ranges.east_rec[1] = east_rec[1];
+	headers_ranges.east_shot[0] = east_shot[0];
+	headers_ranges.east_shot[1] = east_shot[1];
+	headers_ranges.north_cmp[0] = north_cmp[0];
+	headers_ranges.north_cmp[1] = north_cmp[1];
+	headers_ranges.north_rec[0] = north_rec[0];
+	headers_ranges.north_rec[1] = north_rec[1];
+	headers_ranges.north_shot[0] = north_shot[0];
+	headers_ranges.north_shot[1] = north_shot[1];
+	headers_ranges.south_cmp[0] = south_cmp[0];
+	headers_ranges.south_cmp[1] = south_cmp[1];
+	headers_ranges.south_rec[0] = south_rec[0];
+	headers_ranges.south_rec[1] = south_rec[1];
+	headers_ranges.south_shot[0] = south_shot[0];
+	headers_ranges.south_shot[1] = south_shot[1];
+	headers_ranges.west_cmp[0] = west_cmp[0];
+	headers_ranges.west_cmp[1] = west_cmp[1];
+	headers_ranges.west_rec[0] = west_rec[0];
+	headers_ranges.west_rec[1] = west_rec[1];
+	headers_ranges.west_shot[0] = west_shot[0];
+	headers_ranges.west_rec[1] = west_rec[1];
+	headers_ranges.number_of_keys = number_of_keys;
+	headers_ranges.trfirst = trfirst;
+	headers_ranges.trlast = trlast;
+	headers_ranges.trmax = trmax;
+	headers_ranges.trmin = trmin;
+	headers_ranges.keys = keys;
+	headers_ranges.davg = davg;
+	headers_ranges.dmax = dmax;
+	headers_ranges.dmin = dmin;
+	headers_ranges.ntr = ntr;
+	headers_ranges.dim = dim;
 
-	if (number_of_keys == 0) {
-		if (northShot[1] != 0.0 || southShot[1] != 0.0
-				|| eastShot[0] != 0.0 || westShot[0] != 0.0) {
-			printf(
-					"\nShot coordinate limits:\n" "\tNorth(%g,%g) South(%g,%g) East(%g,%g) West(%g,%g)\n",
-					northShot[0], northShot[1],
-					southShot[0], southShot[1], eastShot[0],
-					eastShot[1], westShot[0], westShot[1]);
-		}
-		if (northRec[1] != 0.0 || southRec[1] != 0.0
-				|| eastRec[0] != 0.0 || westRec[0] != 0.0) {
-			printf(
-					"\nReceiver coordinate limits:\n" "\tNorth(%g,%g) South(%g,%g) East(%g,%g) West(%g,%g)\n",
-					northRec[0], northRec[1], southRec[0],
-					southRec[1], eastRec[0], eastRec[1],
-					westRec[0], westRec[1]);
-		}
-		if (northCmp[1] != 0.0 || southCmp[1] != 0.0
-				|| eastCmp[0] != 0.0 || westCmp[0] != 0.0) {
-			printf(
-					"\nMidpoint coordinate limits:\n" "\tNorth(%g,%g) South(%g,%g) East(%g,%g) West(%g,%g)\n",
-					northCmp[0], northCmp[1], southCmp[0],
-					southCmp[1], eastCmp[0], eastCmp[1],
-					westCmp[0], westCmp[1]);
-		}
-	}
+	print_headers_ranges(headers_ranges);
 
-	if (dim != 0) {
-		if (dim == 1) {
-			printf("\n2D line: \n");
-			printf("Min CMP interval = %g ft\n", dmin);
-			printf("Max CMP interval = %g ft\n", dmax);
-			printf(
-					"Line length = %g miles (using avg CMP interval of %g ft)\n",
-					davg * ntr / 5280, davg);
-		} else if (dim == 2) {
-			printf("ddim line: \n");
-			printf("Min CMP interval = %g m\n", dmin);
-			printf("Max CMP interval = %g m\n", dmax);
-			printf(
-					"Line length = %g km (using avg CMP interval of %g m)\n",
-					davg * ntr / 1000, davg);
-		}
-	}
-
-	return;
+	return headers_ranges;
 }
 
 
-void print_headers_ranges(int number_of_keys, char **keys, trace_t *trmin,
-		trace_t *trmax, trace_t *trfirst, trace_t *trlast)
+void
+print_headers_ranges(headers_ranges_t headers_ranges)
 {
-	int i;
-	Value valmin, valmax, valfirst, vallast;
-	double dvalmin, dvalmax;
-	cwp_String key;
-	cwp_String type;
-	int kmax;
-	if (number_of_keys == 0) {
+	cwp_String 	key;
+	cwp_String 	type;
+	Value 		valmin;
+	Value		valmax;
+	Value		valfirst;
+	Value		vallast;
+	double 		dvalmin;
+	double		dvalmax;
+	int 		kmax;
+	int 		i;
+
+	if (headers_ranges.number_of_keys == 0) {
 		kmax = SU_NKEYS;
 	} else {
-		kmax = number_of_keys;
+		kmax = headers_ranges.number_of_keys;
 	}
+
+	printf("%ld traces: \n", headers_ranges.ntr);
+
 	for (i = 0; i < kmax; i++) {
-//		key = getkey(i);
-//		type = hdtype(key);
-		get_header_value(*trmin, keys[i], &valmin);
-		get_header_value(*trmax, keys[i], &valmax);
-		get_header_value(*trfirst, keys[i], &valfirst);
-		get_header_value(*trlast, keys[i], &vallast);
-//		type = hdtype(keys[i]);
-		dvalmin = vtod(hdtype(keys[i]), valmin);
-		dvalmax = vtod(hdtype(keys[i]), valmax);
+		get_header_value(*headers_ranges.trmin,
+				 headers_ranges.keys[i], &valmin);
+		get_header_value(*headers_ranges.trmax,
+				 headers_ranges.keys[i], &valmax);
+		get_header_value(*headers_ranges.trfirst,
+				 headers_ranges.keys[i], &valfirst);
+		get_header_value(*headers_ranges.trlast,
+				 headers_ranges.keys[i], &vallast);
+		dvalmin = vtod(hdtype(headers_ranges.keys[i]), valmin);
+		dvalmax = vtod(hdtype(headers_ranges.keys[i]), valmax);
 		if (dvalmin || dvalmax) {
 			if (dvalmin < dvalmax) {
-				printf("%s ", keys[i]);
-				printfval(hdtype(keys[i]), valmin);
+				printf("%s ", headers_ranges.keys[i]);
+				printfval(hdtype(headers_ranges.keys[i]),
+					  valmin);
 				printf(" ");
-				printfval(hdtype(keys[i]), valmax);
+				printfval(hdtype(headers_ranges.keys[i]),
+					  valmax);
 				printf(" (");
-				printfval(hdtype(keys[i]), valfirst);
+				printfval(hdtype(headers_ranges.keys[i]),
+					  valfirst);
 				printf(" - ");
-				printfval(hdtype(keys[i]), vallast);
+				printfval(hdtype(headers_ranges.keys[i]),
+					  vallast);
 				printf(")");
 			} else {
-				printf("%s ", keys[i]);
-				printfval(hdtype(keys[i]), valmin);
+				printf("%s ", headers_ranges.keys[i]);
+				printfval(hdtype(headers_ranges.keys[i]),
+					  valmin);
 			}
 			printf("\n");
 		}
 	}
+
+	if (headers_ranges.number_of_keys == 0) {
+		if ((headers_ranges.north_shot[1] != 0.0) ||
+		    (headers_ranges.south_shot[1] != 0.0) ||
+		    (headers_ranges.east_shot[0] != 0.0) ||
+		    (headers_ranges.west_shot[0] != 0.0)) {
+			printf("\nShot coordinate limits:\n" "\tNorth(%g,%g)"
+			       " South(%g,%g) East(%g,%g) West(%g,%g)\n",
+			       headers_ranges.north_shot[0],
+			       headers_ranges.north_shot[1],
+			       headers_ranges.south_shot[0],
+			       headers_ranges.south_shot[1],
+			       headers_ranges.east_shot[0],
+			       headers_ranges.east_shot[1],
+			       headers_ranges.west_shot[0],
+			       headers_ranges.west_shot[1]);
+		}
+		if ((headers_ranges.north_rec[1] != 0.0) ||
+		    (headers_ranges.south_rec[1] != 0.0) ||
+		    (headers_ranges.east_rec[0] != 0.0) ||
+		    (headers_ranges.west_rec[0] != 0.0)) {
+			printf("\nReceiver coordinate limits:\n"
+			       "\tNorth(%g,%g) South(%g,%g) East(%g,%g)"
+			       " West(%g,%g)\n", headers_ranges.north_rec[0],
+			       headers_ranges.north_rec[1],
+			       headers_ranges.south_rec[0],
+			       headers_ranges.south_rec[1],
+			       headers_ranges.east_rec[0],
+			       headers_ranges.east_rec[1],
+			       headers_ranges.west_rec[0],
+			       headers_ranges.west_rec[1]);
+		}
+		if ((headers_ranges.north_cmp[1] != 0.0) ||
+		    (headers_ranges.south_cmp[1] != 0.0) ||
+		    (headers_ranges.east_cmp[0] != 0.0) ||
+		    (headers_ranges.west_cmp[0] != 0.0)) {
+			printf("\nMidpoint coordinate limits:\n"
+			       "\tNorth(%g,%g) South(%g,%g) East(%g,%g)"
+			       " West(%g,%g)\n", headers_ranges.north_cmp[0],
+			       headers_ranges.north_cmp[1],
+			       headers_ranges.south_cmp[0],
+			       headers_ranges.south_cmp[1],
+			       headers_ranges.east_cmp[0],
+			       headers_ranges.east_cmp[1],
+			       headers_ranges.west_cmp[0],
+			       headers_ranges.west_cmp[1]);
+		}
+	}
+
+	if (headers_ranges.dim != 0) {
+		if (headers_ranges.dim == 1) {
+			printf("\n2D line: \n");
+			printf("Min CMP interval = %g ft\n",
+			       headers_ranges.dmin);
+			printf("Max CMP interval = %g ft\n",
+			       headers_ranges.dmax);
+			printf("Line length = %g miles (using avg CMP"
+			       " interval of %g ft)\n",	headers_ranges.davg *
+			       headers_ranges.ntr / 5280, headers_ranges.davg);
+		} else if (headers_ranges.dim == 2) {
+			printf("ddim line: \n");
+			printf("Min CMP interval = %g m\n",
+			       headers_ranges.dmin);
+			printf("Max CMP interval = %g m\n",
+			       headers_ranges.dmax);
+			printf("Line length = %g km (using avg CMP interval"
+			       " of %g m)\n", headers_ranges.davg *
+			       headers_ranges.ntr / 1000, headers_ranges.davg);
+		}
+	}
+
 	return;
 }
 
@@ -2628,18 +2743,20 @@ fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
 void
 release_traces_list(traces_list_t *trace_list)
 {
-	traces_headers_t *temp = trace_list->head;
-	int i;
+	traces_headers_t 	*temp;
+
+	temp = trace_list->head;
+
 	if(temp == NULL){
 		warn("list of traces is empty \n");
 		return;
 	}
-	while(temp != NULL){
+	while(temp->next_trace != NULL ){
 		free(temp);
 		temp = temp->next_trace;
-		printf(" size = %d i = %d \n",trace_list->size, i);
-		i++;
-
 	}
+	free(trace_list->tail);
 	free(trace_list);
+
+	return;
 }
