@@ -20,7 +20,7 @@ function compare_files {
 
 function run_tests {
 
-	$tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/Test/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT
+	$tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/Test/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
 
 	$tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
 	
