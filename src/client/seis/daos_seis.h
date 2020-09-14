@@ -49,10 +49,10 @@ int
 daos_seis_get_trace_count(seis_root_obj_t *root);
 
 /**
- * Fetch number of gathers stored under any of the main seismic objects (CMP/ SHOT/ OFFSET/etc..).
+ * Fetch number of gathers stored under any of the main seismic objects.
  *
  * \param[in]   root           pointer to root seismic object.
- * \param[in]   key            string containing the name of target seismic object.
+ * \param[in]   key            string containing name of target seismic object.
  *
  * \return      returns number of gathers.
  */

@@ -21,7 +21,7 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 	root_obj->root_obj = root;
 
 	/** Fetch number of keys */
-	prepare_seismic_entry(&entry, root->oid, DS_D_NUM_OF_KEYS,
+	prepare_seismic_entry(&entry, root->oid, DS_D_KEYS,
 			      DS_A_NUM_OF_KEYS,
 			      (char*)&(root_obj->num_of_keys),
 			      sizeof(int), DAOS_IOD_SINGLE);
@@ -92,15 +92,18 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 	return root_obj;
 }
 
-dfs_obj_t* get_parent_of_file_new(dfs_t *dfs, const char *file_directory,
-		int allow_creation, char *file_name, int verbose_output)
+dfs_obj_t*
+get_parent_of_file_new(dfs_t *dfs, const char *file_directory,
+		       int allow_creation, char *file_name,
+		       int verbose_output)
 {
-	dfs_obj_t *parent = NULL;
-	daos_oclass_id_t cid = OC_SX;
-	char temp[2048];
-	int array_len = 0;
+	daos_oclass_id_t 	cid = OC_SX;
+	dfs_obj_t 	       *parent = NULL;
+	char 			temp[2048];
+	int 			array_len = 0;
+	int 			err;
 	strcpy(temp, file_directory);
-	const char *sep = "/";
+	const char 		*sep = "/";
 	char *token = strtok(temp, sep);
 	while (token != NULL) {
 		array_len++;
@@ -109,21 +112,22 @@ dfs_obj_t* get_parent_of_file_new(dfs_t *dfs, const char *file_directory,
 	char **array = malloc(sizeof(char*) * array_len);
 	strcpy(temp, file_directory);
 	token = strtok(temp, sep);
-	int i = 0;
+	int 			i = 0;
 	while (token != NULL) {
 		array[i] = malloc(sizeof(char) * (strlen(token) + 1));
 		strcpy(array[i], token);
 		token = strtok(NULL, sep);
 		i++;
 	}
+
 	for (i = 0; i < array_len - 1; i++) {
-		dfs_obj_t *temp_obj;
-		int err = dfs_lookup_rel(dfs, parent, array[i], O_RDWR,
-				&temp_obj, NULL, NULL);
+		dfs_obj_t 	*temp_obj;
+		err = dfs_lookup_rel(dfs, parent, array[i], O_RDWR,
+				     &temp_obj, NULL, NULL);
 		if (err == 0) {
 			if (verbose_output) {
 				warn("Subdirectory '%s' already exist \n",
-						array[i]);
+				     array[i]);
 			}
 		} else if (allow_creation) {
 			mode_t mode = 0666;
@@ -131,32 +135,30 @@ dfs_obj_t* get_parent_of_file_new(dfs_t *dfs, const char *file_directory,
 			if (err == 0) {
 				if (verbose_output) {
 					warn("Created directory '%s'\n",
-							array[i]);
+					     array[i]);
 				}
-				check_error_code(
-						dfs_lookup_rel(dfs, parent,
+				check_error_code(dfs_lookup_rel(dfs, parent,
 								array[i],
 								O_RDWR,
-								&temp_obj, NULL,
-								NULL),
-						"Lookup after mkdir");
+								&temp_obj,
+								NULL, NULL),
+								"Lookup after"
+								" mkdir");
 			} else {
-				warn(
-						"Mkdir on %s failed with error code : %d \n",
-						array[i], err);
+				warn("Mkdir on %s failed with error code :"
+				     " %d \n", array[i], err);
 			}
 		} else {
-			warn(
-					"Relative lookup on %s failed with error code : %d \n",
-					array[i], err);
+			warn("Relative lookup on %s failed with error code :"
+			     " %d \n", array[i], err);
 		}
 		parent = temp_obj;
 	}
 	strcpy(file_name, array[array_len - 1]);
-//    for (i = 0; i < array_len; i++) {
-//        free(array[i]);
-//    }
-//    free(array);
+	for (i = 0; i < array_len; i++) {
+		free(array[i]);
+	}
+	free(array);
 
 	return parent;
 }
@@ -596,29 +598,8 @@ daos_seis_gather_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
 	return rc;
 }
 
-
-int daos_seis_trh_update(trace_obj_t *tr_obj, segy *tr, int hdrbytes)
-{
-
-	int rc;
-	struct seismic_entry tr_entry = { 0 };
-
-	prepare_seismic_entry(&tr_entry, tr_obj->oid, DS_D_TRACE_HEADER,
-	DS_A_TRACE_HEADER, (char*) tr, hdrbytes, DAOS_IOD_ARRAY);
-
-	rc = daos_seis_obj_update(tr_obj->oh, DAOS_TX_NONE, tr_entry);
-	if (rc) {
-		printf(
-				"ERROR UPDATING TRACE header KEY err = %d ----------------- \n",
-				rc);
-		return rc;
-	}
-	return rc;
-}
-
-
 int
-new_daos_seis_trh_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
+daos_seis_trh_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
 {
 	seismic_entry_t 	tr_entry = {0};
 	int 			rc;
@@ -634,7 +615,6 @@ new_daos_seis_trh_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
 
 	return rc;
 }
-
 
 int
 daos_seis_tr_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
@@ -666,7 +646,6 @@ daos_seis_tr_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
 
 	return rc;
 }
-
 
 int
 daos_seis_gather_oids_array_update(trace_oid_oh_t *object,
@@ -702,7 +681,6 @@ daos_seis_gather_oids_array_update(trace_oid_oh_t *object,
 	return rc;
 }
 
-
 daos_obj_id_t
 get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
 {
@@ -736,7 +714,6 @@ get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
 
 	return tr_data_oid;
 }
-
 
 int
 daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
@@ -789,7 +766,7 @@ daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
 	trace_oid_oh.oid = (*trace_hdr_obj)->oid;
 	trace_oid_oh.oh = (*trace_hdr_obj)->oh;
 
-	rc = new_daos_seis_trh_update(&trace_oid_oh, (*trace_hdr_obj)->trace,
+	rc = daos_seis_trh_update(&trace_oid_oh, (*trace_hdr_obj)->trace,
 				      HDRBYTES);
 	if (rc != 0) {
 		err("Updating trace header object failed, "
@@ -840,7 +817,6 @@ daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
 	return rc;
 }
 
-
 void
 prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid,
 		      char *dkey, char *akey, char *data, int size,
@@ -853,7 +829,6 @@ prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid,
 	entry->size = size;
 	entry->iod_type = iod_type;
 }
-
 
 int
 update_gather_object(seis_obj_t *gather_obj, char *dkey_name,
@@ -872,7 +847,6 @@ update_gather_object(seis_obj_t *gather_obj, char *dkey_name,
 
 	return rc;
 }
-
 
 int
 daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
@@ -919,7 +893,6 @@ daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 	return rc;
 }
 
-
 int
 pcreate(int fds[2], const char *command, char *const argv[])
 {
@@ -958,7 +931,6 @@ pcreate(int fds[2], const char *command, char *const argv[])
 
 	return -1;
 }
-
 
 int
 execute_command(char *const argv[], char *write_buffer, int write_bytes,
@@ -1061,7 +1033,6 @@ fetch_traces_header_read_traces(daos_handle_t coh, daos_obj_id_t *oids,
 	}
 }
 
-
 void
 fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
 				traces_list_t **head_traces, int daos_mode,
@@ -1101,7 +1072,6 @@ fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
 		add_trace_header(&temp_trace, head_traces);
 	}
 }
-
 
 void
 fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
@@ -1170,7 +1140,6 @@ fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
 	}
 
 }
-
 
 void
 sort_dkeys_list(long *values, int number_of_gathers, char **unique_keys,
@@ -1246,7 +1215,6 @@ sort_dkeys_list(long *values, int number_of_gathers, char **unique_keys,
 
 }
 
-
 void
 sort_headers(read_traces *gather_traces, char **sort_key, int *direction,
 	     int number_of_keys)
@@ -1256,7 +1224,6 @@ sort_headers(read_traces *gather_traces, char **sort_key, int *direction,
 		  gather_traces->number_of_traces - 1,
 		  sort_key, direction, number_of_keys);
 }
-
 
 void
 Merge(trace_t *arr, int low, int mid, int high, char **sort_key,
@@ -1318,7 +1285,6 @@ Merge(trace_t *arr, int low, int mid, int high, char **sort_key,
 	free(temp);
 }
 
-
 void
 MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction,
 	  int num_of_keys)
@@ -1335,7 +1301,6 @@ MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction,
 		      num_of_keys);
 	}
 }
-
 
 void
 get_header_value(trace_t trace, char *sort_key, Value *value)
@@ -1368,7 +1333,6 @@ get_header_value(trace_t trace, char *sort_key, Value *value)
 	}
 
 }
-
 
 void
 set_header_value(trace_t *trace, char *sort_key, Value *value)
@@ -1519,8 +1483,8 @@ set_header_value(trace_t *trace, char *sort_key, Value *value)
 //	}
 }
 
-
-char* get_dkey(char *key)
+char*
+get_dkey(char *key)
 {
 
 	if (strcmp(key, "tracl") == 0) {
@@ -1660,7 +1624,6 @@ char* get_dkey(char *key)
 	}
 }
 
-
 void
 set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head,
 		  int num_of_keys, char **keys_1, char **keys_2, char **keys_3,
@@ -1724,7 +1687,7 @@ set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head,
 								   );
 				}
 			}
-			rc = new_daos_seis_trh_update(&trace_hdr_obj,
+			rc = daos_seis_trh_update(&trace_hdr_obj,
 						      &(current->trace),
 						      HDRBYTES);
 			if (rc != 0) {
@@ -1743,7 +1706,6 @@ set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head,
 		}
 	}
 }
-
 
 void
 calculate_new_header_value(traces_headers_t *current, char *key1, char *key2,
@@ -1777,7 +1739,6 @@ calculate_new_header_value(traces_headers_t *current, char *key1, char *key2,
 		break;
 	}
 }
-
 
 void
 window_headers(traces_list_t **head, char **window_keys,
@@ -1840,7 +1801,6 @@ window_headers(traces_list_t **head, char **window_keys,
 		}
 	}
 }
-
 
 char**
 daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
@@ -1953,7 +1913,6 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 
 	return unique_keys;
 }
-
 
 void
 daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
@@ -2099,17 +2058,19 @@ daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
 	free(existing_obj);
 }
 
-
-void tokenize_str(void **str, char *sep, char *string, int type)
+void
+tokenize_str(void **str, char *sep, char *string, int type)
 {
-	char temp[4096];
+	double 	       *temp_d;
+	char 		temp[4096];
+	char	      **temp_c;
+	char 	       *ptr;
+	long 	       *temp_l;
+	int 		i = 0;
+
 	strcpy(temp, string);
 	char *token = strtok(temp, sep);
-	int i = 0;
-	char **temp_c;
-	long *temp_l;
-	double *temp_d;
-	char *ptr;
+
 
 	while (token != NULL) {
 		switch (type) {
@@ -2134,7 +2095,6 @@ void tokenize_str(void **str, char *sep, char *string, int type)
 		token = strtok(NULL, sep);
 	}
 }
-
 
 headers_ranges_t
 range_traces_headers(traces_list_t *trace_list, int number_of_keys,
@@ -2435,7 +2395,6 @@ range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 	return headers_ranges;
 }
 
-
 void
 print_headers_ranges(headers_ranges_t headers_ranges)
 {
@@ -2566,8 +2525,8 @@ print_headers_ranges(headers_ranges_t headers_ranges)
 	return;
 }
 
-
-void val_sprintf(char *temp, Value unique_value, char *key)
+void
+val_sprintf(char *temp, Value unique_value, char *key)
 {
 
 	switch (*hdtype(key)) {
@@ -2611,7 +2570,6 @@ void val_sprintf(char *temp, Value unique_value, char *key)
 	return;
 
 }
-
 
 int
 fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
@@ -2665,7 +2623,6 @@ fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
 
 	return rc;
 }
-
 
 void
 release_traces_list(traces_list_t *trace_list)

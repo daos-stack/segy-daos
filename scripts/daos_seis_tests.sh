@@ -29,7 +29,11 @@ function run_tests {
 	$tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
 	
 	$tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,610 
-	
+
+	$tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
+
+	$tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
+					
 	$main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/Test/shot_601_610 >daos_segyread_temp.su
 	
 	$main_program_path/daos_sutrcount pool=$1 container=$2 svc=$3 <daos_segyread_temp.su 
@@ -42,6 +46,10 @@ function run_tests {
 
 	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_window.su key=fldr min=609 max=610 >daos_wind.su
 
+	$main_program_path/daos_suchw pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key1=tracr key2=tracr a=1000 >daos_chw.su 
+
+	$main_program_path/daos_sushw pool=$1 container=$2 svc=$3 <daos_chw.su key=dt a=4000 >daos_shw.su
+
 }
 
 echo 'Copying segy to DFS container...'
@@ -53,7 +61,7 @@ echo 'Running commands...'
 run_tests $1 $2 $3
 
 echo 'Copy commands output...'
-file_list=(segyread sort wind)
+file_list=(segyread sort wind chw shw)
 ## Copy from daos to posix.
 for i in ${file_list[@]};
 do
@@ -68,14 +76,14 @@ done
 ./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
 
 echo 'Compare commands...'
-file_list=(segyread sort wind)
+file_list=(segyread sort wind chw shw)
 ## Compare outputs.
 for i in ${file_list[@]};
 do
 	compare_files "daos_seis_$i.su" "daos_$i.su" "$i" 
 done
 
-compare_files "daos_seis_binary" "daos_binary"
-compare_files "daos_seis_text_header" "daos_header" 
+compare_files "daos_seis_binary" "daos_binary" "binary"
+compare_files "daos_seis_text_header" "daos_header" "text_header"
 
 

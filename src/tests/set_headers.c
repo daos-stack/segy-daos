@@ -35,6 +35,7 @@ int main(int argc, char *argv[]){
     MUSTGETPARSTRING("container",  &container_id);
     MUSTGETPARSTRING("svc",  &svc_list);
     MUSTGETPARSTRING("in",  &in_file);
+    MUSTGETPARSTRING("out",  &out_file);
 
     /** optional parameters*/
     if(!getparstring("keys",  &keys)) keys = NULL;
@@ -135,48 +136,28 @@ int main(int argc, char *argv[]){
 	printf(" OPEN SEGY ROOT OBJECT== \n");
 	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
-//	int cmp_gathers;
-//	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
-//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
-//
-//	int shot_gathers;
-//	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
-//	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
-//
-//	int offset_gathers;
-//	offset_gathers = daos_seis_get_offset_gathers(get_dfs(),segy_root_object);
-//	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
-////	printf("CMP_OID %llu %llu \n", segy_root_object->cmp_oid.lo, segy_root_object->cmp_oid.hi);
-
 
 	gettimeofday(&tv1, NULL);
 	daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, header_keys, NULL, NULL, a_values, b_values, c_values,
 														d_values, j_values, NULL, NULL, type);
-//	int ngathers;
-//	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, header_keys, NULL, NULL, a_values, b_values, c_values,
-//													d_values, j_values, NULL, NULL, type);
-//
-//	FILE *fd = fopen(out_file, "w");
-//
-//	int tracl_mod = 1;
-//	traces_headers_t *tempo = trace_list->head;
-//	if (tempo == NULL) {
-//		printf("LINKED LIST EMPTY>>FAILURE\n");
-//		return 0;
-//	} else{
-//		while(tempo != NULL){
-//			printf("TRACE FLDR  ==== %d          ", tempo->trace.fldr);
-//			printf("TRACE DT ==== %hu       ", tempo->trace.dt);
-//			printf("TRACE NS ==== %hu      ", tempo->trace.ns);
-//			printf("TRACEL ==== %d      \n", tempo->trace.tracl);
-//	    	tempo = tempo->next_trace;
-//		}
-//	}
-//	printf("NUMBER OF TRACES in linked list == %d \n", trace_list->size);
-//
-////	int shot_gathers;
-//	shot_gathers = daos_seis_get_shot_gathers(get_dfs(),segy_root_object);
-//	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
+
+	FILE *fd = fopen(out_file, "w");
+	traces_list_t *traces = daos_seis_get_headers( segy_root_object);
+
+	fetch_traces_data((get_dfs())->coh, &traces,get_daos_obj_mode(O_RDWR));
+
+	traces_headers_t *temp_trace = traces->head;
+
+	if(temp_trace == NULL) {
+		printf("Traces list is empty \n");
+		return 0;
+	}
+	while(temp_trace != NULL) {
+		segy* tp = trace_to_segy(&(temp_trace->trace));
+		fputtr(fd, tp);
+		temp_trace = temp_trace->next_trace;
+	}
+
 
 	int number_of_traces;
 	number_of_traces = daos_seis_get_trace_count(segy_root_object);

@@ -102,8 +102,6 @@ int main(int argc, char *argv[]){
 				}
 				putc('\n',fd);
 				putc('\n',fd);
-//                putdfschar(daos_out_file, '\n');
-//                putdfschar(daos_out_file, '\n');
 				trace_header = trace_header->next_trace;
 			}
 		}

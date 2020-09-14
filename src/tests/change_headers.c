@@ -37,6 +37,7 @@ int main(int argc, char *argv[]){
     MUSTGETPARSTRING("container",  &container_id);
     MUSTGETPARSTRING("svc",  &svc_list);
     MUSTGETPARSTRING("in",  &in_file);
+    MUSTGETPARSTRING("out",  &out_file);
 
     if(!getparstring("key1",  &key1))key1 = NULL;
     if(!getparstring("key2",  &key2))key2 = NULL;
@@ -177,26 +178,22 @@ int main(int argc, char *argv[]){
 	daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, keys_1, keys_2, keys_3, a_values, b_values, c_values,
 														d_values, NULL, e_values, f_values, type);
 
-//	traces_list_t *trace_list = daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys, keys_1, keys_2, keys_3, a_values, b_values, c_values,
-//													d_values, NULL, e_values, f_values, type);
-//
-//	FILE *fd = fopen(out_file, "w");
-//
-//	int tracl_mod = 1;
-//	traces_headers_t *tempo = trace_list->head;
-//	if (tempo == NULL) {
-//		printf("LINKED LIST EMPTY>>FAILURE\n");
-//		return 0;
-//	} else{
-//		while(tempo != NULL){
-//			printf("TRACE GX ==== %d \n", tempo->trace.gx);
-//			printf("TRACE CDP ==== %d \n", tempo->trace.cdp);
-//	    	tempo = tempo->next_trace;
-//		}
-//	}
+	FILE *fd = fopen(out_file, "w");
+	traces_list_t *traces = daos_seis_get_headers( segy_root_object);
 
-//	cmp_gathers = daos_seis_get_cmp_gathers(get_dfs(),segy_root_object);
-//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
+	fetch_traces_data((get_dfs())->coh, &traces,get_daos_obj_mode(O_RDWR));
+
+	traces_headers_t *temp_trace = traces->head;
+
+	if(temp_trace == NULL) {
+		printf("Traces list is empty \n");
+		return 0;
+	}
+	while(temp_trace != NULL) {
+		segy* tp = trace_to_segy(&(temp_trace->trace));
+		fputtr(fd, tp);
+		temp_trace = temp_trace->next_trace;
+	}
 
     printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);

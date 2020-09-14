@@ -92,8 +92,6 @@ typedef struct seis_obj {
 	daos_handle_t		oh;
 	/** entry name of the object */
 	char			name[SEIS_MAX_PATH + 1];
-	/** current sequence number */
-	int sequence_number;
 	/** number of gathers */
 	int number_of_gathers;
 	/**array of gathers */
@@ -681,7 +679,8 @@ typedef struct headers_ranges{
 	int		number_of_keys;
 }headers_ranges_t;
 
-/** Function responsible for fetching all seismic_root object metadata(seismic_gather object ids/number_of_traces/...)
+/** Function responsible for fetching all seismic_root object metadata
+ * (seismic_gather object ids/number_of_traces/...)
  *  It is called once at the beginning of the program.
  *
  * \param[in]   dfs             pointer to DAOS file system.
@@ -692,21 +691,28 @@ typedef struct headers_ranges{
 seis_root_obj_t*
 daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root);
 
-/** Function responsible for finding the parent of file given the path to the directory.
- *  It is called once at the beginning of seismic_object_creation program.
- *  Function is taken from dfs helper api so it can be called directly but after adding dfs and verbose output to the parameters.!!!!!
+/** Function responsible for finding the parent of file
+ *  given the path to the directory.
+ *  It is called once at the beginning of seismic_object_creation.
+ *  Function is taken from dfs helper api so it can be called directly
+ *  but after adding dfs and verbose output to the parameters.!!!!!
  *
  * \param[in]   dfs             pointer to DAOS file system.
  * \param[in	file_directory  absolute path of file to be created.
- * \param[in]	allow_creation  flag to allow creation of directories in case they doesn't exist.
- * \param[in]	file_name	    array of characters containing name of the file to be created as seismic root object.
- * \param[in]	verbose_output	Integer to enable verbosity to print messages in case of success.
+ * \param[in]	allow_creation  flag to allow creation of directories
+ * 				in case they doesn't exist.
+ * \param[in]	file_name	array of characters containing name of the
+ * 				file to be created as seismic root object.
+ * \param[in]	verbose_output	Integer to enable verbosity
  *
- * \return		pointer to opened parent dfs object, seismic root object will be created later
- * 				in the parse_segy_file under the opened parent
+ * \return	pointer to opened parent dfs object, seismic root object
+ * 		will be created later in the parse_segy_file
+ * 		under the opened parent
  */
-dfs_obj_t * get_parent_of_file_new(dfs_t *dfs, const char *file_directory, int allow_creation,
-                               char *file_name, int verbose_output);
+dfs_obj_t*
+get_parent_of_file_new(dfs_t *dfs, const char *file_directory,
+		       int allow_creation, char *file_name,
+		       int verbose_output);
 
 /** Function responsible for fetching seismic entry(data stored under specific seismic object)
  *  Set dkey buf→  (name) and buffer length → (size of name)
@@ -918,23 +924,24 @@ daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid,
 			    char* key, int index);
 
 /** Function responsible for preparing seismic entry with trace header data.
- *  It is called to update/insert trace header data under specific trace_header_object.
+ *  It is called to update/insert trace header data under
+ *  specific trace_header_object.
  *
- *  \param[in]	tr_obj		pointer to opened trace header object
+ * \param[in]	tr_obj		pointer to opened trace header object
  *  				to update its header.
- *  \param[in]	tr		segy struct holding all headers and data
+ * \param[in]	tr		segy struct holding all headers and data
  *  				values to be written to the trace header.
  *  				(will only extract trace headers
  *  				from this struct)
- *  \param[in]	hdrbytes	number of bytes to be updated in trace header
+ * \param[in]	hdrbytes	number of bytes to be updated in trace header
  *  				object(240 bytes as defined in segy.h).
  *
- *  \return      0 on success
- * 		 error_code otherwise
+ * \return      0 on success
+ *		error_code otherwise
  *
  */
-int daos_seis_trh_update(trace_obj_t* tr_obj, segy *tr, int hdrbytes);
-int new_daos_seis_trh_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
+int
+daos_seis_trh_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
 
 /** Function responsible for writing trace data as DAOS_ARRAY under
  *  specific trace data object. It is called to update/insert trace
@@ -1178,8 +1185,8 @@ sort_dkeys_list(long *values, int number_of_gathers, char** unique_keys,
 void
 sort_headers(read_traces *gather_traces, char **sort_key, int *direction, int number_of_keys);
 
-/** Function responsible for sorting two halves of traces headers based on the direction.
- *  It is called while sorting headers.
+/** Function responsible for sorting two halves of traces headers
+ *  based on the direction. It is called while sorting headers.
  *
  *  \param[in]	arr		pointer to array of traces to be sorted.
  *  \param[in]	low		index of the first element of the array(0),
@@ -1196,7 +1203,9 @@ sort_headers(read_traces *gather_traces, char **sort_key, int *direction, int nu
  *  				merging the two arrays.
  *  \param[in]	num_of_keys	number of keys to sort traces on.
  */
-void Merge(trace_t *arr, int low, int mid, int high, char **sort_key, int *direction, int num_of_keys);
+void
+Merge(trace_t *arr, int low, int mid, int high, char **sort_key,
+      int *direction, int num_of_keys);
 
 /** Function responsible recursively called to split array of traces headers.
  *  It is called only while sorting headers.
@@ -1393,8 +1402,19 @@ void
 daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
 			  traces_list_t *trace_list, seis_root_obj_t *root);
 
-/** Function responsible for tokenzing a string given a separator */
-void tokenize_str(void **str, char *sep, char *string, int type);
+/** Function responsible for tokenzing a string given a separator
+ *
+ * \param[in]	str			void double pointer which will be
+ * 					casted to one of the types requested.
+ * \param[in]	sep			character separator that will be used
+ * 					in tokenizing the string
+ * \param[in]	type			integer specifying type the string
+ * 					will be casted to (char/ double/ long)
+ *
+ * \return	array of strings after tokenization
+ */
+void
+tokenize_str(void **str, char *sep, char *string, int type);
 
 /** Function responsible for finding ranges of traces headers.
  *  It is called while executing range headers programs.
@@ -1424,8 +1444,19 @@ range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 void
 print_headers_ranges(headers_ranges_t headers_ranges);
 
-/** Fucntion responsible for storing the unique value in character array based on its type */
-void val_sprintf(char *temp, Value unique_value, char *key);
+/** Fucntion responsible for storing the unique value in character array
+ *  based on its type (char/long/double/int/...)
+ *
+ * \param[in]	temp		character array to store the unique value in.
+ * \param[in]	unique_value	value that will be written in character array.
+ * \param[in]	key		string containig the key used,
+ * 				will be used to find the data type.
+ *
+ *  \return	the character array after writing the unique value in it.
+ *
+ */
+void
+val_sprintf(char *temp, Value unique_value, char *key);
 
 /** Function responsible for fetching array of traces headers object ids
  *

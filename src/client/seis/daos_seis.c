@@ -230,7 +230,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 	/** store number of keys and array of keys under
 	 *  seperate dkeys and akeys
 	 */
-	rc = daos_seis_root_update(root_obj, DS_D_NUM_OF_KEYS, DS_A_NUM_OF_KEYS,
+	rc = daos_seis_root_update(root_obj, DS_D_KEYS, DS_A_NUM_OF_KEYS,
 				   (char*)&num_of_keys, sizeof(int),
 				   DAOS_IOD_SINGLE);
 	if (rc != 0) {
@@ -1269,43 +1269,6 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 		}
 	}
 
-//	if (shot_header_key == 1 || cmp_header_key == 1 ||
-//	    offset_header_key == 1) {
-//		for (i = 0; i < num_of_keys; i++) {
-//			/** if key matches with fldr object*/
-//			if (strcmp("fldr", keys_1[i]) == 0) {
-//				shot_header_key = 1;
-//				cmp_header_key = 0;
-//				offset_header_key = 0;
-//				/** Replace shot object with a new one */
-//				daos_seis_replace_objects(dfs, daos_mode,
-//							  shot_header_key,
-//							  cmp_header_key,
-//							  offset_header_key,
-//							  trace_list, root);
-//			} else if (strcmp("cdp", keys_1[i]) == 0) {
-//				shot_header_key = 0;
-//				cmp_header_key = 1;
-//				offset_header_key = 0;
-//				daos_seis_replace_objects(dfs, daos_mode,
-//							  shot_header_key,
-//							  cmp_header_key,
-//							  offset_header_key,
-//							  trace_list, root);
-//			} else if (!strcmp("offset", keys_1[i])) {
-//				shot_header_key = 0;
-//				cmp_header_key = 0;
-//				offset_header_key = 1;
-//				daos_seis_replace_objects(dfs, daos_mode,
-//							  shot_header_key,
-//							  cmp_header_key,
-//							  offset_header_key,
-//							  trace_list, root);
-//			} else {
-//				continue;
-//			}
-//		}
-//	}
 	/** close opened seismic object */
 	rc = daos_obj_close(seismic_object->oh, NULL);
 	if(rc != 0) {
@@ -1475,7 +1438,7 @@ daos_seis_get_headers(seis_root_obj_t *root)
 			      sizeof(int),DAOS_IOD_SINGLE);
 
 	rc = daos_seis_fetch_entry(seismic_object->oh, DAOS_TX_NONE,
-			&seismic_entry, NULL);
+				   &seismic_entry, NULL);
 
 	char **unique_keys;
 
