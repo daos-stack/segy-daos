@@ -1818,7 +1818,7 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 	int 			 rc;
 	int 			 z;
 	/** temp arrays allocations */
-	temp_array = malloc(seismic_object->number_of_gathers * 11 *
+	temp_array = malloc(seismic_object->number_of_gathers * 20 *
 			    sizeof(char));
 	kds = malloc((seismic_object->number_of_gathers + 1) *
 		     sizeof(daos_key_desc_t));
@@ -1829,7 +1829,7 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 	nr = seismic_object->number_of_gathers + 1;
 	sglo.sg_nr_out = sglo.sg_nr = 1;
 	d_iov_set(&iov_temp, temp_array,
-		  seismic_object->number_of_gathers * 11);
+		  seismic_object->number_of_gathers * 20);
 	sglo.sg_iovs = &iov_temp;
 	/** fetch list of dkeys */
 	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds,
@@ -1843,25 +1843,29 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 	 * if yes, key is copied to array of unique keys(gather keys)
 	 * otherwise it is ignored.
 	 */
+	int 			 digit;
 	int			 off = 0;
 	int 			 u = 0;
 	int			 k;
+
 	for (z = 0; z < seismic_object->number_of_gathers + 1; z++) {
-		dkeys_list[z] = malloc(kds[z].kd_key_len + 1 * sizeof(char));
+		digit = 0;
+		dkeys_list[z] = malloc((kds[z].kd_key_len + 1) * sizeof(char));
 		strncpy(dkeys_list[z], &temp_array[off], kds[z].kd_key_len);
 		dkeys_list[z][kds[z].kd_key_len] = '\0';
 		off += kds[z].kd_key_len;
 		for (k = 0; k < strlen(dkeys_list[z]) + 1; k++) {
 			if (isdigit(dkeys_list[z][k])) {
+				digit = 1;
 				unique_keys[u] = malloc(kds[z].kd_key_len *
 							sizeof(char));
 				strcpy(unique_keys[u], dkeys_list[z]);
 				u++;
 				break;
-			} else {
-				out = z;
-				continue;
 			}
+		}
+		if(digit == 0) {
+			out = z;
 		}
 	}
 	/** check sorting flag, if yes then sort dkeys fetched
@@ -1885,7 +1889,6 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 		for (z = 0; z < seismic_object->number_of_gathers; z++) {
 			if (k == out) {
 				k++;
-				continue;
 			}
 			dkeys_sorted_list[z] = malloc(kds[k].kd_key_len *
 						      sizeof(char));
@@ -1899,7 +1902,6 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 			k++;
 		}
 		free(first_array);
-
 		return dkeys_sorted_list;
 	}
 

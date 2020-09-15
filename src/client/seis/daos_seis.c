@@ -185,7 +185,6 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 	type = hdtype(key);
 
 	trace_list = daos_seis_wind_traces(root, &key, 1, &min, &min, &type);
-	printf("BESOOOOOOOOOOOOOOOO \n");
 	return trace_list;
 }
 
@@ -976,7 +975,7 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 	int 			key_exist = 0;
 	int	 		rc;
 	int 			i = 0;
-
+	int 			j;
 	daos_mode = get_daos_obj_mode(O_RDWR);
 	seismic_object = malloc(sizeof(seis_obj_t));
 	trace_list = malloc(sizeof(traces_list_t));
@@ -985,36 +984,37 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 	trace_list->size = 0;
 
 	while(i < number_of_keys){
-		if(strcmp(window_keys[i],root->keys[i]) == 0) {
-			seismic_object->oid = root->gather_oids[i];
-			strcpy(seismic_object->name, root->keys[i]);
-			key_exist = 1;
-		} else {
-			i++;
-			continue;
-		}
-		if(i >0){
-			cwp_String 	type_temp;
-			Value 		min_temp;
-			Value 		max_temp;
-			char 		key_temp[200] = "";
+		for(j = 0; j < root->num_of_keys; j++){
+			if(strcmp(window_keys[i],root->keys[j]) == 0) {
+				seismic_object->oid = root->gather_oids[j];
+				strcpy(seismic_object->name, root->keys[j]);
+				key_exist = 1;
+				if (i > 0) {
+					cwp_String 	type_temp;
+					Value 		min_temp;
+					Value 		max_temp;
+					char 		key_temp[200] = "";
 
-			type_temp = type[i];
-			type[i] = type[0];
-			type[0] = type_temp;
-			min_temp = min_keys[i];
-			min_keys[i] = min_keys[0];
-			min_keys[0] = min_temp;
-			max_temp = max_keys[i];
-			max_keys[i] = max_keys[0];
-			max_keys[0] = max_temp;
-			strcpy(key_temp,window_keys[i]);
-			strcpy(window_keys[i],window_keys[0]);
-			strcpy(window_keys[0],key_temp);
-			break;
-		} else {
+					type_temp = type[i];
+					type[i] = type[0];
+					type[0] = type_temp;
+					min_temp = min_keys[i];
+					min_keys[i] = min_keys[0];
+					min_keys[0] = min_temp;
+					max_temp = max_keys[i];
+					max_keys[i] = max_keys[0];
+					max_keys[0] = max_temp;
+					strcpy(key_temp,window_keys[i]);
+					strcpy(window_keys[i],window_keys[0]);
+					strcpy(window_keys[0],key_temp);
+					break;
+				}
+			}
+		}
+		if (key_exist == 1) {
 			break;
 		}
+		i++;
 	}
 	/** if first key is not one of the gather objects
 	 *  then start with the shot object
