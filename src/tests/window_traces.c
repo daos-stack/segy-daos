@@ -108,7 +108,7 @@ int main(int argc, char *argv[]){
 	    	temp = temp->next_trace;
 		}
 	}
-	release_traces_list(trace_list);
+	//release_traces_list(trace_list);
     printf("CLOSE SEGY ROOT OBJECT== \n");
 	daos_seis_close_root(segy_root_object);
 	gettimeofday(&tv2, NULL);

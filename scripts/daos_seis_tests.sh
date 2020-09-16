@@ -20,31 +20,31 @@ function compare_files {
 
 function run_tests {
 
-	$tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/Test/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
+	$tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_800 out=/SHOTS_601_800_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
 
-	$tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
+	$tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT
 	
-	$tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
+	$tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=800
 	
-	$tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
+	$tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
 	
-	$tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,610 
+	$tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,800 
 
-	$tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
+	$tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
 
-	$tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
+	$tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
 					
-	$main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/Test/shot_601_610 >daos_segyread_temp.su
+	$main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_800 >daos_segyread_temp.su
 	
 	$main_program_path/daos_sutrcount pool=$1 container=$2 svc=$3 <daos_segyread_temp.su 
 	
-	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=610 max=610  >daos_segyread.su
+	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=800 max=800  >daos_segyread.su
 	
 	$main_program_path/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su +fldr +gx >daos_sort.su
 	
 	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=tracl min=10666 max=12010 >daos_window.su
 
-	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_window.su key=fldr min=609 max=610 >daos_wind.su
+	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_window.su key=fldr min=609 max=800 >daos_wind.su
 
 	$main_program_path/daos_suchw pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key1=tracr key2=tracr a=1000 >daos_chw.su 
 
@@ -54,7 +54,7 @@ function run_tests {
 
 echo 'Copying segy to DFS container...'
 ## Copy velocity segy file to daos.
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=shots_601_610_cdp_offset_calculated.segy out=/Test/shot_601_610
+./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=shots0601_0800.segy out=/shot_601_800
 
 echo 'Running commands...'
 ## Run seismic unix commands.

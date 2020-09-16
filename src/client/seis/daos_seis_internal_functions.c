@@ -1814,26 +1814,36 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 	char 			*temp_array;
 	char 		       **dkeys_list;
 	char 		       **unique_keys;
+	int 			 temp_array_offset = 0;
+	int 			 keys_read = 0;
+	int 			 kds_i = 0;
 	int 			 out;
 	int 			 rc;
 	int 			 z;
 	/** temp arrays allocations */
-	temp_array = malloc(seismic_object->number_of_gathers * 20 *
-			    sizeof(char));
-	kds = malloc((seismic_object->number_of_gathers + 1) *
-		     sizeof(daos_key_desc_t));
-	dkeys_list = malloc((seismic_object->number_of_gathers + 1) *
-			    sizeof(char*));
-	unique_keys = malloc(seismic_object->number_of_gathers *
-			     sizeof(char*));
 	nr = seismic_object->number_of_gathers + 1;
-	sglo.sg_nr_out = sglo.sg_nr = 1;
-	d_iov_set(&iov_temp, temp_array,
-		  seismic_object->number_of_gathers * 20);
+
+	temp_array = malloc(nr * 2000 *
+			    sizeof(char));
+	kds = malloc((nr) * sizeof(daos_key_desc_t));
+	dkeys_list = malloc((nr) * sizeof(char*));
+	unique_keys = malloc(seismic_object->number_of_gathers * sizeof(char*));
+	sglo.sg_nr_out = sglo.sg_nr = 1;	
 	sglo.sg_iovs = &iov_temp;
+
 	/** fetch list of dkeys */
-	rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr, kds,
-				&sglo, &anchor, NULL);
+	while (!daos_anchor_is_eof(&anchor)) {
+		nr = seismic_object->number_of_gathers + 1 - keys_read;
+		d_iov_set(&iov_temp, temp_array + temp_array_offset,
+			  nr * 2000);
+		rc = daos_obj_list_dkey(seismic_object->oh, DAOS_TX_NONE, &nr,
+					&kds[keys_read], &sglo, &anchor, NULL);
+		for (kds_i = 0; kds_i < nr; kds_i++) {
+			temp_array_offset += kds[keys_read + kds_i].kd_key_len;
+		}
+		keys_read += nr;
+		
+	}
 	if (rc != 0) {
 		err("Listing <%s> seismic object dkeys failed,"
 		    " error code = %d\n", seismic_object->name, rc);
@@ -1848,7 +1858,7 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 	int 			 u = 0;
 	int			 k;
 
-	for (z = 0; z < seismic_object->number_of_gathers + 1; z++) {
+	for (z = 0; z < keys_read; z++) {
 		digit = 0;
 		dkeys_list[z] = malloc((kds[z].kd_key_len + 1) * sizeof(char));
 		strncpy(dkeys_list[z], &temp_array[off], kds[z].kd_key_len);
@@ -1900,7 +1910,7 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 			strcat(dkey_name, temp_st);
 			strcpy(dkeys_sorted_list[z], dkey_name);
 			k++;
-		}
+		}	
 		free(first_array);
 		return dkeys_sorted_list;
 	}
