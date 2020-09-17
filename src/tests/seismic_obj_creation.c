@@ -87,15 +87,23 @@ int main(int argc, char *argv[]){
 	dfs_obj_t *parent = NULL;
 
 	parent = get_parent_of_file_new(get_dfs(), out_file, 1, file_name, 1);
+	seis_root_obj_t 	*root_obj;
+	seis_obj_t 		**seismic_obj;
+	seismic_obj = malloc(number_of_keys * sizeof(seis_obj_t*));
+
+	daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys, header_keys,
+				&root_obj, seismic_obj);
 	printf("CALLING PARSE SEGY FUNCTION \n");
 	if(fldr_exist == 1){
-		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file, number_of_keys, header_keys);
+		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file,
+				    number_of_keys, header_keys, root_obj, seismic_obj);
 		for(i = 0; i<  number_of_keys; i++){
 			free(header_keys[i]);
 		}
 		free(header_keys);
 	} else {
-		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file, number_of_keys, updated_keys);
+		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file,
+				number_of_keys, updated_keys, root_obj, seismic_obj);
 		for(i = 0; i<  number_of_keys; i++){
 			free(updated_keys[i]);
 		}

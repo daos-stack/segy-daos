@@ -1484,4 +1484,123 @@ fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
 void
 release_traces_list(traces_list_t *trace_list);
 
+
+/** Function responsible for creating an empty graph
+ *  seismic root object and gather objects.
+ *
+ * \param[in]   dfs            	pointer to DAOS file system.
+ * \param[in]   parent         	pointer to parent DAOS file system object.
+ * \param[in]   name          	name of root object that will be create.
+ * \param[in]	num_of_keys	Number of strings(keys) in the array of keys.
+ * \param[in]	keys		array of strings containing header_keys that
+ * 				will be used to create gather objects.
+ * \param[in]	root_obj	double pointer to the seismic root object
+ * 				that will be allocated.
+ * \param[in]	seismic_obj	array of pointers to seismic objects to be allocated.
+ *
+ */
+void
+daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
+		       int num_of_keys, char **keys,
+		       seis_root_obj_t **root_obj, seis_obj_t **seismic_obj);
+
+/** Function responsible for reading binary and text headers
+ *  \param[in]	bh		pointer to binary header struct to hold
+ *  				binary header data read
+ *  \param[in]	ebcbuf		pointer to character array to be filled with
+ *  				text header data read.
+ *  \param[in]	nextended	pointer to variable to hold number of extended
+ *  				text headers in segy file.
+ *  \param[in]	root_obj	pointer to opened root seismic object.
+ *  \param[in]	daos_tape	pointer to daos file struct holding the segy
+ *  				file handle after mounting to dfs and offset
+ *  				to the last accessed byte defined in
+ *  				(dfs_helper_api.h).
+ *  \param[in]	swapbhed	integer indicating whether to swap binary
+ *  				header bytes or not.
+ *  \param[in]	endian		integer indication little or big endian flag.
+ *
+ */
+void
+read_headers(bhed *bh, char *ebcbuf, short *nextended,
+	     seis_root_obj_t *root_obj,	DAOS_FILE *daos_tape,
+	     int swapbhed, int endian);
+/** Function responsible for writing binary and text headers under
+ *  root seismic object.
+ *
+ *  \param[in]	bh		pointer to binary header struct to be written
+ *  				under root seismic object.
+ *  \param[in]	ebcbuf		pointer to character array to be written
+ *  				under root seismic object.
+ *  \param[in]	root_obj	pointer to opened root seismic object.
+ *
+ */
+void
+write_headers(bhed bh, char *ebcbuf, seis_root_obj_t *root_obj);
+
+/** Function responsible for parsing extended text headers from segy file.
+ *
+ *  \param[in]	nextended	number of extended text headers to be parsed.
+ *  \param[in]	daos_tape	pointer to daos file struct holding the segy
+ *  				file handle after mounting to dfs and offset
+ *  				to the last accessed byte defined in
+ *  				(dfs_helper_api.h).
+ *  \param[in]	ebcbuf		pointer to character array to hold extended
+ *  				text header data read.
+ *  \param[in]	root_obj	pointer to opened root seismic object.
+ *
+ */
+void
+parse_exth(short nextended, DAOS_FILE *daos_tape, char *ebcbuf,
+	   seis_root_obj_t *root_obj);
+
+/** Function responsible for processing headers and calculating length of trace
+ *
+ * \param[in]	bh		pointer to binary header struct.
+ * \param[in]	format		integer flag to specify override format.
+ * \param[in]	over		integer flag for binary header float override.
+ * \param[in]	format_set	!!
+ * \param[in]	trcwt		integer flag for trace weighting.
+ * \param[in]	verbose		verbosity flag
+ * \param[in]	ns		integer to trace number of samples to be set.
+ * \param[in]	nsegy		integer to trace size in bytes to be set.
+ *
+ */
+void
+process_headers(bhed *bh, int format, int over,cwp_Bool format_set, int *trcwt,
+		int verbose, int *ns, int *nsegy);
+
+/** Function responsible for processing trace.
+ *
+ * \param[in]	tapetr		tape segy struct holding trace
+ * 				identification header.
+ * \param[in]	tr		pointer to segy struct, tapetr will be
+ * 				converted to trace struct.
+ * \param[in]	bh		binary header struct fetched before.
+ * \param[in]	ns		trace number of samples
+ * \param[in]	swaphdrs	flag for big(1) and little(0) endian to
+ * 				indicate whether to swap trace headers or not.
+ * \param[in]	nsflag		flag for error in tr.ns
+ * \param[in]	itr		current trace number.
+ * \param[in]	nkeys		number of keys to be computed.
+ * \param[in]	type1		array of types for key1.
+ * \param[in]	type2		array of types for key2.
+ * \param[in]	ubyte		!!
+ * \param[in]	endian		little or big endian.
+ * \param[in]	conv		flag for data conversion.
+ * \param[in]	swapdata	flag for big(1) and little(0) endian to
+ * 				indicate whether to swap trace data or not.
+ * \param[in]	index1		array of indexes for key1.
+ * \param[in]	trmin		first trace to read.
+ * \param[in]	trcwt		flag for trace weighting.
+ * \param[in]	verbose		verbosity flag.
+ *
+ */
+void
+process_trace(tapesegy tapetr, segy *tr, bhed bh, int ns, int swaphdrs,
+	      int nsflag, int *itr, int nkeys, cwp_String *type1,
+	      cwp_String *type2, int *ubyte, int endian, int conv,
+	      int swapdata, int *index1, int trmin, int trcwt,
+	      int verbose);
+
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */
