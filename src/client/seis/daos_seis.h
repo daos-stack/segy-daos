@@ -97,20 +97,19 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root);
 /** Parse segy file and build equivalent daos-seismic graph
  *
  * \param[in]   dfs            	pointer to DAOS file system.
- * \param[in]   parent         	pointer to parent DAOS file system object.
- * \param[in]   name          	name of root object that will be create.
  * \param[in]   segy_root     	pointer to file that will be parsed.
  * \param[in]	num_of_keys	Number of strings(keys) in the array of keys.
  * \param[in]	keys		array of strings containing header_keys that
  * 				will be used to create gather objects.
+ * \param[in]	additional	integer flag, used in case of parsing multiple
+ * 				files to the same graph.
  * \return      0 on success
  * 		error_code otherwise
  */
 int
-daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
-		     dfs_obj_t *segy_root, int num_of_keys, char **keys,
-		     seis_root_obj_t *root_obj, seis_obj_t **seismic_obj,
-		     int additional);
+daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys,
+		     char **keys, seis_root_obj_t *root_obj,
+		     seis_obj_t **seismic_obj, int additional);
 
 /** Sort traces headers based on any number of (secondary) keys with either,
  * ascending (+) or descending (-) directions for each.

@@ -93,14 +93,14 @@ int main(int argc, char *argv[]){
 //				&root_obj, seismic_obj);
 	printf("CALLING PARSE SEGY FUNCTION \n");
 	if(fldr_exist == 1){
-		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file,
+		daos_seis_parse_segy(get_dfs(), segyfile->file,
 				    number_of_keys, header_keys, segy_root_object, seismic_obj, 1);
 		for(i = 0; i<  number_of_keys; i++){
 			free(header_keys[i]);
 		}
 		free(header_keys);
 	} else {
-		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file,
+		daos_seis_parse_segy(get_dfs(), segyfile->file,
 				number_of_keys, updated_keys, segy_root_object, seismic_obj, 1);
 		for(i = 0; i<  number_of_keys; i++){
 			free(updated_keys[i]);

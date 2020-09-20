@@ -29,9 +29,15 @@ daos_seis_close_root(seis_root_obj_t *segy_root_object)
 {
 	dfs_obj_t	*obj;
 	int 		 rc;
+	int 		 i;
 
 	obj = segy_root_object->root_obj;
 
+	for(i = 0; i < segy_root_object->num_of_keys; i++) {
+		free(segy_root_object->keys[i]);
+	}
+	free(segy_root_object->keys);
+	free(segy_root_object->gather_oids);
 	/** Release daos file system object of the seismic root object. */
 	rc = dfs_release(obj);
 	if (rc != 0) {
@@ -189,8 +195,7 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 }
 
 int
-daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
-		     dfs_obj_t *segy_root, int num_of_keys, char **keys,
+daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **keys,
 		     seis_root_obj_t *root_obj, seis_obj_t **seismic_obj, int additional)
 {
 	DAOS_FILE 		*daos_tape;

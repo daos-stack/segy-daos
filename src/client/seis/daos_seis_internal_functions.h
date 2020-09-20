@@ -1603,6 +1603,12 @@ process_trace(tapesegy tapetr, segy *tr, bhed bh, int ns, int swaphdrs,
 	      int swapdata, int *index1, int trmin, int trcwt,
 	      int verbose);
 
+/** Function responsible for reading all gathers stored under seismic
+ *  object in a linked list of gathers.
+ *
+ *  \param[in]	root		pointer to opened root seismic object.
+ *  \param[in]	seis_obj	pointer to opened seismic object.
+ */
 void
 read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj);
 
