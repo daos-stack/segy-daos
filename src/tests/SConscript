@@ -14,3 +14,4 @@ env.Program('change_headers', 'change_headers.c', LIBS=libraries, LIBPATH=librar
 env.Program('range_headers', 'range_headers.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('get_headers', 'get_headers.c', LIBS=libraries, LIBPATH=libraries_path)
 env.Program('update_traces_data', 'update_traces_data.c', LIBS=libraries, LIBPATH=libraries_path)
+env.Program('parse_additional_file', 'parse_additional_file.c', LIBS=libraries, LIBPATH=libraries_path)

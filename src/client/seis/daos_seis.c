@@ -191,7 +191,7 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 int
 daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 		     dfs_obj_t *segy_root, int num_of_keys, char **keys,
-		     seis_root_obj_t *root_obj, seis_obj_t **seismic_obj)
+		     seis_root_obj_t *root_obj, seis_obj_t **seismic_obj, int additional)
 {
 	DAOS_FILE 		*daos_tape;
 	char 			*temp_name;
@@ -286,6 +286,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 
 	errmax = 0;
 	buff = 1;
+	int num_of_gathers[num_of_keys];
 
 	/* Override binary format value */
 	over = 0;
@@ -324,14 +325,53 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 	read_headers(&bh, ebcbuf, &nextended, root_obj, daos_tape, swapbhed, endian);
 	/** Process headers read */
 	process_headers(&bh, format, over, format_set, &trcwt, verbose, &ns, &nsegy);
-	/** Write binary and text headers to root object */
-	write_headers(bh, ebcbuf, root_obj);
+	if(additional == 0){
+		/** Write binary and text headers to root object */
+		write_headers(bh, ebcbuf, root_obj);
+	}
 	/** Parse Extended text headers */
 	parse_exth(nextended, daos_tape,ebcbuf, root_obj);
 
 	/* Read the traces */
 	nsflag = cwp_false;
 	itr = 0;
+	seismic_entry_t seismic_entry= {0};
+
+	if(additional == 1){
+		/**Fetch Number of traces Under opened Root object */
+		prepare_seismic_entry(&seismic_entry, root_obj->root_obj->oid,
+				      DS_D_FILE_HEADER, DS_A_NTRACES_HEADER,
+				      (char*)&root_obj->number_of_traces,
+				      sizeof(int), DAOS_IOD_SINGLE);
+		rc = daos_seis_fetch_entry(root_obj->root_obj->oh, DAOS_TX_NONE,
+					   &seismic_entry, NULL);
+		if (rc != 0) {
+			err("Fetching number of gathers failed, error "
+			    "code = %d \n", rc);
+			return rc;
+		}
+
+		for(i = 0; i < num_of_keys; i++) {
+			seismic_obj[i] = (seis_obj_t*)malloc(sizeof(seis_obj_t));
+			seismic_obj[i]->oid = root_obj->gather_oids[i];
+			strcpy(seismic_obj[i]->name, root_obj->keys[i]);
+			rc = daos_obj_open(root_obj->coh,
+					   seismic_obj[i]->oid,
+					   get_daos_obj_mode(O_RDWR),
+					   &(seismic_obj[i]->oh),
+					   NULL);
+			if (rc != 0) {
+				err("Opening <%s> seismic object failed, error"
+				    " code = %d \n",seismic_obj[i]->name, rc);
+				return rc;
+			}
+			seismic_obj[i]->gathers = NULL;
+			seismic_obj[i]->seis_gather_trace_oids_obj = NULL;
+			read_object_gathers(root_obj, seismic_obj[i]);
+			num_of_gathers[i]= seismic_obj[i]->number_of_gathers;
+		}
+	}
+	printf("FINISHED FETCHING LINKED LIST OF GATHERS \n");
 
 	while (itr < trmax) {
 		int nread;
@@ -357,7 +397,6 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 			    " error code = %d \n", rc);
 			return rc;
 		}
-
 		for(i = 0; i < num_of_keys; i++) {
 			rc = daos_seis_tr_linking(trace_obj,
 						  seismic_obj[i],
@@ -372,10 +411,8 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 		if (verbose && (itr % vblock) == 0) {
 			warn(" %d traces from tape", itr);
 		}
-
 		daos_obj_close(trace_obj->oh, NULL);
 		free(trace_obj);
-
 	}
 	printf("All trace data written...\n");
 	rc = daos_seis_root_update(root_obj, DS_D_FILE_HEADER,
@@ -403,7 +440,15 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 	printf("Updated all gathers numbers...\n");
 
 	for(i=0; i< num_of_keys; i++) {
-		rc = daos_seis_trace_oids_obj_create(dfs, OC_SX, seismic_obj[i]);
+		if(additional == 1){
+			rc = daos_seis_trace_oids_obj_create(dfs, OC_SX,
+							     seismic_obj[i],
+							     num_of_gathers[i]);
+		} else {
+			rc = daos_seis_trace_oids_obj_create(dfs, OC_SX,
+							     seismic_obj[i],
+							     0);
+		}
 		if (rc != 0) {
 			err("Creating array of object ids"
 			    " failed, error code = %d \n",keys[i], rc);
@@ -432,12 +477,13 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 			return rc;
 		}
 	}
-
-	rc = daos_obj_close(root_obj->root_obj->oh, NULL);
-	if (rc != 0) {
-		err("Closing root seismic object failed, "
-		    "error code = %d \n",keys[i], rc);
-		return rc;
+	if(additional == 0) {
+		rc = daos_obj_close(root_obj->root_obj->oh, NULL);
+		if (rc != 0) {
+			err("Closing root seismic object failed, "
+			    "error code = %d \n",keys[i], rc);
+			return rc;
+		}
 	}
 
 	free(daos_tape);

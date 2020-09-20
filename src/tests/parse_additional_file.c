@@ -1,7 +1,7 @@
 /*
- * seismic_obj_creation.c
+ * parse_additional_file.c
  *
- *  Created on: May 19, 2020
+ *  Created on: Sep 17, 2020
  *      Author: mirnamoawad
  */
 
@@ -83,24 +83,25 @@ int main(int argc, char *argv[]){
 	char * file_name = malloc(1024 * sizeof(char));
 	dfs_obj_t *parent = NULL;
 
-	parent = get_parent_of_file_new(get_dfs(), out_file, 1, file_name, 1);
+	parent = get_parent_of_file_new(get_dfs(), in_file, 1, file_name, 1);
 	seis_root_obj_t 	*root_obj;
 	seis_obj_t 		**seismic_obj;
 	seismic_obj = malloc(number_of_keys * sizeof(seis_obj_t*));
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),out_file);
 
-	daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys, header_keys,
-				&root_obj, seismic_obj);
+//	daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys, header_keys,
+//				&root_obj, seismic_obj);
 	printf("CALLING PARSE SEGY FUNCTION \n");
 	if(fldr_exist == 1){
 		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file,
-				    number_of_keys, header_keys, root_obj, seismic_obj, 0);
+				    number_of_keys, header_keys, segy_root_object, seismic_obj, 1);
 		for(i = 0; i<  number_of_keys; i++){
 			free(header_keys[i]);
 		}
 		free(header_keys);
 	} else {
 		daos_seis_parse_segy(get_dfs(), parent, file_name, segyfile->file,
-				number_of_keys, updated_keys, root_obj, seismic_obj, 0);
+				number_of_keys, updated_keys, segy_root_object, seismic_obj, 1);
 		for(i = 0; i<  number_of_keys; i++){
 			free(updated_keys[i]);
 		}
@@ -108,9 +109,10 @@ int main(int argc, char *argv[]){
 	}
 
 	close_dfs_file(segyfile);
+//	daos_seis_close_root(segy_root_object);
 
 	printf(" OPEN SEIS ROOT OBJECT== \n");
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), out_file);
+//	seis_root_obj_t *root_object = daos_seis_open_root_path(get_dfs(), out_file);
 	printf("FINDING NUMBER OF GATHERS \n");
 	int cmp_gathers;
 	cmp_gathers = daos_seis_get_number_of_gathers(segy_root_object,"cdp");
@@ -123,30 +125,6 @@ int main(int argc, char *argv[]){
 	int offset_gathers;
 	offset_gathers = daos_seis_get_number_of_gathers(segy_root_object,"offset");
 	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
-
-	printf("READING SEGY ROOT BINARY HEADER KEY == \n");
-//	bhed *binary_header = malloc(sizeof(bhed));
-	DAOS_FILE *daos_binary;
-	char *bfile;		/* name of binary header file	*/
-	bfile = "daos_seis_binary";
-	daos_binary = open_dfs_file(bfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-	bhed *binary_header = daos_seis_get_binary_header(segy_root_object);
-	write_dfs_file(daos_binary, (char *) binary_header, BNYBYTES);
-	close_dfs_file(daos_binary);
-	free(binary_header);
-
-	printf("READING SEGY ROOT TEXT HEADER KEY == \n");
-//	char *text_header = malloc(EBCBYTES*sizeof(char));
-
-    DAOS_FILE *daos_text_header;
-    char *tfile;		/* name of text header file	*/
-    int rc;
-    tfile = "daos_seis_text_header";
-    daos_text_header = open_dfs_file(tfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-    char *text_header = daos_seis_get_text_header(segy_root_object);
-    write_dfs_file(daos_text_header, text_header, EBCBYTES);
-    close_dfs_file(daos_text_header);
-    free(text_header);
 
 
 	printf("CLOSE SEGY ROOT OBJECT== \n");

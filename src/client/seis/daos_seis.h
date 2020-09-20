@@ -109,7 +109,8 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root);
 int
 daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *parent, char *name,
 		     dfs_obj_t *segy_root, int num_of_keys, char **keys,
-		     seis_root_obj_t *root_obj, seis_obj_t **seismic_obj);
+		     seis_root_obj_t *root_obj, seis_obj_t **seismic_obj,
+		     int additional);
 
 /** Sort traces headers based on any number of (secondary) keys with either,
  * ascending (+) or descending (-) directions for each.

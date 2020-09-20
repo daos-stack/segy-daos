@@ -899,7 +899,7 @@ check_key_value(Value target, char *key, seis_gather_t *head,
  */
 int
 daos_seis_trace_oids_obj_create(dfs_t* dfs, daos_oclass_id_t cid,
-				seis_obj_t *seis_obj);
+				seis_obj_t *seis_obj, int num_of_gathers);
 
 /** Function responsible for creating seismic gather objects.
  *
@@ -1602,5 +1602,8 @@ process_trace(tapesegy tapetr, segy *tr, bhed bh, int ns, int swaphdrs,
 	      cwp_String *type2, int *ubyte, int endian, int conv,
 	      int swapdata, int *index1, int trmin, int trcwt,
 	      int verbose);
+
+void
+read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

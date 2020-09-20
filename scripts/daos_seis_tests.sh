@@ -20,21 +20,25 @@ function compare_files {
 
 function run_tests {
 
-	$tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_800 out=/SHOTS_601_800_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
+	$tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
 
-	$tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT
+	$tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
 	
-	$tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
+	$tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
 	
-	$tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
+	$tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
 	
-	$tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,800 
+	$tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,800 
 
-	$tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
+	$tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
 
-	$tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_800_SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
+	$tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
 					
-	$main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_800 >daos_segyread_temp.su
+	$tests_program_path/parse_additional_file pool=$1 container=$2 svc=$3 in=/shot_611_620 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
+
+	$tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_615.su shot_id=615
+					
+	$main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_610 >daos_segyread_temp.su
 	
 	$main_program_path/daos_sutrcount pool=$1 container=$2 svc=$3 <daos_segyread_temp.su 
 	
@@ -50,18 +54,23 @@ function run_tests {
 
 	$main_program_path/daos_sushw pool=$1 container=$2 svc=$3 <daos_chw.su key=dt a=4000 >daos_shw.su
 
+	$main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_611_620 >daos_segyread_shots_611_620.su
+
+	$main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_shots_611_620.su key=fldr min=615 max=615  >daos_segyread_shot_615.su
+
 }
 
 echo 'Copying segy to DFS container...'
 ## Copy velocity segy file to daos.
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=shots_601_610_cdp_offset_calculated.segy out=/shot_601_800
+./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=shots_601_610_cdp_offset_calculated.segy out=/shot_601_610
+./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=shots_611_620_cdp_offset_calculated.segy out=/shot_611_620
 
 echo 'Running commands...'
 ## Run seismic unix commands.
 run_tests $1 $2 $3
 
 echo 'Copy commands output...'
-file_list=(segyread sort wind chw shw)
+file_list=(segyread sort wind chw shw segyread_shot_615)
 ## Copy from daos to posix.
 for i in ${file_list[@]};
 do
@@ -76,7 +85,7 @@ done
 ./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
 
 echo 'Compare commands...'
-file_list=(segyread sort wind chw shw)
+file_list=(segyread sort wind chw shw segyread_shot_615)
 ## Compare outputs.
 for i in ${file_list[@]};
 do
