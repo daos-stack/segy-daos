@@ -109,11 +109,11 @@ main(int argc, char *argv[])
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation,
 		     verbose);
 	/** Open seis root object */
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),
+	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),
 								     in_file);
 	gettimeofday(&tv1, NULL);
 	/** Window traces headers */
-	traces_list_t *trace_list = daos_seis_wind_traces(segy_root_object,
+	traces_list_t *trace_list = daos_seis_wind_traces(seis_root_object,
 							  window_keys,
 							  number_of_keys,
 							  min_keys, max_keys,
@@ -144,7 +144,7 @@ main(int argc, char *argv[])
 	/** Release allocated linked list */
 	release_traces_list(trace_list);
 	/** Close opened root seismic object */
-	daos_seis_close_root(segy_root_object);
+	daos_seis_close_root(seis_root_object);
 
 	time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
 		     (double) (tv2.tv_sec - tv1.tv_sec);

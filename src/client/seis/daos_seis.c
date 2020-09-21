@@ -187,10 +187,13 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 	char 			*type;
 
 	min.i = shot_id;
-	key = "fldr";
+	key = malloc((strlen("fldr") + 1) * sizeof(char));
+	strcpy(key, "fldr");
 	type = hdtype(key);
 
 	trace_list = daos_seis_wind_traces(root, &key, 1, &min, &min, &type);
+
+	free(key);
 	return trace_list;
 }
 

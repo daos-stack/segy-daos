@@ -89,10 +89,10 @@ main(int argc, char *argv[])
 	}
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 	/** Open seis root object */
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),in_file);
+	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 	gettimeofday(&tv1, NULL);
 	/** Range headers */
-	headers_ranges_t ranges = daos_seis_range_headers(segy_root_object, number_of_keys, range_keys, dim);
+	headers_ranges_t ranges = daos_seis_range_headers(seis_root_object, number_of_keys, range_keys, dim);
 	gettimeofday(&tv2, NULL);
 	/** Print headers ranges */
 	print_headers_ranges(ranges);
@@ -102,7 +102,7 @@ main(int argc, char *argv[])
 	}
 	free(range_keys);
 	/** Close opened root seismic object */
-	daos_seis_close_root(segy_root_object);
+	daos_seis_close_root(seis_root_object);
 
 	time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
 		     (double) (tv2.tv_sec - tv1.tv_sec);

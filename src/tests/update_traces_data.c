@@ -53,11 +53,11 @@ main(int argc, char *argv[])
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
 	/** Open seis root object */
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),in_file);
+	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
 	/** Read 2 seperate shots traces in 2 linked lists */
-	traces_list_t *src_trace_list = daos_seis_get_shot_traces(shot_id, segy_root_object);
-	traces_list_t *dst_trace_list = daos_seis_get_shot_traces( 601, segy_root_object);
+	traces_list_t *src_trace_list = daos_seis_get_shot_traces(shot_id, seis_root_object);
+	traces_list_t *dst_trace_list = daos_seis_get_shot_traces( 601, seis_root_object);
 	/** Open output file to write original traces to */
 	FILE *fd = fopen(out_file, "w");
 
@@ -82,10 +82,10 @@ main(int argc, char *argv[])
 	}
 	gettimeofday(&tv1, NULL);
 	/** update traces data */
-	daos_seis_set_data(segy_root_object, dst_trace_list);
+	daos_seis_set_data(seis_root_object, dst_trace_list);
 	gettimeofday(&tv2, NULL);
 	/** read shot 601 after writing shot_id traces in it */
-	traces_list_t *trace_list = daos_seis_get_shot_traces(601, segy_root_object);
+	traces_list_t *trace_list = daos_seis_get_shot_traces(601, seis_root_object);
 	/** Open a new output file to write updated shot_601 traces to */
 	fd = fopen("shot_601.su", "w");
 
@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 	release_traces_list(dst_trace_list);
 	release_traces_list(trace_list);
 	/** Close opened root seismic object */
-	daos_seis_close_root(segy_root_object);
+	daos_seis_close_root(seis_root_object);
 
 	time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
 		     (double) (tv2.tv_sec - tv1.tv_sec);

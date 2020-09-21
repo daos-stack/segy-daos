@@ -194,17 +194,17 @@ main(int argc, char *argv[])
 	init_dfs_api(pool_id, svc_list, container_id,
 		     allow_container_creation, verbose);
 
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),in_file);
+	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
 	gettimeofday(&tv1, NULL);
 	/** Change header values */
-	daos_seis_set_headers(get_dfs(), segy_root_object, number_of_keys,
+	daos_seis_set_headers(get_dfs(), seis_root_object, number_of_keys,
 			      keys_1, keys_2, keys_3, a_values, b_values,
 			      c_values, d_values, NULL, e_values, f_values,
 			      type);
 	gettimeofday(&tv2, NULL);
 	/** Get traces headers */
-	traces_list_t *traces = daos_seis_get_headers(segy_root_object);
+	traces_list_t *traces = daos_seis_get_headers(seis_root_object);
 	/** Get traces data */
 	fetch_traces_data((get_dfs())->coh, &traces,get_daos_obj_mode(O_RDWR));
 	/** Open output file to write traces to */
@@ -241,7 +241,7 @@ main(int argc, char *argv[])
 	/** Release allocated linked list */
 	release_traces_list(traces);
 	/** Close opened root seismic object */
-	daos_seis_close_root(segy_root_object);
+	daos_seis_close_root(seis_root_object);
 
 	time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
 		     (double) (tv2.tv_sec - tv1.tv_sec);

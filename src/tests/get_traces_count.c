@@ -41,21 +41,21 @@ main(int argc, char *argv[])
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
-	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(),in_file);
+	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
 	int number_of_traces;
-	number_of_traces = daos_seis_get_trace_count(segy_root_object);
+	number_of_traces = daos_seis_get_trace_count(seis_root_object);
 	warn("NUMBER OF TRACES = %d \n", number_of_traces);
 	int 		no_of_gathers;
 	int 		i;
-	for(i = 0; i < segy_root_object->num_of_keys; i++) {
-		no_of_gathers = daos_seis_get_number_of_gathers(segy_root_object,
-								segy_root_object->keys[i]);
+	for(i = 0; i < seis_root_object->num_of_keys; i++) {
+		no_of_gathers = daos_seis_get_number_of_gathers(seis_root_object,
+								seis_root_object->keys[i]);
 		warn("Number of gathers under %s object = %d \n",
-		     segy_root_object->keys[i], no_of_gathers);
+		     seis_root_object->keys[i], no_of_gathers);
 	}
 
-	daos_seis_close_root(segy_root_object);
+	daos_seis_close_root(seis_root_object);
 
 	fini_dfs_api();
 
