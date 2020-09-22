@@ -2680,21 +2680,16 @@ void
 release_traces_list(traces_list_t *trace_list)
 {
 	traces_headers_t 	*temp;
+	traces_headers_t 	*next;
 
 	temp = trace_list->head;
 
-	if(temp == NULL){
-		warn("list of traces is empty \n");
-		return;
-	}
-	while(temp->next_trace != NULL ){
+	while(temp != NULL ){
+		next = temp->next_trace;
 		free(temp);
-		temp = temp->next_trace;
+		temp = next;
 	}
-	free(trace_list->tail);
 	free(trace_list);
-
-	return;
 }
 
 void
