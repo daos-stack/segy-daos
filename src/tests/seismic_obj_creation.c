@@ -105,6 +105,9 @@ main(int argc, char *argv[])
 					    S_IFREG | S_IWUSR | S_IRUSR,
 					    'r', 0);
 
+	struct timeval 		tv1;
+	struct timeval		tv2;
+	double 			time_taken;
 	char 			*file_name;
 	dfs_obj_t 		*parent = NULL;
 
@@ -119,18 +122,23 @@ main(int argc, char *argv[])
 
 	daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys,
 			       header_keys, &root_obj, seismic_obj);
-
 	if(fldr_exist == 1){
+		gettimeofday(&tv1, NULL);
 		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
 				     header_keys, root_obj, seismic_obj, 0);
+		gettimeofday(&tv2, NULL);
+
 		/** Free the allocated array of keys */
 		for(i = 0; i<  number_of_keys; i++){
 			free(header_keys[i]);
 		}
 		free(header_keys);
 	} else {
+		gettimeofday(&tv1, NULL);
 		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
 				     updated_keys, root_obj, seismic_obj, 0);
+		gettimeofday(&tv2, NULL);
+
 		/** Free the allocated array of keys */
 		for(i = 0; i<  number_of_keys; i++){
 			free(header_keys[i]);
@@ -141,6 +149,12 @@ main(int argc, char *argv[])
 	}
 	/** Close opened segy file */
 	close_dfs_file(segyfile);
+
+
+	time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
+		     (double) (tv2.tv_sec - tv1.tv_sec);
+
+	warn("Time taken to parse one file %f \n", time_taken);
 
 //	warn("OPEN SEIS ROOT OBJECT \n"
 //	     "===================== \n");

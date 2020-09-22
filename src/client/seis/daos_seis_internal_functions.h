@@ -66,6 +66,16 @@ typedef struct seis_gather{
 	struct seis_gather *next_gather;
 }seis_gather_t;
 
+/** struct of gathers list wrapping the linked list of gathers defined by defining
+ *  pointer to head (first gather), pointer to tail (last gather),
+ *  and size of linked list(number of gathers).
+ */
+typedef struct gathers_list{
+	seis_gather_t *head;
+	seis_gather_t *tail;
+	long size;
+}gathers_list_t;
+
 /** root object struct that is instantiated for SEGYROOT open object */
 typedef struct seis_root_obj {
 	/** root dfs object */
@@ -94,8 +104,9 @@ typedef struct seis_obj {
 	char			name[SEIS_MAX_PATH + 1];
 	/** number of gathers */
 	int number_of_gathers;
-	/**array of gathers */
-	seis_gather_t *gathers;
+	/**linked list of gathers */
+//	seis_gather_t *gathers;
+	gathers_list_t *gathers;
 	/** pointer to array of trace_oids objects*/
 	trace_oid_oh_t *seis_gather_trace_oids_obj;
 }seis_obj_t;
@@ -840,6 +851,9 @@ merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list);
 void
 add_trace_header(trace_t *trace, traces_list_t **head);
 
+void
+add_gather_to_list (seis_gather_t *gather, gathers_list_t **head);
+
 /** Function responsible for updating gather keys at the end of parsing segy file.
  *  It writes the number_of_traces key(akey) under each gather(dkey).
  *  It writes the object id of the DAOS_ARRAY object holding the traces oids.
@@ -856,7 +870,7 @@ add_trace_header(trace_t *trace, traces_list_t **head);
  * 		error_code otherwise
  */
 int
-update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object,
+update_gather_traces(dfs_t *dfs, gathers_list_t *head, seis_obj_t *object,
 		     char *dkey_name, char *akey_name);
 
 /** Function responsible for checking specific shot_id/Cmp_value/Offset_value
@@ -880,7 +894,7 @@ update_gather_traces(dfs_t *dfs, seis_gather_t *head, seis_obj_t *object,
  * 		error_code otherwise
  */
 int
-check_key_value(Value target, char *key, seis_gather_t *head,
+check_key_value(Value target, char *key, gathers_list_t *head,
 		daos_obj_id_t trace_obj_id, int *ntraces);
 
 /** Function responsible for creating trace_OIDS array object.

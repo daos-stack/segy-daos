@@ -373,10 +373,16 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 				    " code = %d \n",seismic_obj[i]->name, rc);
 				return rc;
 			}
-			seismic_obj[i]->gathers = NULL;
+
+			seismic_obj[i]->gathers = malloc(sizeof(gathers_list_t));
+			seismic_obj[i]->gathers->head = NULL;
+			seismic_obj[i]->gathers->tail = NULL;
+			seismic_obj[i]->gathers->size = 0;
 			seismic_obj[i]->seis_gather_trace_oids_obj = NULL;
 			read_object_gathers(root_obj, seismic_obj[i]);
 			num_of_gathers[i]= seismic_obj[i]->number_of_gathers;
+			printf("number of gathers in object %s is %d \n",
+			       seismic_obj[i]->name, seismic_obj[i]->gathers->size);
 		}
 	}
 	printf("FINISHED FETCHING LINKED LIST OF GATHERS \n");
