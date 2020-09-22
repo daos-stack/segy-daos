@@ -353,36 +353,6 @@ daos_seis_root_update(seis_root_obj_t *root_obj, char *dkey_name,
 }
 
 void
-add_gather(seis_gather_t **head, seis_gather_t *new_gather)
-{
-	if ((*head) == NULL) {
-		(*head) = (seis_gather_t*) malloc(sizeof(seis_gather_t));
-		(*head)->oids = (daos_obj_id_t*) malloc(50 *
-							sizeof(daos_obj_id_t));
-		(*head)->unique_key = new_gather->unique_key;
-		(*head)->number_of_traces = new_gather->number_of_traces;
-		memcpy((*head)->oids, new_gather->oids,
-		       sizeof(daos_obj_id_t) * 50);
-		(*head)->next_gather = NULL;
-	} else {
-		seis_gather_t *current = (*head);
-		while (current->next_gather != NULL) {
-			current = current->next_gather;
-		}
-		current->next_gather = (seis_gather_t*)
-						malloc(sizeof(seis_gather_t));
-		current->next_gather->oids = (daos_obj_id_t*)
-						malloc(50 * sizeof(daos_obj_id_t));
-		current->next_gather->unique_key = new_gather->unique_key;
-		current->next_gather->number_of_traces =
-						new_gather->number_of_traces;
-		memcpy(current->next_gather->oids, new_gather->oids,
-		       sizeof(daos_obj_id_t) * 50);
-		current->next_gather->next_gather = NULL;
-	}
-}
-
-void
 merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list)
 {
 	traces_headers_t 	*temp = (*headers)->head;
@@ -424,7 +394,7 @@ add_trace_header(trace_t *trace, traces_list_t **head)
 }
 
 void
-add_gather_to_list (seis_gather_t *gather, gathers_list_t **head){
+add_gather (seis_gather_t *gather, gathers_list_t **head){
 	seis_gather_t		*new_gather;
 	new_gather = (seis_gather_t*) malloc(sizeof(seis_gather_t));
 	new_gather->unique_key = gather->unique_key;
@@ -924,8 +894,7 @@ daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 			    " error code = %d\n", rc);
 			return rc;
 		}
-//		add_gather(&(seis_obj->gathers), &new_gather_data);
-		add_gather_to_list(&new_gather_data,&(seis_obj->gathers));
+		add_gather(&new_gather_data,&(seis_obj->gathers));
 		seis_obj->number_of_gathers++;
 		free(new_gather_data.oids);
 	}
@@ -3154,7 +3123,7 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 			    " code = %d \n", rc);
 			return;
 		}
-		add_gather_to_list (&temp_gather, &(seis_obj->gathers));
+		add_gather(&temp_gather, &(seis_obj->gathers));
 		free(temp_gather.oids);
 	}
 }

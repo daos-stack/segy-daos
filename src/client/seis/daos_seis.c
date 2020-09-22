@@ -808,7 +808,6 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
  		if((key_exist == 1) &&
  		   (first_array[i]< vtol(type[0], min_keys[0]) ||
 		    first_array[i] > vtol(type[0], max_keys[0]))) {
- 			warn("key is out of range \n");
  			continue;
  		}
 

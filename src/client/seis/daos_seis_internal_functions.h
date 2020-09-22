@@ -810,21 +810,6 @@ daos_seis_root_update(seis_root_obj_t* root_obj, char* dkey_name,
 		      char* akey_name , char* databuf, int nbytes,
 		      daos_iod_type_t iod_type);
 
-/** Function responsible for adding one more gather to the existing gathers
- *  under seismic_objects.
- *  Array of gathers is implemented as a linked list.
- *  It is called if the unique value of any trace doesn't belong to an existing
- *  gather in the linked list of gathers.
- *
- * \param[in]	head		pointer to pointer to the head of
- * 				seismic gathers linked list.
- * \param[in]	new_gather	pointer to a temp seismic gather, a new node
- * 				will be created and linked to the linked list
- * 				and this one will be destroyed.
- */
-void
-add_gather(seis_gather_t **head, seis_gather_t *new_gather);
-
 /** Function responsible for merging two traces lists by making tail of one list points to the head of the other.
  *  It is called only in sorting function after sorting a subgroup of headers.
  *
@@ -851,8 +836,20 @@ merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list);
 void
 add_trace_header(trace_t *trace, traces_list_t **head);
 
+/** Function responsible for adding one more gather to the existing gathers
+ *  under seismic_objects.
+ *  Array of gathers is implemented as a linked list.
+ *  It is called if the unique value of any trace doesn't belong to an existing
+ *  gather in the linked list of gathers.
+ *
+ * \param[in]	gather		pointer to the gather that will be added
+ * 				to the linked list of gathers(gather_list)
+ * \param[in]	head		pointer to the pointer of the gathers list,
+ * 				new node will be created and linked
+ * 				to this gathers list
+ */
 void
-add_gather_to_list (seis_gather_t *gather, gathers_list_t **head);
+add_gather (seis_gather_t *gather, gathers_list_t **head);
 
 /** Function responsible for updating gather keys at the end of parsing segy file.
  *  It writes the number_of_traces key(akey) under each gather(dkey).
