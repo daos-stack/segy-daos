@@ -483,6 +483,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 	printf("Updated all gathers traces...\n");
 
 	for(i=0; i< num_of_keys; i++) {
+		release_gathers_list(seismic_obj[i]->gathers);
 		free(seismic_obj[i]->seis_gather_trace_oids_obj);
 		rc = daos_obj_close(seismic_obj[i]->oh, NULL);
 		if (rc != 0) {

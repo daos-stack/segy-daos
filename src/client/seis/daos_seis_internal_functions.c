@@ -2662,6 +2662,21 @@ release_traces_list(traces_list_t *trace_list)
 }
 
 void
+release_gathers_list(gathers_list_t *gather_list){
+	seis_gather_t	 	*temp;
+	seis_gather_t	 	*next;
+
+	temp = gather_list->head;
+
+	while(temp != NULL ){
+		next = temp->next_gather;
+		free(temp);
+		temp = next;
+	}
+	free(gather_list);
+}
+
+void
 daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
 		       int num_of_keys, char **keys,
 		       seis_root_obj_t **root_obj, seis_obj_t **seismic_obj)
@@ -3073,7 +3088,7 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 	seis_obj->seis_gather_trace_oids_obj =
 				malloc(seis_obj->number_of_gathers *
 				       sizeof(trace_oid_oh_t));
-	for (i = 0; i < seis_obj->number_of_gathers; i++){
+	for (i = 0; i < seis_obj->number_of_gathers; i++) {
  		/** Fetch number of traces */
 		prepare_seismic_entry(&seismic_entry, seis_obj->oid,
 				      unique_keys[i], DS_A_NTRACES,

@@ -1487,7 +1487,7 @@ fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
 			     trace_oid_oh_t *gather_oid_oh,
 			     int number_of_traces);
 
-/** Function responsible for releasing allocating list of traces
+/** Function responsible for releasing allocated list of traces
  *
  * \param[in]	trace_list	pointer to linked list of traces.
  *
@@ -1495,6 +1495,13 @@ fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
 void
 release_traces_list(traces_list_t *trace_list);
 
+/** Function responsible for releasing allocating list of gathers
+ *
+ * \param[in]	gather_list	pointer to linked list of gathers.
+ *
+ */
+void
+release_gathers_list(gathers_list_t *gather_list);
 
 /** Function responsible for creating an empty graph
  *  seismic root object and gather objects.

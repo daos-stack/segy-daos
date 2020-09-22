@@ -10,6 +10,7 @@ tests_program_path=./build/tests_build
 main_program_path=./build/main_build
 first_file=shots_601_610_cdp_offset_calculated.segy
 second_file=shots_611_620_cdp_offset_calculated.segy
+mount_path=/tmp/dfs_test
 
 ## Funtion to compare files.
 function compare_files {
@@ -30,13 +31,13 @@ function run_tests {
 	#original su sort cdp gx	
 	time susort <original_segyread_temp.su +cdp +gx >original_sort.su
 	#original su segyread in dfs
-	time segyread tape=/shot_601_610 >segyread_temp.su
+	time segyread tape=$mount_path/shot_601_610 >$mount_path/segyread_temp.su
 	#original su wind one shot in dfs
-	time suwind <segyread_temp.su key=fldr min=610 max=610 >segyread.su
+	time suwind <$mount_path/segyread_temp.su key=fldr min=610 max=610 >$mount_path/segyread.su
 	#original su wind ten shots in dfs
-	time suwind <segyread_temp.su key=fldr min=640 max=650 >wind.su
+	time suwind <$mount_path/segyread_temp.su key=fldr min=640 max=650 >$mount_path/wind.su
 	#original su sort cdp gx in dfs
-	time susort <segyread_temp.su +cdp +gx >sort.su
+	time susort <$mount_path/segyread_temp.su +cdp +gx >sort.su
 	#lsu segyread					
 	time $main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_610 >daos_segyread_temp.su
 	#lsu wind, one shot
