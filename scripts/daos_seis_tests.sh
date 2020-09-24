@@ -22,7 +22,7 @@ function compare_files {
 
 function run_tests {
 
-	time $tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
+	time $tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=offset
 
 	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
 	
@@ -36,9 +36,9 @@ function run_tests {
 
 	time $tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
 					
-	time $tests_program_path/parse_additional_file pool=$1 container=$2 svc=$3 in=/shot_611_620 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
+	time $tests_program_path/parse_additional_file pool=$1 container=$2 svc=$3 in=/shot_611_620 out=/SHOTS_601_610_SEIS_ROOT_OBJECT
 
-	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_615.su shot_id=615
+	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_615.su shot_id=608
 				
 	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
 					

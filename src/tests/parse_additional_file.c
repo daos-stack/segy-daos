@@ -28,10 +28,6 @@ main(int argc, char *argv[])
 	int		 		allow_container_creation;
 	/** Flag to allow verbose output */
 	int 				verbose;
-	/** string holding keys that will be used in parsing
-	 * the file and creating the graph.
-	 */
-	char 				*keys;
 
 	/** Parse input parameters */
 	initargs(argc, argv);
@@ -40,7 +36,6 @@ main(int argc, char *argv[])
 	MUSTGETPARSTRING("svc",  &svc_list);
 	MUSTGETPARSTRING("in",  &in_file);
 	MUSTGETPARSTRING("out",  &out_file);
-	MUSTGETPARSTRING("keys",  &keys);
 
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
@@ -50,56 +45,6 @@ main(int argc, char *argv[])
 		allow_container_creation = 1;
 	}
 
-	/** keys tokenization */
-	char 			temp[4096];
-	int 			number_of_keys =0;
-	const char 		*sep = ",";
-	char 			*token;
-	char 		       **header_keys;
-
-	strcpy(temp, keys);
-	token = strtok(temp, sep);
-	while( token != NULL ) {
-		number_of_keys++;
-		token = strtok(NULL, sep);
-	}
-	header_keys = malloc(number_of_keys * sizeof(char*));
-	tokenize_str(header_keys,",", keys, 0);
-
-	int 			i;
-	/** integer flag, it is set to check if fldr key exists or not */
-	int 			fldr_exist = 0;
-
-	for(i = 0; i < number_of_keys; i++) {
-		/** Check if fldr exists
-		 * if yes, it should be the first key in the array of keys.
-		 */
-		if(strcmp(header_keys[i], "fldr") == 0){
-			fldr_exist = 1;
-			if(i != 0){
-				char 		key_temp[200] = "";
-				strcpy(key_temp,header_keys[i]);
-				strcpy(header_keys[i],header_keys[0]);
-				strcpy(header_keys[0],key_temp);
-				break;
-			} else {
-				break;
-			}
-		}
-	}
-
-	char 		**updated_keys;
-	if(fldr_exist == 0) {
-		char *old_keys = malloc((strlen(keys) + 1) * sizeof(char));
-
-		number_of_keys ++;
-		strcpy(old_keys, keys);
-		strcpy(keys, "fldr,");
-		strcat(keys,old_keys);
-		updated_keys = malloc(number_of_keys * sizeof(char*));
-		tokenize_str(updated_keys,",", keys, 0);
-		free(old_keys);
-	}
 
 	warn("\n PARSING Additional SEGY FILE \n"
 	     "================================ \n");
@@ -119,29 +64,13 @@ main(int argc, char *argv[])
 	seis_root_obj_t 	*seis_root_object;
 	seis_obj_t 		**seismic_obj;
 
-	seismic_obj = malloc(number_of_keys * sizeof(seis_obj_t*));
-
 	seis_root_object = daos_seis_open_root_path(get_dfs(),out_file);
 
-	if(fldr_exist == 1){
-		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
-				     header_keys, seis_root_object, seismic_obj, 1);
-		/** Free the allocated array of keys */
-		for(i = 0; i<  number_of_keys; i++){
-			free(header_keys[i]);
-		}
-		free(header_keys);
-	} else {
-		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
-				     updated_keys, seis_root_object, seismic_obj, 1);
-		/** Free the allocated array of keys */
-		for(i = 0; i<  number_of_keys; i++){
-			free(header_keys[i]);
-			free(updated_keys[i]);
-		}
-		free(updated_keys);
-		free(header_keys);
-	}
+	seismic_obj = malloc(seis_root_object->num_of_keys * sizeof(seis_obj_t*));
+
+	daos_seis_parse_segy(get_dfs(), segyfile->file, seis_root_object->num_of_keys,
+			     seis_root_object->keys, seis_root_object, seismic_obj, 1);
+
 	/** Close opened segy file */
 	close_dfs_file(segyfile);
 //

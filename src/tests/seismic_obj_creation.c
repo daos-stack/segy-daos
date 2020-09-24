@@ -47,11 +47,13 @@ main(int argc, char *argv[])
 
 	/** keys tokenization */
 	char 			temp[4096];
+	char			*temp_keys = malloc((strlen(keys) +1) * sizeof(char));
 	int 			number_of_keys =0;
 	const char 		*sep = ",";
 	char 			*token;
 	char 		       **header_keys;
 
+	strcpy(temp_keys, keys);
 	strcpy(temp, keys);
 	token = strtok(temp, sep);
 	while( token != NULL ) {
@@ -85,12 +87,12 @@ main(int argc, char *argv[])
 
 	char 		**updated_keys;
 	if(fldr_exist == 0) {
-		char *old_keys = malloc((strlen(keys) + 1) * sizeof(char));
+		char *old_keys = malloc((strlen(temp_keys) + 1) * sizeof(char));
 
 		number_of_keys ++;
-		strcpy(old_keys, keys);
+		strcpy(old_keys, temp_keys);
 		strcpy(keys, "fldr,");
-		strcat(keys,old_keys);
+		strcat(keys,temp_keys);
 		updated_keys = malloc(number_of_keys * sizeof(char*));
 		tokenize_str(updated_keys,",", keys, 0);
 		free(old_keys);
@@ -120,9 +122,9 @@ main(int argc, char *argv[])
 
 	seismic_obj = malloc(number_of_keys * sizeof(seis_obj_t*));
 
-	daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys,
-			       header_keys, &root_obj, seismic_obj);
 	if(fldr_exist == 1){
+		daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys,
+				       header_keys, &root_obj, seismic_obj);
 		gettimeofday(&tv1, NULL);
 		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
 				     header_keys, root_obj, seismic_obj, 0);
@@ -134,6 +136,8 @@ main(int argc, char *argv[])
 		}
 		free(header_keys);
 	} else {
+		daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys,
+				       updated_keys, &root_obj, seismic_obj);
 		gettimeofday(&tv1, NULL);
 		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
 				     updated_keys, root_obj, seismic_obj, 0);

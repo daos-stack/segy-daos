@@ -884,15 +884,13 @@ update_gather_traces(dfs_t *dfs, gathers_list_t *head, seis_obj_t *object,
  * 				all gathers data.
  * \param[in]	trace_obj_id	id of the trace object that will
  * 				check its header value.
- * \param[in]	ntraces		new number of traces to set its value if the
- * 				key value is found in one of the gathers.
  *
  * \return      0 on success
  * 		error_code otherwise
  */
 int
 check_key_value(Value target, char *key, gathers_list_t *head,
-		daos_obj_id_t trace_obj_id, int *ntraces);
+		daos_obj_id_t trace_obj_id);
 
 /** Function responsible for creating trace_OIDS array object.
  *  It is called once after preparing linked list of object gathers.
@@ -1586,7 +1584,7 @@ parse_exth(short nextended, DAOS_FILE *daos_tape, char *ebcbuf,
  */
 void
 process_headers(bhed *bh, int format, int over,cwp_Bool format_set, int *trcwt,
-		int verbose, int *ns, int *nsegy);
+		int verbose, int *ns, size_t *nsegy);
 
 /** Function responsible for processing trace.
  *

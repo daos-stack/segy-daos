@@ -29,7 +29,7 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 	if (rc != 0) {
 		err("Fetching number of keys failed, "
 		    "error code = %d \n", rc);
-		return rc;
+		exit(rc);
 	}
 	root_obj->keys = malloc(root_obj->num_of_keys * sizeof(char*));
 
@@ -47,7 +47,7 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 		if (rc != 0) {
 			err("Fetching array of keys failed, "
 			    "error code = %d \n", rc);
-			return rc;
+			exit(rc);
 		}
 	}
 	root_obj->gather_oids = malloc(root_obj->num_of_keys * sizeof(daos_obj_id_t));
@@ -62,7 +62,7 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 		if (rc != 0) {
 			err("Fetching <%s> gather oid failed, "
 			    "error code = %d \n", root_obj->keys[i], rc);
-			return rc;
+			exit(rc);
 		}
 	}
 
@@ -73,7 +73,7 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of traces failed, error code = %d \n", rc);
-		return rc;
+		exit(rc);
 	}
 
 	/** fetch number of extended text headers */
@@ -84,7 +84,7 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 	if (rc != 0) {
 		err("Fetching number of extended headers oid failed,"
 				" error code = %d \n", rc);
-		return rc;
+		exit(rc);
 	}
 
 
@@ -136,13 +136,8 @@ get_parent_of_file_new(dfs_t *dfs, const char *file_directory,
 					warn("Created directory '%s'\n",
 					     array[i]);
 				}
-				check_error_code(dfs_lookup_rel(dfs, parent,
-								array[i],
-								O_RDWR,
-								&temp_obj,
-								NULL, NULL),
-								"Lookup after"
-								" mkdir");
+				dfs_lookup_rel(dfs, parent, array[i], O_RDWR,
+					       &temp_obj, NULL, NULL);
 			} else {
 				warn("Mkdir on %s failed with error code :"
 				     " %d \n", array[i], err);
@@ -394,15 +389,21 @@ add_trace_header(trace_t *trace, traces_list_t **head)
 }
 
 void
-add_gather (seis_gather_t *gather, gathers_list_t **head){
+add_gather (seis_gather_t *gather, gathers_list_t **head)
+{
 	seis_gather_t		*new_gather;
+	int			num_traces;
 	new_gather = (seis_gather_t*) malloc(sizeof(seis_gather_t));
 	new_gather->unique_key = gather->unique_key;
 	new_gather->number_of_traces = gather->number_of_traces;
-	new_gather->oids = malloc(50 *
+	num_traces = new_gather->number_of_traces;
+	if (num_traces < 50) {
+		num_traces = 50;
+	}
+	new_gather->oids = malloc(num_traces *
 				  sizeof(daos_obj_id_t));
 	memcpy(new_gather->oids, gather->oids,
-	       50 * sizeof(daos_obj_id_t));
+	       num_traces * sizeof(daos_obj_id_t));
 	new_gather->next_gather = NULL;
 	if ((*head)->head == NULL) {
 		(*head)->head = new_gather;
@@ -413,8 +414,6 @@ add_gather (seis_gather_t *gather, gathers_list_t **head){
 		(*head)->tail = new_gather;
 		(*head)->size++;
 	}
-
-
 }
 
 int
@@ -478,28 +477,33 @@ update_gather_traces(dfs_t *dfs, gathers_list_t *head, seis_obj_t *object,
 
 int
 check_key_value(Value target, char *key, gathers_list_t *gathers_list,
-		daos_obj_id_t trace_obj_id, int *ntraces)
+		daos_obj_id_t trace_obj_id)
 {
-	int 		exists = 0;
-	seis_gather_t *curr_gather = gathers_list->head;
+	seis_gather_t 		*curr_gather;
+	cwp_String 		 type;
+	int			 ntraces;
+	int 			 exists = 0;
 
+	curr_gather = gathers_list->head;
+	type = hdtype(key);
 	if (curr_gather == NULL) {
 		warn("No gathers exist in linked list. \n");
 		exists = 0;
 		return exists;
 	} else {
 		while (curr_gather != NULL) {
-			if (valcmp(hdtype(key), curr_gather->unique_key,
+			if (valcmp(type, curr_gather->unique_key,
 				   target) == 0) {
 				curr_gather->oids[curr_gather->number_of_traces]
 						  	  	 = trace_obj_id;
 				curr_gather->number_of_traces++;
-				*ntraces = curr_gather->number_of_traces;
+				ntraces = curr_gather->number_of_traces;
 				exists = 1;
 				if (curr_gather->number_of_traces % 50 == 0) {
 					curr_gather->oids = (daos_obj_id_t*)
 							realloc(curr_gather->oids,
-								(*ntraces + 50) * sizeof(daos_obj_id_t));
+								(ntraces + 50) *
+								sizeof(daos_obj_id_t));
 				}
 				return exists;
 			} else {
@@ -696,7 +700,7 @@ get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
 
 	daos_obj_id_t 		tr_data_oid;
 	uint64_t 		ofeats;
-	uint64_t 		hdr;
+	uint64_t 		hdr_val;
 
 	tr_data_oid= *tr_hdr;
 	tr_data_oid.hi++;
@@ -716,10 +720,10 @@ get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
 	 * | OID_FMT_CLASS_BITS (object class)	 |
 	 * | 96-bit for upper layer ...		 |
 	 */
-	hdr = ((uint64_t) OID_FMT_VER << OID_FMT_VER_SHIFT);
-	hdr |= ((uint64_t) ofeats << OID_FMT_FEAT_SHIFT);
-	hdr |= ((uint64_t) cid << OID_FMT_CLASS_SHIFT);
-	tr_data_oid.hi |= hdr;
+	hdr_val = ((uint64_t) OID_FMT_VER << OID_FMT_VER_SHIFT);
+	hdr_val |= ((uint64_t) ofeats << OID_FMT_FEAT_SHIFT);
+	hdr_val |= ((uint64_t) cid << OID_FMT_CLASS_SHIFT);
+	tr_data_oid.hi |= hdr_val;
 
 	return tr_data_oid;
 }
@@ -862,7 +866,6 @@ daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 {
 	seis_gather_t 	new_gather_data = {0};
 	Value 		unique_value;
-	int 		no_of_traces;
 	int 		key_exists = 0;
 	int 		ntraces;
 	int 		rc = 0;
@@ -870,7 +873,7 @@ daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 	get_header_value(*(trace_obj->trace), key, &unique_value);
 
 	if (check_key_value(unique_value, key, seis_obj->gathers,
-			    trace_obj->oid, &no_of_traces) == 1) {
+			    trace_obj->oid) == 1) {
 		key_exists = 1;
 	}
 
@@ -994,13 +997,13 @@ trace_to_segy(trace_t *trace)
 }
 
 trace_t*
-segy_to_trace(segy *segy, daos_obj_id_t hdr_oid)
+segy_to_trace(segy *segy_struct, daos_obj_id_t hdr_oid)
 {
 	trace_t		*trace;
 	trace = malloc(sizeof(trace_t));
-	memcpy(trace, segy, HDRBYTES);
+	memcpy(trace, segy_struct, HDRBYTES);
 	trace->trace_header_obj = hdr_oid;
-	memcpy(trace->data, segy->data, segy->ns * sizeof(float));
+	memcpy(trace->data, segy_struct->data, segy_struct->ns * sizeof(float));
 	return trace;
 }
 
@@ -2436,7 +2439,7 @@ print_headers_ranges(headers_ranges_t headers_ranges)
 		kmax = headers_ranges.number_of_keys;
 	}
 
-	printf("%ld traces: \n", headers_ranges.ntr);
+	printf("%d traces: \n", headers_ranges.ntr);
 
 	for (i = 0; i < kmax; i++) {
 		get_header_value(*headers_ranges.trmin,
@@ -2823,7 +2826,7 @@ parse_exth(short nextended, DAOS_FILE *daos_tape, char *ebcbuf,
 
 	rc = daos_seis_root_update(root_obj, DS_D_FILE_HEADER,
 				   DS_A_NEXTENDED_HEADER, (char*)&nextended,
-				   sizeof(int),	DAOS_IOD_SINGLE);
+				   sizeof(short), DAOS_IOD_SINGLE);
 	if (rc != 0) {
 		err("Updating number of EXTH of root seismic object failed, "
 		    "error code = %d \n",rc);
@@ -2864,7 +2867,7 @@ parse_exth(short nextended, DAOS_FILE *daos_tape, char *ebcbuf,
 
 void
 process_headers(bhed *bh, int format, int over, cwp_Bool format_set, int *trcwt,
-		int verbose, int *ns, int *nsegy)
+		int verbose, int *ns, size_t *nsegy)
 {
 	/* Override binary format value */
 	over = 0;
@@ -3117,7 +3120,7 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 		prepare_seismic_entry(&seismic_entry, seis_obj->oid,
 				      unique_keys[i], DS_A_GATHER_TRACE_OIDS,
 				      (char*)
-				      &(seis_obj->seis_gather_trace_oids_obj[i]).oid,
+				      &((seis_obj->seis_gather_trace_oids_obj[i]).oid),
 				      sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
 		rc = daos_seis_fetch_entry(seis_obj->oh, DAOS_TX_NONE,
 					   &seismic_entry, NULL);
