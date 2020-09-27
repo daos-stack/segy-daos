@@ -849,7 +849,7 @@ add_trace_header(trace_t *trace, traces_list_t **head);
  * 				to this gathers list
  */
 void
-add_gather (seis_gather_t *gather, gathers_list_t **head);
+add_gather (seis_gather_t *gather, gathers_list_t **head, int fetch);
 
 /** Function responsible for updating gather keys at the end of parsing segy file.
  *  It writes the number_of_traces key(akey) under each gather(dkey).

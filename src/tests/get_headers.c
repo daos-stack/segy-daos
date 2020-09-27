@@ -42,7 +42,7 @@ main(int argc, char *argv[])
 	if (!getparint("contcreation", &allow_container_creation)) {
 		allow_container_creation = 1;
 	}
-	if(!getparstring("out",&out_file)) {
+	if(!getparstring("out", &out_file)) {
 		out_file = NULL;
 	}
 
@@ -105,6 +105,7 @@ main(int argc, char *argv[])
 	} else {
 		/** Open output file to write traces to */
 		FILE *fd = fopen(out_file, "w");
+		printf("Write headers in out file \n");
 		if(temp_trace == NULL) {
 			("Linked list of traces is empty \n");
 			return 0;

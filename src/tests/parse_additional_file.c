@@ -60,12 +60,10 @@ main(int argc, char *argv[])
 
 	file_name = malloc(1024 * sizeof(char));
 
-	parent = get_parent_of_file_new(get_dfs(), in_file, 1, file_name, 1);
 	seis_root_obj_t 	*seis_root_object;
 	seis_obj_t 		**seismic_obj;
 
 	seis_root_object = daos_seis_open_root_path(get_dfs(),out_file);
-
 	seismic_obj = malloc(seis_root_object->num_of_keys * sizeof(seis_obj_t*));
 
 	daos_seis_parse_segy(get_dfs(), segyfile->file, seis_root_object->num_of_keys,

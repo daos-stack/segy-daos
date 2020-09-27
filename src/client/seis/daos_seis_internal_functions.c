@@ -68,8 +68,9 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 
 	/** fetch number of traces */
 	prepare_seismic_entry(&entry, root->oid, DS_D_FILE_HEADER,
-	DS_A_NTRACES_HEADER, (char*) (&root_obj->number_of_traces), sizeof(int),
-			DAOS_IOD_SINGLE);
+			      DS_A_NTRACES_HEADER,
+			      (char*) (&root_obj->number_of_traces),
+			      sizeof(int), DAOS_IOD_SINGLE);
 	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of traces failed, error code = %d \n", rc);
@@ -78,8 +79,9 @@ daos_seis_open_root(dfs_t *dfs, dfs_obj_t *root)
 
 	/** fetch number of extended text headers */
 	prepare_seismic_entry(&entry, root->oid, DS_D_FILE_HEADER,
-	DS_A_NEXTENDED_HEADER, (char*) (&root_obj->nextended), sizeof(int),
-			DAOS_IOD_SINGLE);
+			      DS_A_NEXTENDED_HEADER,
+			      (char*) (&root_obj->nextended),
+			      sizeof(int), DAOS_IOD_SINGLE);
 	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of extended headers oid failed,"
@@ -389,21 +391,27 @@ add_trace_header(trace_t *trace, traces_list_t **head)
 }
 
 void
-add_gather (seis_gather_t *gather, gathers_list_t **head)
+add_gather (seis_gather_t *gather, gathers_list_t **head, int fetch)
 {
 	seis_gather_t		*new_gather;
 	int			num_traces;
+
 	new_gather = (seis_gather_t*) malloc(sizeof(seis_gather_t));
 	new_gather->unique_key = gather->unique_key;
 	new_gather->number_of_traces = gather->number_of_traces;
-	num_traces = new_gather->number_of_traces;
-	if (num_traces < 50) {
+
+	if(fetch == 1) {
+		num_traces = new_gather->number_of_traces
+			     + 50;
+	} else {
 		num_traces = 50;
 	}
+
 	new_gather->oids = malloc(num_traces *
 				  sizeof(daos_obj_id_t));
+
 	memcpy(new_gather->oids, gather->oids,
-	       num_traces * sizeof(daos_obj_id_t));
+	       gather->number_of_traces * sizeof(daos_obj_id_t));
 	new_gather->next_gather = NULL;
 	if ((*head)->head == NULL) {
 		(*head)->head = new_gather;
@@ -532,7 +540,7 @@ daos_seis_trace_oids_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
 				        sizeof(trace_oid_oh_t));
 	}
 	for (i = 0; i < seis_obj->number_of_gathers; i++) {
-		if (&seis_obj->seis_gather_trace_oids_obj[i] == NULL) {
+		if (&(seis_obj->seis_gather_trace_oids_obj[i]) == NULL) {
 			return ENOMEM;
 		}
 
@@ -576,6 +584,7 @@ daos_seis_gather_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
 		return ENOMEM;
 	}
 	strcpy((*obj)->name, key);
+	(*obj)->seis_gather_trace_oids_obj = NULL;
 	(*obj)->gathers = malloc(sizeof(gathers_list_t));
 	(*obj)->gathers->head = NULL;
 	(*obj)->gathers->tail = NULL;
@@ -788,6 +797,7 @@ daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
 	}
 
 	D_ALLOC_PTR(trace_data_obj);
+
 	if ((trace_data_obj) == NULL) {
 		return ENOMEM;
 	}
@@ -826,7 +836,6 @@ daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
 	}
 
 	D_FREE_PTR(trace_data_obj);
-
 	return rc;
 }
 
@@ -871,7 +880,6 @@ daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 	int 		rc = 0;
 
 	get_header_value(*(trace_obj->trace), key, &unique_value);
-
 	if (check_key_value(unique_value, key, seis_obj->gathers,
 			    trace_obj->oid) == 1) {
 		key_exists = 1;
@@ -897,7 +905,7 @@ daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 			    " error code = %d\n", rc);
 			return rc;
 		}
-		add_gather(&new_gather_data,&(seis_obj->gathers));
+		add_gather(&new_gather_data,&(seis_obj->gathers),0);
 		seis_obj->number_of_gathers++;
 		free(new_gather_data.oids);
 	}
@@ -3141,7 +3149,7 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 			    " code = %d \n", rc);
 			return;
 		}
-		add_gather(&temp_gather, &(seis_obj->gathers));
+		add_gather(&temp_gather, &(seis_obj->gathers),1);
 		free(temp_gather.oids);
 	}
 }

@@ -38,7 +38,9 @@ function run_tests {
 					
 	time $tests_program_path/parse_additional_file pool=$1 container=$2 svc=$3 in=/shot_611_620 out=/SHOTS_601_610_SEIS_ROOT_OBJECT
 
-	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_615.su shot_id=608
+	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_615.su shot_id=615
+
+	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_609.su shot_id=609
 				
 	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
 					
@@ -62,6 +64,8 @@ function run_tests {
 
 	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_shots_611_620.su key=fldr min=615 max=615  >daos_segyread_shot_615.su
 
+	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_shw.su key=fldr min=609 max=609  >daos_segyread_shot_609.su
+
 	time $main_program_path/daos_sutrcount pool=$1 container=$2 svc=$3 <daos_segyread_shots_611_620.su 
 
 }
@@ -76,7 +80,7 @@ echo 'Running commands...'
 run_tests $1 $2 $3
 
 echo 'Copy commands output...'
-file_list=(segyread sort wind chw shw segyread_shot_615)
+file_list=(segyread sort wind chw shw segyread_shot_615 segyread_shot_609)
 ## Copy from daos to posix.
 for i in ${file_list[@]};
 do
@@ -91,7 +95,7 @@ done
 ./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
 
 echo 'Compare commands...'
-file_list=(segyread sort wind chw shw segyread_shot_615)
+file_list=(segyread sort wind chw shw segyread_shot_615 segyread_shot_609)
 ## Compare outputs.
 for i in ${file_list[@]};
 do

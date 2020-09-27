@@ -51,7 +51,7 @@ main(int argc, char *argv[])
 	int 			number_of_keys =0;
 	const char 		*sep = ",";
 	char 			*token;
-	char 		       **header_keys;
+	char 		        **header_keys;
 
 	strcpy(temp_keys, keys);
 	strcpy(temp, keys);
@@ -88,14 +88,19 @@ main(int argc, char *argv[])
 	char 		**updated_keys;
 	if(fldr_exist == 0) {
 		char *old_keys = malloc((strlen(temp_keys) + 1) * sizeof(char));
-
+		char *key_buffer = malloc((strlen(temp_keys) + 6) * sizeof(char));
 		number_of_keys ++;
 		strcpy(old_keys, temp_keys);
-		strcpy(keys, "fldr,");
-		strcat(keys,temp_keys);
+		strcpy(key_buffer, "fldr,");
+		strcat(key_buffer,temp_keys);
 		updated_keys = malloc(number_of_keys * sizeof(char*));
-		tokenize_str(updated_keys,",", keys, 0);
+		tokenize_str(updated_keys,",", key_buffer, 0);
 		free(old_keys);
+		free(key_buffer);
+		for(i = 0; i<  number_of_keys - 1; i++){
+			free(header_keys[i]);
+		}
+		free(header_keys);
 	}
 
 	warn("\n PARSING SEGY FILE \n"
@@ -142,14 +147,11 @@ main(int argc, char *argv[])
 		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
 				     updated_keys, root_obj, seismic_obj, 0);
 		gettimeofday(&tv2, NULL);
-
 		/** Free the allocated array of keys */
 		for(i = 0; i<  number_of_keys; i++){
-			free(header_keys[i]);
 			free(updated_keys[i]);
 		}
 		free(updated_keys);
-		free(header_keys);
 	}
 	/** Close opened segy file */
 	close_dfs_file(segyfile);
