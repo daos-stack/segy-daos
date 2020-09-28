@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ "$#" -ne 3 ]; then
+if [ "$#" -ne 4 ]; then
     echo "Illegal number of parameters"
-    echo "Requires 3 parameters : pool uuid, container uuid, svc ranklist"
+    echo "Requires 3 parameters : pool uuid, container uuid, svc ranklist, output file"
     exit 1
 fi
 
@@ -12,57 +12,76 @@ first_file=shots_601_610_cdp_offset_calculated.segy
 second_file=shots_611_620_cdp_offset_calculated.segy
 mount_path=/tmp/dfs_test
 
-## Funtion to compare files.
-function compare_files {
-	if cmp -s "$1" "$2" ; then
-	   echo $3 " : test passed"
-	else
-	   echo $3 " : test failed"
-	fi
+function original_su_time_tests {
+	#original su segyread
+	echo "Read shot traces " >>$2	
+	{ time segyread tape=$1 >original_segyread_temp.su; } 2>>$2
+	#original su wind one shot	
+	echo "Read shot traces " >>$2	
+	{ time suwind <original_segyread_temp.su key=fldr min=610 max=610 >original_segyread.su; } 2>>$2
+	#original su wind ten shots
+	echo "Window traces headers " >>$2	
+	{ time suwind <original_segyread_temp.su key=fldr min=640 max=650 >original_wind.su; } 2>>$2
+	#original su sort cdp gx	
+	echo "Sort traces headers " >>$2	
+	{ time susort <original_segyread_temp.su +cdp +gx >original_sort.su; } 2>>$2 
 }
 
-function run_tests {
-	#original su segyread
-	time segyread tape=$first_file >original_segyread_temp.su
-	#original su wind one shot	
-	time suwind <original_segyread_temp.su key=fldr min=610 max=610 >original_segyread.su
-	#original su wind ten shots
-	time suwind <original_segyread_temp.su key=fldr min=640 max=650 >original_wind.su
-	#original su sort cdp gx	
-	time susort <original_segyread_temp.su +cdp +gx >original_sort.su
+function original_su_dfs_time_tests {
 	#original su segyread in dfs
-	time segyread tape=$mount_path/shot_601_610 >$mount_path/segyread_temp.su
+	echo "Parse segy file " >>$2  							
+	{ time segyread tape=$1/shot_601_610 >$1/segyread_temp.su; } 2>>$2
 	#original su wind one shot in dfs
-	time suwind <$mount_path/segyread_temp.su key=fldr min=610 max=610 >$mount_path/segyread.su
+	echo "Read shot traces " >>$2	
+	{ time suwind <$1/segyread_temp.su key=fldr min=610 max=610 >$1/segyread.su; } 2>>$2
 	#original su wind ten shots in dfs
-	time suwind <$mount_path/segyread_temp.su key=fldr min=640 max=650 >$mount_path/wind.su
+	echo "Window traces headers " >>$2	
+	{ time suwind <$1/segyread_temp.su key=fldr min=640 max=650 >$1/wind.su; } 2>>$2
 	#original su sort cdp gx in dfs
-	time susort <$mount_path/segyread_temp.su +cdp +gx >sort.su
-	#lsu segyread					
-	time $main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_610 >daos_segyread_temp.su
+	echo "Sort traces headers " >>$2	
+	{ time susort <$1/segyread_temp.su +cdp +gx >sort.su; } 2>>$2
+}
+
+function light_su_time_tests {
+	#lsu segyread
+	echo "Parse segy file " >>$5  						
+	{ time $4/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_610 >daos_segyread_temp.su; } 2>>$5  
 	#lsu wind, one shot
-	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=610 max=610  >daos_segyread.su
+	echo "Read shot traces " >>$5
+	{ time $4/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=610 max=610  >daos_segyread.su; } 2>>$5
 	#lsu wind, ten shots
-	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=640 max=650 >daos_wind.su
+	echo "Window traces headers " >>$5
+	{ time $4/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=640 max=650 >daos_wind.su; } 2>>$5
 	#lsu sort cdp gx	
-	time $main_program_path/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su +cdp +gx >daos_sort.su
+	echo "Sort traces headers " >>$5	
+	{ time $4/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su +cdp +gx >daos_sort.su; } 2>>$5
+}
+
+function daos_seis_mapping_time_tests {
 	#daos_seis mapping read
-	time $tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset
+	echo "Parse segy file " >>$5
+	{ time $4/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=fldr,cdp,offset; } 2>> $5
 	#daos_seis mapping wind one shot
-	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
+	echo "Read shot traces " >>$5
+	{ time $4/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610; } 2>> $5
 	#daos_seis mapping wind ten shots
-	time $tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=fldr min=640 max=650 
+	echo "Window traces headers " >>$5
+	{ time $4/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=fldr min=605 max=608; } 2>> $5 
 	#daos_seis mapping sort cdp gx
-	time $tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+cdp,+gx
-	#lsu segyread					
-	time $main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_610 >daos_segyread_temp.su
-	#lsu wind, one shot
-	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=610 max=610  >daos_segyread.su
-	#lsu wind, ten shots
-	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=640 max=650 >daos_wind.su
-	#lsu sort cdp gx	
-	time $main_program_path/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su +cdp +gx >daos_sort.su
-	
+	echo "Sort traces headers " >>$5	
+	{ time $4/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+cdp,+gx; } 2>> $5
+}
+
+
+function run_tests {
+	echo "Running Original SU commands outside dfs container." >>$4
+	original_su_time_tests $first_file $4
+	#echo "Running Original SU commands in dfs container." >>$4
+	#original_su_dfs_time_tests $mount_path	$4
+	echo "Running light SU commands in dfs container." >>$4
+	light_su_time_tests $1 $2 $3 $main_program_path $4
+	echo "Running daos seis mapping commands in dfs container." >>$4
+	daos_seis_mapping_time_tests $1 $2 $3 $tests_program_path $4
 }
 
 echo 'Copying segy to DFS container...'
@@ -72,7 +91,7 @@ echo 'Copying segy to DFS container...'
 
 echo 'Running commands...'
 ## Run seismic unix commands.
-run_tests $1 $2 $3
+run_tests $1 $2 $3 $4
 
 echo 'Copy commands output...'
 file_list=(segyread wind sort)
@@ -83,21 +102,4 @@ do
 	./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_$i.su" out="daos_$i.su" daostoposix=1
 	
 done
-
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="binary" out="daos_binary" daostoposix=1
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="header" out="daos_header" daostoposix=1
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_binary" out="daos_seis_binary" daostoposix=1
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
-
-echo 'Compare commands...'
-file_list=(segyread wind sort)
-## Compare outputs.
-for i in ${file_list[@]};
-do
-	compare_files "daos_seis_$i.su" "daos_$i.su" "$i" 
-done
-
-compare_files "daos_seis_binary" "daos_binary" "binary"
-compare_files "daos_seis_text_header" "daos_header" "text_header"
-
 

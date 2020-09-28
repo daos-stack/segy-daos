@@ -239,4 +239,9 @@ daos_seis_get_headers(seis_root_obj_t *root);
 void
 daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list);
 
+
+void
+daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
+		       seis_obj_t **seismic_obj, dfs_obj_t *input_file,
+		       dfs_obj_t *header_file, int ns, int ftn);
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */

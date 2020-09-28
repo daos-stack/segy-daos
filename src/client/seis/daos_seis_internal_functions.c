@@ -495,7 +495,6 @@ check_key_value(Value target, char *key, gathers_list_t *gathers_list,
 	curr_gather = gathers_list->head;
 	type = hdtype(key);
 	if (curr_gather == NULL) {
-		warn("No gathers exist in linked list. \n");
 		exists = 0;
 		return exists;
 	} else {
