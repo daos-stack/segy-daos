@@ -6,6 +6,39 @@
  */
 
 #include <daos_seis.h>
+char *sdoc[] = {
+		" 									",
+		" Set headers functionality equivalent to Seismic unix"
+		" sushw functionality.							",
+		"									",
+		" Set one or more Header Words using trace number, mod and "
+		" integer divide to compute the header word values or input "
+		" the header word values from a file					",
+		" 									",
+		" set_headers pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path out=output_file_path [options]",
+		" 									",
+		" 									",
+		" Required Parameters:							",
+		" pool=			pool uuid to connect		        	",
+		" container=		container uuid to connect			",
+		" svc=			service ranklist of pool seperated by : 	",
+		" in_file 		path of the seismic root object.		",
+		" out_file 		path of the file to which traces will be written.",
+		" 									",
+		" Optional parameters ():						",
+		" key=cdp,...			header key word(s) to set 		",
+		" a=0,...			value(s) on first trace			",
+		" b=0,...			increment(s) within group		",
+		" c=0,...			group increment(s)	 		",
+		" d=0,...			trace number shift(s)			",
+		" j=ULONG_MAX,ULONG_MAX,...	number of elements in group		",
+		" 									",
+		" The value of each header word key is computed using the formula:	",
+		" 	i = itr + d							",
+		" 	val(key) = a + b * (i % j) + c * (int(i / j))			",
+		" where itr is the trace number (first trace has itr=0, NOT 1)		",
+		" 									",
+		NULL};
 
 int
 main(int argc, char *argv[])
@@ -37,6 +70,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -72,8 +107,8 @@ main(int argc, char *argv[])
 	struct timeval		tv2;
 	double 			time_taken;
 
-	warn("\n Set header values \n"
-	     "==================== \n");
+//	warn("\n Set header values \n"
+//	     "==================== \n");
 	/** keys tokenization */
 	char 			temp[4096];
 	int 			number_of_keys =0;
@@ -106,7 +141,7 @@ main(int argc, char *argv[])
 
 	int 		k;
 	if(keys != NULL) {
-		tokenize_str(header_keys,",", keys, 0);
+		tokenize_str((void**)header_keys,",", keys, 0);
 	} else {
 		for(k = 0; k < number_of_keys; k++) {
 			header_keys[k] = malloc((strlen("cdp")+1) * sizeof(char));
@@ -114,35 +149,35 @@ main(int argc, char *argv[])
 		}
 	}
 	if(a != NULL) {
-		tokenize_str(&a_values,",", a, 2);
+		tokenize_str((void**)&a_values,",", a, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			a_values[k] = 0;
 		}
 	}
 	if(b != NULL) {
-		tokenize_str(&b_values,",", b, 2);
+		tokenize_str((void**)&b_values,",", b, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			b_values[k] = 0;
 		}
 	}
 	if(c != NULL) {
-		tokenize_str(&c_values,",", c, 2);
+		tokenize_str((void**)&c_values,",", c, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			c_values[k] = 0;
 		}
 	}
 	if(d != NULL) {
-		tokenize_str(&d_values,",", d, 2);
+		tokenize_str((void**)&d_values,",", d, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			d_values[k] = 0;
 		}
 	}
 	if (j != NULL){
-		tokenize_str(&j_values,",", j, 2);
+		tokenize_str((void**)&j_values,",", j, 2);
 		for(k=0; k< number_of_keys; k++) {
 			if(j_values[k]==0) {
 				j_values[k]=ULONG_MAX;
@@ -198,7 +233,7 @@ main(int argc, char *argv[])
 	free(d_values);
 	free(j_values);
 	/** Release allocated linked list */
-	release_traces_list(traces);
+	daos_seis_release_traces_list(traces);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

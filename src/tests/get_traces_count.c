@@ -6,6 +6,26 @@
  */
 #include <daos_seis.h>
 
+char *sdoc[] = {
+	        "									",
+		" Get traces count functionality equivalent to Seismic unix"
+		" sutrcount functionality.						",
+		" It prints the total number of traces stored in the seismic root object.",
+		"									",
+		" get_traces_count pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path ",
+		"									",
+		"  Required parameters:							",
+		"  pool_id 		the pool uuid to connect to.			",
+		"  container_id 	the container uuid to connect to.		",
+		"  svc_list 		service rank list to connect to.		",
+		"  in_file 		path of the seismic root object.		",
+		"									",
+		"  Optional parameters:							",
+		"  verbose 			=1 to allow verbose output.		",
+		"  allow_container_creation 	flag to allow creation of container if	",
+		"				its not found.				",
+		NULL};
+
 int
 main(int argc, char *argv[])
 {
@@ -15,7 +35,7 @@ main(int argc, char *argv[])
 	char 		*container_id;
 	/** string of the service rank list to connect to */
 	char 		*svc_list;
-	/** string of the path of the file that will be read */
+	/** string of the path of the seismic root object */
 	char 		*in_file;
 	/** Flag to allow container creation if not found */
 	int		allow_container_creation;
@@ -23,6 +43,8 @@ main(int argc, char *argv[])
 	int 		verbose;
 
 	initargs(argc, argv);
+   	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -36,8 +58,8 @@ main(int argc, char *argv[])
 		allow_container_creation = 1;
 	}
 
-	warn("\n Finding traces and gathers count \n"
-	     "========================================== \n");
+//	warn("\n Finding traces and gathers count \n"
+//	     "========================================== \n");
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 

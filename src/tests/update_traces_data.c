@@ -5,6 +5,26 @@
  *      Author: mirnamoawad
  */
 #include <daos_seis.h>
+char *sdoc[] = {
+		"									",
+		" Update traces data functionality					",
+		" It reads shot_id traces, then copies the data read to another shot object.",
+		" update_traces_data pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path out=output_file_path shot_id=..					",
+		"									",
+		" Required parameters:							",
+		" pool=			pool uuid to connect		                ",
+		" container=		container uuid to connect		        ",
+		" svc=			service ranklist of pool seperated by: 		",
+		" in_file 		path of the seismic root object.		",
+		" out_file 		path of the file to which			",
+		"			traces will be written after update		",
+		" shot_id		id of the shot to read its traces		",
+		"									",
+		" Optional Parameters:							",
+		" verbose=0			=1 for verbose				",
+		" allow_container_creation=0	=1 to allow container creation if not found",
+		"									",
+		NULL};
 
 int
 main(int argc, char *argv[])
@@ -28,6 +48,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -47,8 +69,8 @@ main(int argc, char *argv[])
 	struct timeval		tv2;
 	double 			time_taken;
 
-	warn("\n Update traces data \n"
-	     "=======================\n");
+//	warn("\n Update traces data \n"
+//	     "=======================\n");
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 
@@ -104,9 +126,9 @@ main(int argc, char *argv[])
 		}
 	}
 	/** Release allocated linked list */
-	release_traces_list(src_trace_list);
-	release_traces_list(dst_trace_list);
-	release_traces_list(trace_list);
+	daos_seis_release_traces_list(src_trace_list);
+	daos_seis_release_traces_list(dst_trace_list);
+	daos_seis_release_traces_list(trace_list);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

@@ -6,6 +6,29 @@
  */
 
 #include <daos_seis.h>
+char *sdoc[] = {
+	        "									",
+		" Get headers functionality equivalent to seismic unix"
+		" sugethw functionality.							",
+		" It returns traces headers values and writes them to a file"
+		" or prints them to the terminal.  					",
+		"									",
+		" get_headers pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path keys=...",
+		"									",
+		"  Required parameters:							",
+		"  pool_id 		the pool uuid to connect to.			",
+		"  container_id 	the container uuid to connect to.		",
+		"  svc_list 		service rank list to connect to.		",
+		"  in_file 		path of the seismic root object.		",
+		"  keys			array of keys to fetch their header values.	",
+		"									",
+		"  Optional parameters:							",
+		"  verbose 			=1 to allow verbose output.		",
+		"  allow_container_creation 	flag to allow creation of container if",
+		"				its not found.				",
+		"  out_file 			path of the file to which		"
+		"				headers will be written 		",
+		NULL};
 
 int
 main(int argc, char *argv[])
@@ -30,6 +53,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -50,8 +75,8 @@ main(int argc, char *argv[])
 	struct timeval		tv2;
 	double 			time_taken;
 
-	warn("\n Get header values \n"
-	     "==================== \n");
+//	warn("\n Get header values \n"
+//	     "==================== \n");
 	/** keys tokenization */
 	char 			temp[4096];
 	int 			number_of_keys =0;
@@ -67,7 +92,7 @@ main(int argc, char *argv[])
 	}
 
 	header_keys = malloc(number_of_keys * sizeof(char*));
-	tokenize_str(header_keys,",", keys, 0);
+	tokenize_str((void**)header_keys,",", keys, 0);
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation,
 		     verbose);
@@ -105,9 +130,9 @@ main(int argc, char *argv[])
 	} else {
 		/** Open output file to write traces to */
 		FILE *fd = fopen(out_file, "w");
-		printf("Write headers in out file \n");
+//		printf("Write headers in out file \n");
 		if(temp_trace == NULL) {
-			("Linked list of traces is empty \n");
+			warn("Linked list of traces is empty \n");
 			return 0;
 		} else {
 			while(temp_trace != NULL){
@@ -135,7 +160,7 @@ main(int argc, char *argv[])
 	}
 	free(header_keys);
 	/** Release allocated linked list */
-	release_traces_list(trace_list);
+	daos_seis_release_traces_list(trace_list);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

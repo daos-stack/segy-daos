@@ -14,7 +14,7 @@ mount_path=/tmp/dfs_test
 
 function original_su_time_tests {
 	#original su segyread
-	echo "Read shot traces " >>$2	
+	echo "Parse segy file " >>$2  							
 	{ time segyread tape=$1 >original_segyread_temp.su; } 2>>$2
 	#original su wind one shot	
 	echo "Read shot traces " >>$2	

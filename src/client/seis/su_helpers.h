@@ -19,19 +19,7 @@
 #include "header.h"
 
 /* TYPEDEFS */
-//typedef union { /* storage for arbitrary type */
-//	char s[8];
-//	short h;
-//	unsigned short u;
-//	long l;
-//	unsigned long v;
-//	int i;
-//	unsigned int p;
-//	float f;
-//	double d;
-//	unsigned int U:16;
-//	unsigned int P:32;
-//} Value;
+
 
 static struct {
 	char *key;	char *type;	int offs;
@@ -136,10 +124,7 @@ void integer1_to_float(signed char from[], float to[], int n);
 void ugethval(cwp_String type1, Value *valp1, char type2, int ubyte,
               char *ptr2, int endian, int conv, int verbose);
 
-//char *hdtype(const char *key);
-//
-//int getindex(const char *key);
-//
+
 void setval( cwp_String type, Value *valp, double a, double b,
 		double c, double i, double j);
 
@@ -148,7 +133,5 @@ double mod(double x, double y);
 void changeval(cwp_String type1, Value *valp1, cwp_String type2,
 	       Value *valp2, cwp_String type3, Value *valp3,
 		double a, double b, double c, double d, double e, double f);
-
-//int valcmp_(register cwp_String type, Value val1, Value val2);
 
 #endif /* LSU_SRC_CLIENT_SEIS_SU_HELPERS_H_ */

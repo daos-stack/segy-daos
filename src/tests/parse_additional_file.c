@@ -11,6 +11,27 @@
 #include <daos_seis.h>
 #include <sys/stat.h>
 
+char *sdoc[] = {
+	        "									",
+		" Parse additional file functionality.					",
+		" It dumps segy file traces headers and data to opened"
+		" root seismic object and seismic gather objects. 			",
+		"									",
+		"  parse_additional_file pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path out=output_file_path ",
+		"									",
+		"  Required parameters:							",
+		"  pool_id 		the pool uuid to connect to.			",
+		"  container_id 	the container uuid to connect to.		",
+		"  svc_list 		service rank list to connect to.		",
+		"  in_file 		path of the segy file that will be parsed.	",
+		"  out_file 		path of the seismic root object that"
+		"  			will be opened.					",
+		"  Optional parameters:							",
+		"  verbose 			=1 to allow verbose output.		",
+		"  allow_container_creation 	flag to allow creation of container if"
+		"				its not found.				",
+		NULL};
+
 int
 main(int argc, char *argv[])
 {
@@ -31,6 +52,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+   	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -46,8 +69,8 @@ main(int argc, char *argv[])
 	}
 
 
-	warn("\n PARSING Additional SEGY FILE \n"
-	     "================================ \n");
+//	warn("\n PARSING Additional SEGY FILE \n"
+//	     "================================ \n");
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation,
 		     verbose);

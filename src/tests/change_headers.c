@@ -7,6 +7,40 @@
 
 #include <daos_seis.h>
 
+char *sdoc[] = {
+		"									",
+		" Change headers functionality equivalent to Seismic unix "
+		" suchw functionality.							",
+		"									",
+		" It changes header words using one or two header word fields		",
+		"									",
+		" change_headers pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path out=output_file_path ",
+		"									",
+		" Required parameters:							",
+		" pool=			pool uuid to connect		                ",
+		" container=		container uuid to connect		        ",
+		" svc=			service ranklist of pool seperated by :		",
+		" in 			path of the seismic root object.		",
+		" out 			path of the file to which traces will be written ",
+		"									",
+		" Optional parameters:							",
+		" key1=cdp,...		output key(s) 					",
+		" key2=cdp,...		input key(s) 					",
+		" key3=cdp,...		input key(s) 					",
+		" a=0,...		overall shift(s)				",
+		" b=1,...		scale(s) on first input key(s) 			",
+		" c=0,...		scale on second input key(s) 			",
+		" d=1,...		overall scale(s)				",
+		" e=1,...		exponent on first input key(s)			",
+		" f=1,...		exponent on second input key(s)			",
+		"									",
+		" The value of header word key1 is computed from the values of		",
+		" key2 and key3 by:							",
+		"									",
+		"	val(key1) = (a + b * val(key2)^e + c * val(key3)^f) / d		",
+		"									",
+		NULL};
+
 int
 main(int argc, char *argv[])
 {
@@ -40,6 +74,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -86,8 +122,8 @@ main(int argc, char *argv[])
 	double 			time_taken;
 
 
-	warn("\n Change header values \n"
-	     "==================== \n");
+//	warn("\n Change header values \n"
+//	     "==================== \n");
 	/** keys tokenization */
 	char 			temp[4096];
 	int 			number_of_keys = 0;
@@ -127,21 +163,21 @@ main(int argc, char *argv[])
 	int 			k;
 
 	if(key1 != NULL) {
-		tokenize_str(keys_1,",", key1, 0);
+		tokenize_str((void**)keys_1,",", key1, 0);
 	} else {
 		for(k = 0; k < number_of_keys; k++) {
 			keys_1[k] = malloc((strlen("cdp")+1) * sizeof(char));
 			strcpy(keys_1[k], "cdp");		}
 	}
 	if(key2 != NULL) {
-		tokenize_str(keys_2,",", key2, 0);
+		tokenize_str((void**)keys_2,",", key2, 0);
 	} else {
 		for(k = 0; k < number_of_keys; k++) {
 			keys_2[k] = malloc((strlen("cdp")+1) * sizeof(char));
 			strcpy(keys_2[k], "cdp");		}
 	}
 	if(key3 != NULL) {
-		tokenize_str(keys_3,",", key3, 0);
+		tokenize_str((void**)keys_3,",", key3, 0);
 	} else {
 		for(k = 0; k < number_of_keys; k++) {
 			keys_3[k] = malloc((strlen("cdp")+1) * sizeof(char));
@@ -149,42 +185,42 @@ main(int argc, char *argv[])
 		}
 	}
 	if(a != NULL) {
-		tokenize_str(&a_values,",", a, 2);
+		tokenize_str((void**)&a_values,",", a, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			a_values[k] = 0;
 		}
 	}
 	if(b != NULL) {
-		tokenize_str(&b_values,",", b, 2);
+		tokenize_str((void**)&b_values,",", b, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			b_values[k] = 1;
 		}
 	}
 	if(c != NULL) {
-		tokenize_str(&c_values,",", c, 2);
+		tokenize_str((void**)&c_values,",", c, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			c_values[k] = 0;
 		}
 	}
 	if(d != NULL) {
-		tokenize_str(&d_values,",", d, 2);
+		tokenize_str((void**)&d_values,",", d, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			d_values[k] = 1;
 		}
 	}
 	if(e != NULL) {
-		tokenize_str(&e_values,",", e, 2);
+		tokenize_str((void**)&e_values,",", e, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			e_values[k] = 1;
 		}
 	}
 	if(f != NULL) {
-		tokenize_str(&f_values,",", f, 2);
+		tokenize_str((void**)&f_values,",", f, 2);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			f_values[k] = 1;
@@ -239,7 +275,7 @@ main(int argc, char *argv[])
 	free(e_values);
 	free(f_values);
 	/** Release allocated linked list */
-	release_traces_list(traces);
+	daos_seis_release_traces_list(traces);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

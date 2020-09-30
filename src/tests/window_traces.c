@@ -6,6 +6,30 @@
  */
 #include <daos_seis.h>
 
+char *sdoc[] = {
+		"									",
+		" Window traces functionality equivalent to seismic unix"
+		" suwind functionality. 						",
+		"									",
+		" window_traces pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path out=output_file_path keys=.. min=.. max=..					",
+		"									",
+		" Required parameters:							",
+		" pool=			pool uuid to connect		                ",
+		" container=		container uuid to connect		        ",
+		" svc=			service ranklist of pool seperated by: 		",
+		" key=			Key header word to window on 			",
+		" in_file 		path of the seismic root object.		",
+		" out_file 		path of the file to which			",
+		"			headers will be written 			",
+		" min=			min value of key header word to pass		",
+		" max=			max value of key header word to pass		",
+		"									",
+		" Optional Parameters:							",
+		" verbose=0			=1 for verbose				",
+		" allow_container_creation=0	=1 to allow container creation if not found",
+		"									",
+		NULL};
+
 int
 main(int argc, char *argv[])
 {
@@ -32,6 +56,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -49,8 +75,8 @@ main(int argc, char *argv[])
 		allow_container_creation = 1;
 	}
 
-	warn("\n Window headers \n"
-	     "==================== \n");
+//	warn("\n Window headers \n"
+//	     "==================== \n");
 	/** Window keys tokenization */
 	char 			temp[4096];
 	char 			min_temp[4096];
@@ -142,7 +168,7 @@ main(int argc, char *argv[])
 	}
 	free(window_keys);
 	/** Release allocated linked list */
-	release_traces_list(trace_list);
+	daos_seis_release_traces_list(trace_list);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

@@ -7,6 +7,36 @@
 
 #include <daos_seis.h>
 
+char *sdoc[] = {
+		" 								",
+		" Range headers functionality equivalent to Seismic unix"
+		" surange functionality.					",
+		"								",
+		" range_headers pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path ",
+		"								",
+		" Required parameters:						",
+		" pool=			pool uuid to connect		        ",
+		" container=		container uuid to connect		",
+		" svc=			service ranklist of pool seperated by :	",
+		" in_file 		path of the seismic root object.	",
+		"								",
+		" Optional parameters:						",
+		" key=				Header key(s) to range (default=all)",
+		" dim=0				dim seismic flag		",
+		"	    			0 = not dim, 1 = coord in ft, 2 = coord in m",
+		" verbose 			=1 to allow verbose output.	",
+		" allow_container_creation 	flag to allow creation of	"
+		" 				container if its not found.	",
+		" 								",
+		" 								",
+		" Output is: 							",
+		" number of traces 						",
+		" keyword min max (first - last) 				",
+		" north-south-east-west limits of shot, receiver and midpoint   ",
+		" if dim then also midpoint interval and line length   		",
+		" 								",
+		NULL};
+
 int
 main(int argc, char *argv[])
 {
@@ -29,6 +59,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+   	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -51,8 +83,8 @@ main(int argc, char *argv[])
 	struct timeval		tv2;
 	double 			time_taken;
 
-	warn("\n Range header values \n"
-	     "==================== \n");
+//	warn("\n Range header values \n"
+//	     "==================== \n");
 	/** keys tokenization */
 	char 			temp[4096];
 	int 			number_of_keys =0;
@@ -79,7 +111,7 @@ main(int argc, char *argv[])
 
 	int 			k;
 	if(keys != NULL) {
-		tokenize_str(range_keys,",", keys, 0);
+		tokenize_str((void**)range_keys,",", keys, 0);
 	} else {
 		for(k = 0; k < SU_NKEYS; k++) {
 			range_keys[k]= malloc((strlen(hdr[k].key)+1) *

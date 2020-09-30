@@ -355,7 +355,7 @@ merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list)
 	traces_headers_t 	*temp = (*headers)->head;
 
 	if ((*temp_list)->head == NULL) {
-		warn("Temp linked list of traces is empty.\n");
+//		warn("Temp linked list of traces is empty.\n");
 		return;
 	}
 	/** merge two linked lists in one */
@@ -377,6 +377,7 @@ add_trace_header(trace_t *trace, traces_list_t **head)
 
 	new_node = (traces_headers_t*) malloc(sizeof(traces_headers_t));
 	new_node->trace = *trace;
+	new_node->trace.data = NULL;
 	new_node->next_trace = NULL;
 
 	if ((*head)->head == NULL) {
@@ -2119,7 +2120,6 @@ tokenize_str(void **str, char *sep, char *string, int type)
 			temp_d[i] = strtod(token, &ptr);
 			break;
 		default:
-			printf("ERROR\n");
 			exit(0);
 		}
 		i++;
@@ -2656,22 +2656,6 @@ fetch_array_of_trace_headers(seis_root_obj_t *root, daos_obj_id_t *oids,
 }
 
 void
-release_traces_list(traces_list_t *trace_list)
-{
-	traces_headers_t 	*temp;
-	traces_headers_t 	*next;
-
-	temp = trace_list->head;
-
-	while(temp != NULL ){
-		next = temp->next_trace;
-		free(temp);
-		temp = next;
-	}
-	free(trace_list);
-}
-
-void
 release_gathers_list(gathers_list_t *gather_list){
 	seis_gather_t	 	*temp;
 	seis_gather_t	 	*next;
@@ -2686,60 +2670,6 @@ release_gathers_list(gathers_list_t *gather_list){
 	free(gather_list);
 }
 
-void
-daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
-		       int num_of_keys, char **keys,
-		       seis_root_obj_t **root_obj, seis_obj_t **seismic_obj)
-{
-	int 			rc;
-	int 			i;
-
-	rc = daos_seis_root_obj_create(dfs, root_obj, OC_SX, name, parent,
-				       num_of_keys, keys);
-	if(rc != 0) {
-		err("Creating seismic root object failed, "
-		    "error code = %d \n", rc);
-		return;
-	}
-
-	for(i = 0; i < num_of_keys; i++) {
-		rc = daos_seis_gather_obj_create(dfs, OC_SX, *root_obj,
-						 &(seismic_obj[i]),
-						 keys[i], i);
-		if (rc != 0) {
-			err("Creating seismic <%s> object failed, "
-			    "error code = %d \n",keys[i], rc);
-			return;
-		}
-	}
-	/** store number of keys and array of keys under
-	 *  seperate dkeys and akeys
-	 */
-	rc = daos_seis_root_update(*root_obj, DS_D_KEYS, DS_A_NUM_OF_KEYS,
-				   (char*)&num_of_keys, sizeof(int),
-				   DAOS_IOD_SINGLE);
-	if (rc != 0) {
-		err("Updating root object num_of_keys failed, "
-		    "error code = %d \n",keys[i], rc);
-		return;
-	}
-
-	for(i = 0 ;i < num_of_keys; i++) {
-		char temp[10]="";
-		char akey[100]="";
-		sprintf(temp, "%d", i);
-		strcpy(akey, DS_A_KEYS);
-		strcat(akey,temp);
-		rc = daos_seis_root_update(*root_obj, DS_D_KEYS, akey,
-					   keys[i], 10 * sizeof(char),
-					   DAOS_IOD_ARRAY);
-		if (rc != 0) {
-			err("Updating root object <%s> key failed, "
-			    "error code = %d \n",keys[i], rc);
-			return;
-		}
-	}
-}
 
 void
 read_headers(bhed *bh, char *ebcbuf, short *nextended,

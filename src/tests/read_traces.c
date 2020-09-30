@@ -6,6 +6,26 @@
  */
 
 #include <daos_seis.h>
+char *sdoc[] = {
+	        "									",
+		" Read shot traces functionality					",
+		" It reads one shot traces 						",
+		"									",
+		" read_traces pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path out=output_file_path shot_id= ",
+		"									",
+		"  Required parameters:							",
+		"  pool_id 		the pool uuid to connect to.			",
+		"  container_id 	the container uuid to connect to.		",
+		"  svc_list 		service rank list to connect to.		",
+		"  in_file 		path of the seismic root object.		",
+		"  out_file 		path of the file to which traces will be written",
+		"  shot_id		id of the shot to fetch its traces		",
+		"									",
+		"  Optional parameters:							",
+		"  verbose 			=1 to allow verbose output.		",
+		"  allow_container_creation 	flag to allow creation of container if	",
+		"				its not found.				",
+		NULL};
 
 int
 main(int argc, char *argv[])
@@ -29,6 +49,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+   	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -48,8 +70,8 @@ main(int argc, char *argv[])
 	struct timeval		tv2;
 	double 			time_taken;
 
-	warn("\n Read shot (%d) traces \n"
-	     "=======================\n", shot_id);
+//	warn("\n Read shot (%d) traces \n"
+//	     "=======================\n", shot_id);
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation, verbose);
 	/** Open seis root object */
@@ -80,7 +102,7 @@ main(int argc, char *argv[])
 	gettimeofday(&tv2, NULL);
 
 	/** Release allocated linked list */
-	release_traces_list(src_trace_list);
+	daos_seis_release_traces_list(src_trace_list);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

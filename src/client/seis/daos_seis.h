@@ -96,11 +96,13 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root);
 
 /** Parse segy file and build equivalent daos-seismic graph
  *
- * \param[in]   dfs            	pointer to DAOS file system.
- * \param[in]   segy_root     	pointer to file that will be parsed.
+ * \param[in]   dfs            	pointer to mounted DAOS file system.
+ * \param[in]   segy_root     	pointer to segy file that will be parsed.
  * \param[in]	num_of_keys	Number of strings(keys) in the array of keys.
  * \param[in]	keys		array of strings containing header_keys that
  * 				will be used to create gather objects.
+ * \param[in]	root_obj	pointer to opened root seismic object.
+ * \param[in]	seismic_obj	array of opened seismic objects.
  * \param[in]	additional	integer flag, used in case of parsing multiple
  * 				files to the same graph.
  * \return      0 on success
@@ -115,17 +117,28 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys,
  * ascending (+) or descending (-) directions for each.
  * It returns a list of sorted traces.
  *
- * \param[in]   root           pointer to opened root seismic object.
- * \param[in]	number_of_keys number of keys to sort on.
- * \param[in]   sort_keys      array of strings containing key headers to sort on.
- * \param[in]	directions	   array of sorting directions(descending)(-) or ascending(+)) of each key header.
- * \param[in]	number_of_window _keys	number of keys to window on, in case of windowing headers after sorting.
- * \param[in] 	window_keys	   array of strings containing key headers to window on.
- * \param[in]	type		   type of window header keys as defined in su_helpers.h
- * \param[in] 	min_keys	   array of VALUE(su_helpers.h) containing window header keys minimum values based on key type.
- * \param[in]	max_keys	   array of VALUE(su_helpers.h) containing window header keys maximum values based on key type.
+ * \param[in]   root           		pointer to opened root seismic object.
+ * \param[in]	number_of_keys 		number of keys to sort on.
+ * \param[in]   sort_keys      		array of strings containing key headers
+ * 					to sort on.
+ * \param[in]	directions	   	array of sorting directions(descending)(-)
+ * 					or ascending(+)) of each key header.
+ * \param[in]	number_of_window _keys	number of keys to window on, in case of
+ * 					windowing headers after sorting.
+ * \param[in] 	window_keys	   	array of strings containing key headers
+ * 					to window on.
+ * \param[in]	type		   	type of window header keys as defined
+ * 					in su_helpers.h
+ * \param[in] 	min_keys	   	array of VALUE(su_helpers.h) containing
+ * 					window header keys minimum values based
+ * 					on key type.
+ * \param[in]	max_keys	   	array of VALUE(su_helpers.h) containing
+ * 					window header keys maximum values based
+ * 					on key type.
  *
- * \return      pointer to traces_list including pointers to head, tail and size of linked list of traces headers and data after sorting.
+ * \return      pointer to traces_list including pointers to head, tail
+ * 		and size of linked list of traces headers
+ * 		and data after sorting.
  */
 traces_list_t*
 daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
@@ -136,13 +149,18 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 /** Window traces by keyword based on min and max values.
  *
  * \param[in]   root           pointer to opened root seismic object.
- * \param[in]   window_keys    array of strings containing key headers to window on.
+ * \param[in]   window_keys    array of strings containing key headers.
  * \param[in]	number_of_keys number of keys to window on.
- * \param[in]   min            array of VALUE(su_helpers.h) containing window header keys minimum values based on key type.
- * \param[in]   max            array of VALUE(su_helpers.h) containing window header keys maximum values based on key type.
- * \param[in]	type		   type of window header keys as defined in su_helpers.h
+ * \param[in]   min_keys       array of VALUE(su_helpers.h) containing window
+ * 			       header keys minimum values based on key type.
+ * \param[in]   max_keys       array of VALUE(su_helpers.h) containing window
+ * 			       header keys maximum values based on key type.
+ * \param[in]	type	       type of window header keys as
+ * 			       defined in su_helpers.h
  *
- * \return      pointer to traces_list including pointers to head, tail and size of linked list of traces headers and data after applying window.
+ * \return      pointer to traces_list including pointers to head, tail
+ * 		and size of linked list of traces headers
+ * 		and data after applying window.
  */
 traces_list_t*
 daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
@@ -208,12 +226,11 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys,
  * 				(1 -> coord in ft) (2 -> coord in m)
  *
  * \return      headers ranges struct holding:
- * 					number of traces
- * 					key min max (first - last).
- * 					north-south-east-west limits of
- * 					 shot/receiver/midpoint.
- * 					midpoint interval and
- * 					 line length if dim.
+ * 			number of traces
+ * 			key min max (first - last).
+ * 			north-south-east-west limits of	shot/receiver/midpoint.
+ * 			midpoint interval and
+ * 			line length if dim.
  */
 headers_ranges_t
 daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
@@ -239,9 +256,49 @@ daos_seis_get_headers(seis_root_obj_t *root);
 void
 daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list);
 
-
+/** Parse bare traces and add headers
+ *  Traces headers will be created or read if a header file is passed.
+ *
+ *  \param[in]	dfs		pointer to daos file system.
+ *  \param[in]	root		pointer to opened root seismic object.
+ *  \param[in]	seismic_obj	array of opened seismic objects.
+ *  \param[in]	input_file	pointer to file holding bare traces.
+ *  \param[in]	header_file	pointer to file holding traces headers, could be NULL.
+ *  \param[in]	ns		number of samples that will be used in reading.
+ *  \param[in]	ftn		fortran flag.
+ */
 void
 daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
-		       seis_obj_t **seismic_obj, dfs_obj_t *input_file,
-		       dfs_obj_t *header_file, int ns, int ftn);
+		       	  seis_obj_t **seismic_obj, dfs_obj_t *input_file,
+			  dfs_obj_t *header_file, int ns, int ftn);
+
+/** Function responsible for releasing allocated list of traces
+ *
+ * \param[in]	trace_list	pointer to linked list of traces.
+ *
+ */
+void
+daos_seis_release_traces_list(traces_list_t *trace_list);
+
+/** Function responsible for creating an empty graph
+ *  seismic root object and gather objects.
+ *
+ * \param[in]   dfs            	pointer to DAOS file system.
+ * \param[in]   parent         	pointer to parent DAOS file system object.
+ * \param[in]   name          	name of root object that will be create.
+ * \param[in]	num_of_keys	Number of strings(keys) in the array of keys.
+ * \param[in]	keys		array of strings containing header_keys that
+ * 				will be used to create gather objects.
+ * \param[in]	root_obj	double pointer to the seismic root object
+ * 				that will be allocated.
+ * \param[in]	seismic_obj	array of pointers to seismic objects
+ * 				to be allocated.
+ *
+ */
+void
+daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
+		       int num_of_keys, char **keys,
+		       seis_root_obj_t **root_obj, seis_obj_t **seismic_obj);
+
+
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */

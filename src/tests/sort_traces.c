@@ -7,6 +7,26 @@
 
 #include <daos_seis.h>
 
+char *sdoc[] = {
+		" 								",
+		" Sort headers functionality equivalent to Seismic unix	"
+		" susort functionality.						",
+		" 								",
+		" sort_traces pool=uuid container=uuid svc=r0:r1:r2 [[+-]key1 [+-]key2 ...] in=root_obj_path out=output_file_path		",
+		" 								",
+		" Required parameters:						",
+		" pool=			pool uuid to connect		        ",
+		" container=		container uuid to connect		",
+		" svc=			service ranklist of pool seperated by :	",
+		" in	 		path of root seismic object.		",
+		" out	 		path of the file that will hold headers ",
+		"			and data after sorting.			",
+		" 								",
+		" Susort supports any number of (secondary) keys with either	",
+		" ascending (+, the default) or descending (-) directions for 	",
+		" each.  The default sort key is cdp.				",
+		" 								",
+		NULL};
 int
 main(int argc, char *argv[])
 {
@@ -35,6 +55,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+	requestdoc(1);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -59,8 +81,8 @@ main(int argc, char *argv[])
 		max = NULL;
 	}
 
-	warn("\n Sort header values \n"
-	     "==================== \n");
+//	warn("\n Sort header values \n"
+//	     "==================== \n");
 	/** Sort keys tokenization */
 	char 			temp[4096];
 	int 			number_of_keys =0;
@@ -210,7 +232,7 @@ main(int argc, char *argv[])
 		free(type);
 	}
 	/** Release allocated linked list */
-	release_traces_list(trace_list);
+	daos_seis_release_traces_list(trace_list);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

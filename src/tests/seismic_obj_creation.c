@@ -6,6 +6,32 @@
  */
 #include <daos_seis.h>
 
+char *sdoc[] = {
+	        "									",
+		" Seismic object creation functionality equivalent to Seismic unix"
+		" segyread functionality.						",
+		" It builds the seismic graph by creating root object and"
+		" seismic gather objects then parses the segy file and dumps the"
+		" file headers, traces headers and data to the created graph.		",
+		"									",
+		"									",
+		" seismic_obj_creation pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path out=output_file_path keys=key1,key2,.. ",
+		"									",
+		"  Required parameters:							",
+		"  pool_id 		the pool uuid to connect to.			",
+		"  container_id 	the container uuid to connect to.		",
+		"  svc_list 		service rank list to connect to.		",
+		"  in_file 		path of the segy file that will be parsed.	",
+		"  out_file 		path of the seismic root object that		"
+		"  			will be created.				",
+		"  keys 		array of keys that will be used in linking	"
+		"			traces to seismic gather objects.		",
+		"  Optional parameters:							",
+		"  verbose 			=1 to allow verbose output.		",
+		"  allow_container_creation 	flag to allow creation of container if	",
+		"				its not found.				",
+		NULL};
+
 int
 main(int argc, char *argv[])
 {
@@ -30,6 +56,8 @@ main(int argc, char *argv[])
 
 	/** Parse input parameters */
 	initargs(argc, argv);
+	requestdoc(0);
+
 	MUSTGETPARSTRING("pool",  &pool_id);
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
@@ -61,7 +89,7 @@ main(int argc, char *argv[])
 		token = strtok(NULL, sep);
 	}
 	header_keys = malloc(number_of_keys * sizeof(char*));
-	tokenize_str(header_keys,",", keys, 0);
+	tokenize_str((void**)header_keys,",", keys, 0);
 
 	int 			i;
 	/** integer flag, it is set to check if fldr key exists or not */
@@ -94,7 +122,7 @@ main(int argc, char *argv[])
 		strcpy(key_buffer, "fldr,");
 		strcat(key_buffer,temp_keys);
 		updated_keys = malloc(number_of_keys * sizeof(char*));
-		tokenize_str(updated_keys,",", key_buffer, 0);
+		tokenize_str((void**)updated_keys,",", key_buffer, 0);
 		free(old_keys);
 		free(key_buffer);
 		for(i = 0; i<  number_of_keys - 1; i++){
@@ -103,8 +131,8 @@ main(int argc, char *argv[])
 		free(header_keys);
 	}
 
-	warn("\n PARSING SEGY FILE \n"
-	     "================= \n");
+//	warn("\n PARSING SEGY FILE \n"
+//	     "================= \n");
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation,
 		     verbose);
