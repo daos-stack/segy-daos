@@ -6,10 +6,10 @@ if [ "$#" -ne 5 ]; then
     exit 1
 fi
 
-#cd data
+cd data
 
-tests_program_path=./build/tests_build
-main_program_path=./build/main_build
+tests_program_path=./../build/tests_build
+main_program_path=./../build/main_build
 first_file=$4
 second_file=$5
 
