@@ -9,20 +9,20 @@ char *sdoc[] = {
 		"									",
 		" Update traces data functionality					",
 		" It reads shot_id traces, then copies the data read to another shot object.",
+		"									",
 		" update_traces_data pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path out=output_file_path shot_id=..					",
 		"									",
 		" Required parameters:							",
-		" pool=			pool uuid to connect		                ",
-		" container=		container uuid to connect		        ",
-		" svc=			service ranklist of pool seperated by: 		",
-		" in_file 		path of the seismic root object.		",
-		" out_file 		path of the file to which			",
-		"			traces will be written after update		",
-		" shot_id		id of the shot to read its traces		",
+		" pool=				pool uuid to connect		                ",
+		" container=			container uuid to connect		        ",
+		" svc=				service ranklist of pool seperated by: 		",
+		" in_file 			path of the seismic root object.		",
+		" out_file 			path of the file to which			",
+		"				traces will be written after update		",
+		" shot_id			id of the shot to read its traces		",
 		"									",
 		" Optional Parameters:							",
 		" verbose=0			=1 for verbose				",
-		" allow_container_creation=0	=1 to allow container creation if not found",
 		"									",
 		NULL};
 
@@ -42,7 +42,7 @@ main(int argc, char *argv[])
 	/** integer holding shot_id value to read */
 	int 				shot_id;
 	/** Flag to allow container creation if not found */
-	int		 		allow_container_creation;
+	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 				verbose;
 
@@ -59,10 +59,6 @@ main(int argc, char *argv[])
 
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
-	}
-
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
 	}
 
 	struct timeval 		tv1;

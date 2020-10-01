@@ -11,8 +11,8 @@ char *sdoc[] = {
 		" Set headers functionality equivalent to Seismic unix"
 		" sushw functionality.							",
 		"									",
-		" Set one or more Header Words using trace number, mod and "
-		" integer divide to compute the header word values or input "
+		" Set one or more Header Words using trace number, mod and 		",
+		" integer divide to compute the header word values or input 		",
 		" the header word values from a file					",
 		" 									",
 		" set_headers pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path out=output_file_path [options]",
@@ -56,7 +56,7 @@ main(int argc, char *argv[])
 	/** string holding keys that will be used to set their header values */
 	char 			       *keys;
 	/** Flag to allow container creation if not found */
-	int		 		allow_container_creation;
+	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 				verbose;
 	char			       *a;
@@ -80,9 +80,6 @@ main(int argc, char *argv[])
 	/** optional parameters*/
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
-	}
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
 	}
 	if(!getparstring("keys",  &keys)) {
 		keys = NULL;

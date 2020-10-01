@@ -49,7 +49,7 @@ main(int argc, char *argv[])
 	/** string holding max values that will be used in case of windowing */
 	char 			       *max;
 	/** Flag to allow container creation if not found */
-	int		 		allow_container_creation;
+	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 				verbose;
 
@@ -66,9 +66,6 @@ main(int argc, char *argv[])
 	/** optional parameters*/
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
-	}
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
 	}
 
 	if (!getparstring("window_keys", &w_keys)) {

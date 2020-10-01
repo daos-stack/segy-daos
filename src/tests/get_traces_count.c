@@ -15,15 +15,13 @@ char *sdoc[] = {
 		" get_traces_count pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path ",
 		"									",
 		"  Required parameters:							",
-		"  pool_id 		the pool uuid to connect to.			",
-		"  container_id 	the container uuid to connect to.		",
-		"  svc_list 		service rank list to connect to.		",
-		"  in_file 		path of the seismic root object.		",
+		"  pool_id 			the pool uuid to connect to.			",
+		"  container_id			the container uuid to connect to.		",
+		"  svc_list 			service rank list to connect to.		",
+		"  in_file 			path of the seismic root object.		",
 		"									",
 		"  Optional parameters:							",
 		"  verbose 			=1 to allow verbose output.		",
-		"  allow_container_creation 	flag to allow creation of container if	",
-		"				its not found.				",
 		NULL};
 
 int
@@ -38,7 +36,7 @@ main(int argc, char *argv[])
 	/** string of the path of the seismic root object */
 	char 		*in_file;
 	/** Flag to allow container creation if not found */
-	int		allow_container_creation;
+	int		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 		verbose;
 
@@ -54,9 +52,6 @@ main(int argc, char *argv[])
 		verbose = 0;
 	}
 
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
-	}
 
 //	warn("\n Finding traces and gathers count \n"
 //	     "========================================== \n");

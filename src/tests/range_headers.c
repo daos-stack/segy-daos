@@ -15,18 +15,16 @@ char *sdoc[] = {
 		" range_headers pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path ",
 		"								",
 		" Required parameters:						",
-		" pool=			pool uuid to connect		        ",
-		" container=		container uuid to connect		",
-		" svc=			service ranklist of pool seperated by :	",
-		" in_file 		path of the seismic root object.	",
+		" pool=				pool uuid to connect		        ",
+		" container=			container uuid to connect		",
+		" svc=				service ranklist of pool seperated by :	",
+		" in_file 			path of the seismic root object.	",
 		"								",
 		" Optional parameters:						",
 		" key=				Header key(s) to range (default=all)",
 		" dim=0				dim seismic flag		",
 		"	    			0 = not dim, 1 = coord in ft, 2 = coord in m",
 		" verbose 			=1 to allow verbose output.	",
-		" allow_container_creation 	flag to allow creation of	"
-		" 				container if its not found.	",
 		" 								",
 		" 								",
 		" Output is: 							",
@@ -51,7 +49,7 @@ main(int argc, char *argv[])
 	/** string holding keys that will be used to range headers */
 	char 			       *keys;
 	/** Flag to allow container creation if not found */
-	int		 		allow_container_creation;
+	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 				verbose;
 	/** dim line with coords in ft (1) or m (2) */
@@ -68,9 +66,6 @@ main(int argc, char *argv[])
 	/** optional parameters*/
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
-	}
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
 	}
 	if(!getparstring("keys",  &keys)) {
 		keys = NULL;

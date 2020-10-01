@@ -25,7 +25,7 @@ fetch_seismic_root_entries(dfs_t *dfs, dfs_obj_t *root)
 			      DS_A_NUM_OF_KEYS,
 			      (char*)&(root_obj->num_of_keys),
 			      sizeof(int), DAOS_IOD_SINGLE);
-	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	rc = fetch_seismic_entry(root->oh, th, &entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of keys failed, "
 		    "error code = %d \n", rc);
@@ -43,7 +43,7 @@ fetch_seismic_root_entries(dfs_t *dfs, dfs_obj_t *root)
 		prepare_seismic_entry(&entry, root->oid, DS_D_KEYS, akey,
 				      root_obj->keys[i], 10 * sizeof(char),
 				      DAOS_IOD_ARRAY);
-		rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+		rc = fetch_seismic_entry(root->oh, th, &entry, NULL);
 		if (rc != 0) {
 			err("Fetching array of keys failed, "
 			    "error code = %d \n", rc);
@@ -58,7 +58,7 @@ fetch_seismic_root_entries(dfs_t *dfs, dfs_obj_t *root)
 				      (char*)(&root_obj->gather_oids[i]),
 				      sizeof(daos_obj_id_t),
 				      DAOS_IOD_SINGLE);
-		rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+		rc = fetch_seismic_entry(root->oh, th, &entry, NULL);
 		if (rc != 0) {
 			err("Fetching <%s> gather oid failed, "
 			    "error code = %d \n", root_obj->keys[i], rc);
@@ -71,7 +71,7 @@ fetch_seismic_root_entries(dfs_t *dfs, dfs_obj_t *root)
 			      DS_A_NTRACES_HEADER,
 			      (char*) (&root_obj->number_of_traces),
 			      sizeof(int), DAOS_IOD_SINGLE);
-	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	rc = fetch_seismic_entry(root->oh, th, &entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of traces failed, error code = %d \n", rc);
 		exit(rc);
@@ -82,7 +82,7 @@ fetch_seismic_root_entries(dfs_t *dfs, dfs_obj_t *root)
 			      DS_A_NEXTENDED_HEADER,
 			      (char*) (&root_obj->nextended),
 			      sizeof(int), DAOS_IOD_SINGLE);
-	rc = daos_seis_fetch_entry(root->oh, th, &entry, NULL);
+	rc = fetch_seismic_entry(root->oh, th, &entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of extended headers oid failed,"
 				" error code = %d \n", rc);
@@ -160,8 +160,8 @@ dfs_get_parent_of_file(dfs_t *dfs, const char *file_directory,
 }
 
 int
-daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th,
-			seismic_entry_t *entry, daos_event_t *ev)
+fetch_seismic_entry(daos_handle_t oh, daos_handle_t th,
+	    seismic_entry_t *entry, daos_event_t *ev)
 {
 	daos_recx_t 	recx;
 	d_sg_list_t 	sgl;
@@ -214,7 +214,7 @@ daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th,
 }
 
 int
-daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
+seismic_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
 			  daos_oclass_id_t cid, char *name,
 			  dfs_obj_t *parent, int num_of_keys, char **keys)
 {
@@ -285,7 +285,7 @@ daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
 }
 
 int
-daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, seismic_entry_t entry)
+seismic_obj_update(daos_handle_t oh, daos_handle_t th, seismic_entry_t entry)
 {
 
 	d_sg_list_t 		sgl;
@@ -328,7 +328,7 @@ daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, seismic_entry_t entry)
 }
 
 int
-daos_seis_root_update(seis_root_obj_t *root_obj, char *dkey_name,
+seismic_root_obj_update(seis_root_obj_t *root_obj, char *dkey_name,
 		      char *akey_name, char *databuf, int nbytes,
 		      daos_iod_type_t iod_type)
 {
@@ -338,7 +338,7 @@ daos_seis_root_update(seis_root_obj_t *root_obj, char *dkey_name,
 	prepare_seismic_entry(&seismic_entry, root_obj->root_obj->oid,
 			      dkey_name, akey_name, databuf, nbytes, iod_type);
 
-	rc = daos_seis_obj_update(root_obj->root_obj->oh, DAOS_TX_NONE,
+	rc = seismic_obj_update(root_obj->root_obj->oh, DAOS_TX_NONE,
 				  seismic_entry);
 	if (rc != 0) {
 		err("Updating root seismic object failed, "
@@ -450,27 +450,31 @@ update_gather_data(dfs_t *dfs, gathers_list_t *head, seis_obj_t *object,
 
 			gather_trace = object->seis_gather_trace_oids_obj[z];
 			/** insert array object_id in gather object... */
-			rc = daos_seis_gather_oids_array_update(&gather_trace, curr_gather);
+			rc = gather_oids_array_update(&gather_trace, curr_gather);
 			if (rc != 0) {
 				err("Updating <%s> object trace object "
 				    "array failed, error code = %d \n",
 				    object->name, rc);
 				return rc;
 			}
-			rc = update_gather_object(object, gather_dkey_name,
-						  DS_A_GATHER_TRACE_OIDS,
-						  (char*) &(gather_trace.oid),
-						  sizeof(daos_obj_id_t),
-						  DAOS_IOD_SINGLE);
+			rc = update_seismic_gather_object(object,
+							  gather_dkey_name,
+							  DS_A_GATHER_TRACE_OIDS,
+							  (char*)&(gather_trace.oid),
+							  sizeof(daos_obj_id_t),
+							  DAOS_IOD_SINGLE);
 			if (rc != 0) {
 				err("Updating <%s> object trace object ids key"
 				    "failed, error code = %d \n",
 				    object->name, rc);
 				return rc;
 			}
-			rc = update_gather_object(object, gather_dkey_name,
-						  DS_A_NTRACES, (char*) &ntraces,
-						  sizeof(int),DAOS_IOD_SINGLE);
+			rc = update_seismic_gather_object(object,
+							  gather_dkey_name,
+							  DS_A_NTRACES,
+							  (char*) &ntraces,
+							  sizeof(int),
+							  DAOS_IOD_SINGLE);
 			if (rc != 0) {
 				err("Updating <%s> object number of traces key"
 				    "failed, error code = %d \n",
@@ -523,8 +527,8 @@ check_key_value(Value target, char *key, gathers_list_t *gathers_list,
 }
 
 int
-daos_seis_trace_oids_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
-				seis_obj_t *seis_obj, int num_of_gathers)
+trace_oids_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
+		      seis_obj_t *seis_obj, int num_of_gathers)
 {
 	int 		rc;
 	int 		i;
@@ -570,9 +574,9 @@ daos_seis_trace_oids_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
 }
 
 int
-daos_seis_gather_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
-			    seis_root_obj_t *parent, seis_obj_t **obj,
-			    char *key, int index)
+seismic_gather_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
+			  seis_root_obj_t *parent, seis_obj_t **obj,
+			  char *key, int index)
 {
 	int 		daos_mode;
 	int 		rc;
@@ -608,9 +612,9 @@ daos_seis_gather_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
 	}
 
 	oid_cp(&parent->gather_oids[index], (*obj)->oid);
-	rc = daos_seis_root_update(parent, DS_D_SORTING_TYPES, get_dkey(key),
-				   (char*) &(*obj)->oid, sizeof(daos_obj_id_t),
-				   DAOS_IOD_SINGLE);
+	rc = seismic_root_obj_update(parent, DS_D_SORTING_TYPES, get_dkey(key),
+				    (char*) &(*obj)->oid, sizeof(daos_obj_id_t),
+				    DAOS_IOD_SINGLE);
 	if (rc != 0) {
 		err("Updating seismic root object failed,"
 		    " error code = %d \n", rc);
@@ -621,7 +625,7 @@ daos_seis_gather_obj_create(dfs_t *dfs, daos_oclass_id_t cid,
 }
 
 int
-daos_seis_trh_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
+trace_header_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
 {
 	seismic_entry_t 	tr_entry = {0};
 	int 			rc;
@@ -629,7 +633,7 @@ daos_seis_trh_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
 	prepare_seismic_entry(&tr_entry, tr_obj->oid, DS_D_TRACE_HEADER,
 			      DS_A_TRACE_HEADER, (char*) tr, hdrbytes,
 			      DAOS_IOD_ARRAY);
-	rc = daos_seis_obj_update(tr_obj->oh, DAOS_TX_NONE, tr_entry);
+	rc = seismic_obj_update(tr_obj->oh, DAOS_TX_NONE, tr_entry);
 	if (rc != 0) {
 		err("Updating trace header failed error code = %d\n", rc);
 		return rc;
@@ -639,7 +643,7 @@ daos_seis_trh_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
 }
 
 int
-daos_seis_tr_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
+trace_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
 {
 	daos_array_iod_t 	iod;
 	daos_range_t 		rg;
@@ -670,8 +674,8 @@ daos_seis_tr_data_update(trace_oid_oh_t *trace_data_obj, segy *trace)
 }
 
 int
-daos_seis_gather_oids_array_update(trace_oid_oh_t *object,
-				   seis_gather_t *gather)
+gather_oids_array_update(trace_oid_oh_t *object,
+			 seis_gather_t *gather)
 {
 	daos_array_iod_t 	iod;
 	seismic_entry_t 	tr_entry = {0};
@@ -704,7 +708,7 @@ daos_seis_gather_oids_array_update(trace_oid_oh_t *object,
 }
 
 daos_obj_id_t
-get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
+get_trace_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
 {
 
 	daos_obj_id_t 		tr_data_oid;
@@ -738,8 +742,8 @@ get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid)
 }
 
 int
-daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
-			segy *trace)
+trace_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
+		 segy *trace)
 {
 	trace_oid_oh_t 		*trace_data_obj;
 	char 			 trace_hdr_name[200];
@@ -788,8 +792,8 @@ daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
 	trace_oid_oh.oid = (*trace_hdr_obj)->oid;
 	trace_oid_oh.oh = (*trace_hdr_obj)->oh;
 
-	rc = daos_seis_trh_update(&trace_oid_oh, (*trace_hdr_obj)->trace,
-				  TRACEHDR_BYTES);
+	rc = trace_header_update(&trace_oid_oh, (*trace_hdr_obj)->trace,
+				 TRACEHDR_BYTES);
 	if (rc != 0) {
 		err("Updating trace header object failed, "
 		    "error code = %d\n", rc);
@@ -821,7 +825,7 @@ daos_seis_tr_obj_create(dfs_t *dfs, trace_obj_t **trace_hdr_obj, int index,
 		return rc;
 	}
 	/** Update trace data object */
-	rc = daos_seis_tr_data_update(trace_data_obj, trace);
+	rc = trace_data_update(trace_data_obj, trace);
 	if (rc != 0) {
 		err("Updating trace data object failed, "
 		    "error code = %d\n", rc);
@@ -853,15 +857,15 @@ prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid,
 }
 
 int
-update_gather_object(seis_obj_t *gather_obj, char *dkey_name,
-		     char *akey_name, char *data, int nbytes,
-		     daos_iod_type_t type)
+update_seismic_gather_object(seis_obj_t *gather_obj, char *dkey_name,
+			     char *akey_name, char *data, int nbytes,
+			     daos_iod_type_t type)
 {
 	seismic_entry_t 	gather_entry = {0};
 	int 			rc;
 	prepare_seismic_entry(&gather_entry, gather_obj->oid, dkey_name,
 			      akey_name, data, nbytes, type);
-	rc = daos_seis_obj_update(gather_obj->oh, DAOS_TX_NONE, gather_entry);
+	rc = seismic_obj_update(gather_obj->oh, DAOS_TX_NONE, gather_entry);
 	if (rc != 0) {
 		err("Updating gather object failed, error code = %d\n", rc);
 		return rc;
@@ -871,7 +875,7 @@ update_gather_object(seis_obj_t *gather_obj, char *dkey_name,
 }
 
 int
-daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
+trace_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 {
 	seis_gather_t 	new_gather_data = {0};
 	Value 		unique_value;
@@ -897,9 +901,10 @@ daos_seis_tr_linking(trace_obj_t *trace_obj, seis_obj_t *seis_obj, char *key)
 		strcat(dkey_name, KEY_SEPARATOR);
 		val_sprintf(temp, unique_value, key);
 		strcat(dkey_name, temp);
-		rc = update_gather_object(seis_obj, dkey_name, DS_A_UNIQUE_VAL,
-					  (char*) &new_gather_data.unique_key,
-					  sizeof(long), DAOS_IOD_SINGLE);
+		rc = update_seismic_gather_object(seis_obj, dkey_name,
+						  DS_A_UNIQUE_VAL,
+						  (char*)&new_gather_data.unique_key,
+						  sizeof(long), DAOS_IOD_SINGLE);
 		if (rc != 0) {
 			err("Adding unique value key to seismic object failed,"
 			    " error code = %d\n", rc);
@@ -1039,8 +1044,8 @@ fetch_traces_header_read_traces(daos_handle_t coh, daos_obj_id_t *oids,
 				      DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
 				      (char*)&(traces->traces[i]), TRACEHDR_BYTES,
 				      DAOS_IOD_ARRAY);
-		rc = daos_seis_fetch_entry(trace_hdr_obj.oh, DAOS_TX_NONE,
-					   &seismic_entry, NULL);
+		rc = fetch_seismic_entry(trace_hdr_obj.oh, DAOS_TX_NONE,
+				 &seismic_entry, NULL);
 		if (rc != 0) {
 			err("Fetching trace headers failed, error"
 			    " code = %d \n", rc);
@@ -1079,8 +1084,8 @@ fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
 		prepare_seismic_entry(&seismic_entry, trace_hdr_obj.oid,
 				      DS_D_TRACE_HEADER, DS_A_TRACE_HEADER,
 				      (char*)&temp_trace, TRACEHDR_BYTES, DAOS_IOD_ARRAY);
-		rc = daos_seis_fetch_entry(trace_hdr_obj.oh, DAOS_TX_NONE,
-					   &seismic_entry, NULL);
+		rc = fetch_seismic_entry(trace_hdr_obj.oh, DAOS_TX_NONE,
+				 &seismic_entry, NULL);
 		if (rc != 0) {
 			err("Fetching trace headers failed, error"
 			    " code = %d \n", rc);
@@ -1092,7 +1097,6 @@ fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
 		add_trace_header(&temp_trace, head_traces);
 	}
 }
-
 
 void
 sort_dkeys_list(long *values, int number_of_gathers, char **unique_keys,
@@ -1260,7 +1264,6 @@ MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction,
 void
 get_header_value(trace_t trace, char *sort_key, Value *value)
 {
-
 	if (strcmp(sort_key, "tracl") == 0) {
 		value->i = trace.tracl;
 	} else if (strcmp(sort_key, "tracr") == 0) {
@@ -1273,20 +1276,157 @@ get_header_value(trace_t trace, char *sort_key, Value *value)
 		value->i = trace.ep;
 	} else if (strcmp(sort_key, "cdp") == 0) {
 		value->i = trace.cdp;
-	} else if (strcmp(sort_key, "ns") == 0) {
-		value->u = trace.ns;
-	} else if (strcmp(sort_key, "gx") == 0) {
-		value->i = trace.gx;
-	} else if (strcmp(sort_key, "sx") == 0) {
-		value->i = trace.sx;
+	} else if (strcmp(sort_key, "cdpt") == 0) {
+		value->i = trace.cdpt;
+	} else if (strcmp(sort_key, "trid") == 0) {
+		value->h = trace.trid;
+	} else if (strcmp(sort_key, "nvs") == 0) {
+		value->h = trace.nvs;
+	} else if (strcmp(sort_key, "nhs") == 0) {
+		value->h = trace.nhs;
+	} else if (strcmp(sort_key, "duse") == 0) {
+		value->h = trace.duse;
 	} else if (strcmp(sort_key, "offset") == 0) {
 		value->i = trace.offset;
+	} else if (strcmp(sort_key, "gelev") == 0) {
+		value->u = trace.gelev;
+	} else if (strcmp(sort_key, "selev") == 0) {
+		value->i = trace.selev;
+	} else if (strcmp(sort_key, "sdepth") == 0) {
+		value->i = trace.sdepth;
+	} else if (strcmp(sort_key, "gdel") == 0) {
+		value->i = trace.gdel;
+	} else if (strcmp(sort_key, "sdel") == 0) {
+		value->i = trace.sdel;
+	} else if (strcmp(sort_key, "swdep") == 0) {
+		value->i = trace.swdep;
+	} else if (strcmp(sort_key, "gwdep") == 0) {
+		value->i = trace.gwdep;
+	} else if (strcmp(sort_key, "scalel") == 0) {
+		value->h = trace.scalel;
+	} else if (strcmp(sort_key, "scalco") == 0) {
+		value->h = trace.scalco;
+	} else if (strcmp(sort_key, "sx") == 0) {
+		value->i = trace.sx;
+	} else if (strcmp(sort_key, "sy") == 0) {
+		value->i = trace.sy;
+	} else if (strcmp(sort_key, "gx") == 0) {
+		value->i = trace.gx;
+	} else if (strcmp(sort_key, "gy") == 0) {
+		value->i = trace.gy;
+	} else if (strcmp(sort_key, "counit") == 0) {
+		value->h = trace.counit;
+	} else if (strcmp(sort_key, "wevel") == 0) {
+		value->h = trace.wevel;
+	} else if (strcmp(sort_key, "swevel") == 0) {
+		value->h = trace.swevel;
+	} else if (strcmp(sort_key, "sut") == 0) {
+		value->h = trace.sut;
+	} else if (strcmp(sort_key, "gut") == 0) {
+		value->h = trace.gut;
+	} else if (strcmp(sort_key, "sstat") == 0) {
+		value->h = trace.sstat;
+	} else if (strcmp(sort_key, "gstat") == 0) {
+		value->h = trace.gstat;
+	} else if (strcmp(sort_key, "tstat") == 0) {
+		value->h = trace.tstat;
+	} else if (strcmp(sort_key, "laga") == 0) {
+		value->h = trace.laga;
+	} else if (strcmp(sort_key, "lagb") == 0) {
+		value->h = trace.lagb;
+	} else if (strcmp(sort_key, "delrt") == 0) {
+		value->h = trace.delrt;
+	} else if (strcmp(sort_key, "muts") == 0) {
+		value->h = trace.muts;
+	} else if (strcmp(sort_key, "mute") == 0) {
+		value->h = trace.mute;
+	} else if (strcmp(sort_key, "ns") == 0) {
+		value->u = trace.ns;
 	} else if (strcmp(sort_key, "dt") == 0) {
 		value->u = trace.dt;
+	} else if (strcmp(sort_key, "gain") == 0) {
+		value->h = trace.gain;
+	} else if (strcmp(sort_key, "igc") == 0) {
+		value->h = trace.igc;
+	} else if (strcmp(sort_key, "igi") == 0) {
+		value->h = trace.igi;
+	} else if (strcmp(sort_key, "corr") == 0) {
+		value->h = trace.corr;
+	} else if (strcmp(sort_key, "sfs") == 0) {
+		value->h = trace.sfs;
+	} else if (strcmp(sort_key, "sfe") == 0) {
+		value->h = trace.sfe;
+	} else if (strcmp(sort_key, "slen") == 0) {
+		value->h = trace.slen;
+	} else if (strcmp(sort_key, "styp") == 0) {
+		value->h = trace.styp;
+	} else if (strcmp(sort_key, "stas") == 0) {
+		value->h = trace.stas;
+	} else if (strcmp(sort_key, "stae") == 0) {
+		value->h = trace.stae;
+	} else if (strcmp(sort_key, "tatyp") == 0) {
+		value->h = trace.tatyp;
+	} else if (strcmp(sort_key, "afilf") == 0) {
+		value->h = trace.afilf;
+	} else if (strcmp(sort_key, "afils") == 0) {
+		value->h = trace.afils;
+	} else if (strcmp(sort_key, "nofilf") == 0) {
+		value->h = trace.nofilf;
+	} else if (strcmp(sort_key, "nofils") == 0) {
+		value->h = trace.nofils;
+	} else if (strcmp(sort_key, "lcf") == 0) {
+		value->h = trace.lcf;
+	} else if (strcmp(sort_key, "hcf") == 0) {
+		value->h = trace.hcf;
+	} else if (strcmp(sort_key, "lcs") == 0) {
+		value->h = trace.lcs;
+	} else if (strcmp(sort_key, "hcs") == 0) {
+		value->h = trace.hcs;
+	} else if (strcmp(sort_key, "year") == 0) {
+		value->h = trace.year;
+	} else if (strcmp(sort_key, "day") == 0) {
+		value->h = trace.day;
+	} else if (strcmp(sort_key, "hour") == 0) {
+		value->h = trace.hour;
+	} else if (strcmp(sort_key, "minute") == 0) {
+		value->h = trace.minute;
+	} else if (strcmp(sort_key, "sec") == 0) {
+		value->h = trace.sec;
+	} else if (strcmp(sort_key, "timbas") == 0) {
+		value->h = trace.timbas;
+	} else if (strcmp(sort_key, "trwf") == 0) {
+		value->h = trace.trwf;
+	} else if (strcmp(sort_key, "grnors") == 0) {
+		value->h = trace.grnors;
+	} else if (strcmp(sort_key, "grnofr") == 0) {
+		value->h = trace.grnofr;
+	} else if (strcmp(sort_key, "grnlof") == 0) {
+		value->h = trace.grnlof;
+	} else if (strcmp(sort_key, "gaps") == 0) {
+		value->h = trace.gaps;
+	} else if (strcmp(sort_key, "otrav") == 0) {
+		value->h = trace.otrav;
+	} else if (strcmp(sort_key, "d1") == 0) {
+		value->f = trace.d1;
+	} else if (strcmp(sort_key, "f1") == 0) {
+		value->f = trace.f1;
+	} else if (strcmp(sort_key, "d2") == 0) {
+		value->f = trace.d2;
+	} else if (strcmp(sort_key, "f2") == 0) {
+		value->f = trace.f2;
+	} else if (strcmp(sort_key, "ungpow") == 0) {
+		value->f = trace.ungpow;
+	} else if (strcmp(sort_key, "unscale") == 0) {
+		value->f = trace.unscale;
+	} else if (strcmp(sort_key, "ntr") == 0) {
+		value->i = trace.ntr;
+	} else if (strcmp(sort_key, "mark") == 0) {
+		value->h = trace.mark;
+	} else if (strcmp(sort_key, "shortpad") == 0) {
+		value->h = trace.shortpad;
 	} else {
 		return;
 	}
-
 }
 
 void
@@ -1304,144 +1444,162 @@ set_header_value(trace_t *trace, char *sort_key, Value *value)
 		trace->ep = value->i;
 	} else if (strcmp(sort_key, "cdp") == 0) {
 		trace->cdp = value->i;
-	} else if (strcmp(sort_key, "ns") == 0) {
-		trace->ns = value->u;
+	} else if (strcmp(sort_key, "cdpt") == 0) {
+		trace->cdpt = value->i;
+	} else if (strcmp(sort_key, "trid") == 0) {
+		trace->trid = value->h;
+	} else if (strcmp(sort_key, "nvs") == 0) {
+		trace->nvs = value->h;
+	} else if (strcmp(sort_key, "nhs") == 0) {
+		trace->nhs = value->h;
+	} else if (strcmp(sort_key, "duse") == 0) {
+		trace->duse = value->h;
+	} else if (strcmp(sort_key, "offset") == 0) {
+		trace->offset = value->i;
+	} else if (strcmp(sort_key, "gelev") == 0) {
+		trace->gelev = value->u;
+	} else if (strcmp(sort_key, "selev") == 0) {
+		trace->selev = value->i;
+	} else if (strcmp(sort_key, "sdepth") == 0) {
+		trace->sdepth = value->i;
+	} else if (strcmp(sort_key, "gdel") == 0) {
+		trace->gdel = value->i;
+	} else if (strcmp(sort_key, "sdel") == 0) {
+		trace->sdel = value->i;
+	} else if (strcmp(sort_key, "swdep") == 0) {
+		trace->swdep = value->i;
+	} else if (strcmp(sort_key, "gwdep") == 0) {
+		trace->gwdep = value->i;
+	} else if (strcmp(sort_key, "scalel") == 0) {
+		trace->scalel = value->h;
+	} else if (strcmp(sort_key, "scalco") == 0) {
+		trace->scalco = value->h;
+	} else if (strcmp(sort_key, "sx") == 0) {
+		trace->sx = value->i;
+	} else if (strcmp(sort_key, "sy") == 0) {
+		trace->sy = value->i;
 	} else if (strcmp(sort_key, "gx") == 0) {
 		trace->gx = value->i;
+	} else if (strcmp(sort_key, "gy") == 0) {
+		trace->gy = value->i;
+	} else if (strcmp(sort_key, "counit") == 0) {
+		trace->counit = value->h;
+	} else if (strcmp(sort_key, "wevel") == 0) {
+		trace->wevel = value->h;
+	} else if (strcmp(sort_key, "swevel") == 0) {
+		trace->swevel = value->h;
+	} else if (strcmp(sort_key, "sut") == 0) {
+		trace->sut = value->h;
+	} else if (strcmp(sort_key, "gut") == 0) {
+		trace->gut = value->h;
+	} else if (strcmp(sort_key, "sstat") == 0) {
+		trace->sstat = value->h;
+	} else if (strcmp(sort_key, "gstat") == 0) {
+		trace->gstat = value->h;
+	} else if (strcmp(sort_key, "tstat") == 0) {
+		trace->tstat = value->h;
+	} else if (strcmp(sort_key, "laga") == 0) {
+		trace->laga = value->h;
+	} else if (strcmp(sort_key, "lagb") == 0) {
+		trace->lagb = value->h;
+	} else if (strcmp(sort_key, "delrt") == 0) {
+		trace->delrt = value->h;
+	} else if (strcmp(sort_key, "muts") == 0) {
+		trace->muts = value->h;
+	} else if (strcmp(sort_key, "mute") == 0) {
+		trace->mute = value->h;
+	} else if (strcmp(sort_key, "ns") == 0) {
+		trace->ns = value->u;
 	} else if (strcmp(sort_key, "dt") == 0) {
 		trace->dt = value->u;
+	} else if (strcmp(sort_key, "gain") == 0) {
+		trace->gain = value->h;
+	} else if (strcmp(sort_key, "igc") == 0) {
+		trace->igc = value->h;
+	} else if (strcmp(sort_key, "igi") == 0) {
+		trace->igi = value->h;
+	} else if (strcmp(sort_key, "corr") == 0) {
+		trace->corr = value->h;
+	} else if (strcmp(sort_key, "sfs") == 0) {
+		trace->sfs = value->h;
+	} else if (strcmp(sort_key, "sfe") == 0) {
+		trace->sfe = value->h;
+	} else if (strcmp(sort_key, "slen") == 0) {
+		trace->slen = value->h;
+	} else if (strcmp(sort_key, "styp") == 0) {
+		trace->styp = value->h;
+	} else if (strcmp(sort_key, "stas") == 0) {
+		trace->stas = value->h;
+	} else if (strcmp(sort_key, "stae") == 0) {
+		trace->stae = value->h;
+	} else if (strcmp(sort_key, "tatyp") == 0) {
+		trace->tatyp = value->h;
+	} else if (strcmp(sort_key, "afilf") == 0) {
+		trace->afilf = value->h;
+	} else if (strcmp(sort_key, "afils") == 0) {
+		trace->afils = value->h;
+	} else if (strcmp(sort_key, "nofilf") == 0) {
+		trace->nofilf = value->h;
+	} else if (strcmp(sort_key, "nofils") == 0) {
+		trace->nofils = value->h;
+	} else if (strcmp(sort_key, "lcf") == 0) {
+		trace->lcf = value->h;
+	} else if (strcmp(sort_key, "hcf") == 0) {
+		trace->hcf = value->h;
+	} else if (strcmp(sort_key, "lcs") == 0) {
+		trace->lcs = value->h;
+	} else if (strcmp(sort_key, "hcs") == 0) {
+		trace->hcs = value->h;
+	} else if (strcmp(sort_key, "year") == 0) {
+		trace->year = value->h;
+	} else if (strcmp(sort_key, "day") == 0) {
+		trace->day = value->h;
+	} else if (strcmp(sort_key, "hour") == 0) {
+		trace->hour = value->h;
+	} else if (strcmp(sort_key, "minute") == 0) {
+		trace->minute = value->h;
+	} else if (strcmp(sort_key, "sec") == 0) {
+		trace->sec = value->h;
+	} else if (strcmp(sort_key, "timbas") == 0) {
+		trace->timbas = value->h;
+	} else if (strcmp(sort_key, "trwf") == 0) {
+		trace->trwf = value->h;
+	} else if (strcmp(sort_key, "grnors") == 0) {
+		trace->grnors = value->h;
+	} else if (strcmp(sort_key, "grnofr") == 0) {
+		trace->grnofr = value->h;
+	} else if (strcmp(sort_key, "grnlof") == 0) {
+		trace->grnlof = value->h;
+	} else if (strcmp(sort_key, "gaps") == 0) {
+		trace->gaps = value->h;
+	} else if (strcmp(sort_key, "otrav") == 0) {
+		trace->otrav = value->h;
+	} else if (strcmp(sort_key, "d1") == 0) {
+		trace->d1 = value->f;
+	} else if (strcmp(sort_key, "f1") == 0) {
+		trace->f1 = value->f;
+	} else if (strcmp(sort_key, "d2") == 0) {
+		trace->d2 = value->f;
+	} else if (strcmp(sort_key, "f2") == 0) {
+		trace->f2 = value->f;
+	} else if (strcmp(sort_key, "ungpow") == 0) {
+		trace->ungpow = value->f;
+	} else if (strcmp(sort_key, "unscale") == 0) {
+		trace->unscale = value->f;
+	} else if (strcmp(sort_key, "ntr") == 0) {
+		trace->ntr = value->i;
+	} else if (strcmp(sort_key, "mark") == 0) {
+		trace->mark = value->h;
+	} else if (strcmp(sort_key, "shortpad") == 0) {
+		trace->shortpad = value->h;
 	} else {
 		return;
 	}
-//	} else if(strcmp(sort_key,"cdpt")==0){
-//		trace.cdpt = value;
-//	} else if(strcmp(sort_key,"nvs")==0){
-//		trace.nvs = value;
-//	} else if(strcmp(sort_key,"nhs")==0){
-//		trace.nhs = value;
-//	} else if(strcmp(sort_key,"offset")==0){
-//		trace.offset = value;
-//	} else if(strcmp(sort_key,"gelev")==0){
-//		trace.gelev = value;
-//	} else if(strcmp(sort_key,"selev")==0){
-//		trace.selev = value;
-//	} else if(strcmp(sort_key,"sdepth")==0){
-//		trace.sdepth = value;
-//	} else if(strcmp(sort_key,"gdel")==0){
-//		trace.gdel = value;
-//	} else if(strcmp(sort_key,"sdel")==0){
-//		trace.sdel = value;
-//	} else if(strcmp(sort_key,"swdep")==0){
-//		trace.swdep = value;
-//	} else if(strcmp(sort_key,"gwdep")==0){
-//		trace.gwdep = value;
-//	} else if(strcmp(sort_key,"scalel")==0){
-//		trace.scalel = value;
-//	} else if(strcmp(sort_key,"scalco")==0){
-//		trace.scalco = value;
-//	} else if(strcmp(sort_key,"sx")==0){
-//		trace.sx = value;
-//	} else if(strcmp(sort_key,"sy")==0){
-//		trace.sy = value;
-//	} else if(strcmp(sort_key,"gx")==0){
-//		trace.gx = value;
-//	} else if(strcmp(sort_key,"gy")==0){
-//		trace.gy = value;
-//	} else if(strcmp(sort_key,"wevel")==0){
-//		trace.wevel = value;
-//	} else if(strcmp(sort_key,"swevel")==0){
-//		trace.swevel = value;
-//	} else if(strcmp(sort_key,"sut")==0){
-//		trace.sut = value;
-//	} else if(strcmp(sort_key,"gut")==0){
-//		trace.gut = value;
-//	} else if(strcmp(sort_key,"sstat")==0){
-//		trace.sstat = value;
-//	} else if(strcmp(sort_key,"gstat")==0){
-//		trace.gstat = value;
-//	} else if(strcmp(sort_key,"tstat")==0){
-//		trace.tstat = value;
-//	} else if(strcmp(sort_key,"laga")==0){
-//		trace.laga = value;
-//	} else if(strcmp(sort_key,"lagb")==0){
-//		trace.lagb = value;
-//	} else if(strcmp(sort_key,"delrt")==0){
-//		trace.delrt = value;
-//	} else if(strcmp(sort_key,"muts")==0){
-//		trace.muts = value;
-//	} else if(strcmp(sort_key,"mute")==0){
-//		trace.mute = value;
-//	} else if(strcmp(sort_key,"ns")==0){
-//		trace.ns = value;
-//	} else if(strcmp(sort_key,"dt")==0){
-//		trace.dt = value;
-//	} else if(strcmp(sort_key,"gain")==0){
-//		trace.gain = value;
-//	} else if(strcmp(sort_key,"igc")==0){
-//		trace.igc = value;
-//	} else if(strcmp(sort_key,"igi")==0){
-//		trace.igi = value;
-//	} else if(strcmp(sort_key,"corr")==0){
-//		trace.corr = value;
-//	} else if(strcmp(sort_key,"sfs")==0){
-//		trace.sfs = value;
-//	} else if(strcmp(sort_key,"sfe")==0){
-//		trace.sfe = value;
-//	} else if(strcmp(sort_key,"slen")==0){
-//		trace.slen = value;
-//	} else if(strcmp(sort_key,"styp")==0){
-//		trace.styp = value;
-//	} else if(strcmp(sort_key,"stas")==0){
-//		trace.stas = value;
-//	} else if(strcmp(sort_key,"stae")==0){
-//		trace.stae = value;
-//	} else if(strcmp(sort_key,"tatyp")==0){
-//		trace.tatyp = value;
-//	} else if(strcmp(sort_key,"afilf")==0){
-//		trace.afilf = value;
-//	} else if(strcmp(sort_key,"afils")==0){
-//		trace.afils = value;
-//	} else if(strcmp(sort_key,"nofilf")==0){
-//		trace.nofilf = value;
-//	} else if(strcmp(sort_key,"nofils")==0){
-//		trace.nofils = value;
-//	} else if(strcmp(sort_key,"lcf")==0){
-//		trace.lcf = value;
-//	} else if(strcmp(sort_key,"hcf")==0){
-//		trace.hcf = value;
-//	} else if(strcmp(sort_key,"lcs")==0){
-//		trace.lcs = value;
-//	} else if(strcmp(sort_key,"hcs")==0){
-//		trace.hcs = value;
-//	} else if(strcmp(sort_key,"grnors")==0){
-//		trace.grnors = value;
-//	} else if(strcmp(sort_key,"grnofr")==0){
-//		trace.grnofr = value;
-//	} else if(strcmp(sort_key,"grnlof")==0){
-//		trace.grnlof = value;
-//	} else if(strcmp(sort_key,"gaps")==0){
-//		trace.gaps = value;
-//	} else if(strcmp(sort_key,"d1")==0){
-//		trace.d1 = value;
-//	} else if(strcmp(sort_key,"f1")==0){
-//		trace.f1 = value;
-//	} else if(strcmp(sort_key,"d2")==0){
-//		trace.d2 = value;
-//	} else if(strcmp(sort_key,"f2")==0){
-//		trace.f2 = value;
-//	} else if(strcmp(sort_key,"sfs")==0){
-//		trace.sfs = value;
-//	} else if(strcmp(sort_key,"ntr")==0){
-//		trace.ntr = value;
-//	} else {
-//		return;
-//	}
 }
 
 char*
 get_dkey(char *key)
 {
-
 	if (strcmp(key, "tracl") == 0) {
 		return "Tracl";
 	} else if (strcmp(key, "tracr") == 0) {
@@ -1456,127 +1614,156 @@ get_dkey(char *key)
 		return "Cdp";
 	} else if (strcmp(key, "cdpt") == 0) {
 		return "Cdpt";
+	} else if (strcmp(key, "trid") == 0) {
+		return "Trid";
 	} else if (strcmp(key, "nvs") == 0) {
 		return "Nvs";
 	} else if (strcmp(key, "nhs") == 0) {
 		return "Nhs";
+	} else if (strcmp(key, "duse") == 0) {
+		return "Duse";
 	} else if (strcmp(key, "offset") == 0) {
 		return "Offset";
-//	} else if (strcmp(key, "gelev") == 0) {
-//		return "Gelev_";
-//	} else if (strcmp(key, "selev") == 0) {
-//		return "Selev_";
-//	} else if (strcmp(key, "sdepth") == 0) {
-//		return "Sdepth_";
-//	} else if (strcmp(key, "gdel") == 0) {
-//		return "Gdel_";
-//	} else if (strcmp(key, "sdel") == 0) {
-//		return "Sdel_";
-//	} else if (strcmp(key, "swdep") == 0) {
-//		return "Swdep_";
-//	} else if (strcmp(key, "gwdep") == 0) {
-//		return "Gwdep_";
-//	} else if (strcmp(key, "scalel") == 0) {
-//		return "Scalel_";
-//	} else if (strcmp(key, "scalco") == 0) {
-//		return "Scalco_";
-//	} else if (strcmp(key, "sx") == 0) {
-//		return "Sx_";
-//	} else if (strcmp(key, "sy") == 0) {
-//		return "Sy_";
-//	} else if (strcmp(key, "gx") == 0) {
-//		return "Gx_";
-//	} else if (strcmp(key, "gy") == 0) {
-//		return "Gy_";
-//	} else if (strcmp(key, "wevel") == 0) {
-//		return "Wevel_";
-//	} else if (strcmp(key, "swevel") == 0) {
-//		return "Swevel_";
-//	} else if (strcmp(key, "sut") == 0) {
-//		return "Sut_";
-//	} else if (strcmp(key, "gut") == 0) {
-//		return "Gut_";
-//	} else if (strcmp(key, "sstat") == 0) {
-//		return "Sstat_";
-//	} else if (strcmp(key, "gstat") == 0) {
-//		return "Gstat_";
-//	} else if (strcmp(key, "tstat") == 0) {
-//		return "Tstat_";
-//	} else if (strcmp(key, "laga") == 0) {
-//		return "Laga_";
-//	} else if (strcmp(key, "lagb") == 0) {
-//		return "Lagb_";
-//	} else if (strcmp(key, "delrt") == 0) {
-//		return "Delrt_";
-//	} else if (strcmp(key, "muts") == 0) {
-//		return "Muts_";
-//	} else if (strcmp(key, "mute") == 0) {
-//		return "Mute_";
-//	} else if (strcmp(key, "ns") == 0) {
-//		return "Ns_";
-//	} else if (strcmp(key, "dt") == 0) {
-//		return "Dt_";
-//	} else if (strcmp(key, "gain") == 0) {
-//		return "Gain_";
-//	} else if (strcmp(key, "igc") == 0) {
-//		return "Igc_";
-//	} else if (strcmp(key, "igi") == 0) {
-//		return "Igi_";
-//	} else if (strcmp(key, "corr") == 0) {
-//		return "Corr_";
-//	} else if (strcmp(key, "sfs") == 0) {
-//		return "Sfs_";
-//	} else if (strcmp(key, "sfe") == 0) {
-//		return "Sfe_";
-//	} else if (strcmp(key, "slen") == 0) {
-//		return "Slen_";
-//	} else if (strcmp(key, "styp") == 0) {
-//		return "Styp_";
-//	} else if (strcmp(key, "stas") == 0) {
-//		return "Stas_";
-//	} else if (strcmp(key, "stae") == 0) {
-//		return "Stae_";
-//	} else if (strcmp(key, "tatyp") == 0) {
-//		return "Tatyp_";
-//	} else if (strcmp(key, "afilf") == 0) {
-//		return "Afilf_";
-//	} else if (strcmp(key, "afils") == 0) {
-//		return "Afils_";
-//	} else if (strcmp(key, "nofilf") == 0) {
-//		return "Nofilf_";
-//	} else if (strcmp(key, "nofils") == 0) {
-//		return "Nofils_";
-//	} else if (strcmp(key, "lcf") == 0) {
-//		return "Lcf_";
-//	} else if (strcmp(key, "hcf") == 0) {
-//		return "Hcf_";
-//	} else if (strcmp(key, "lcs") == 0) {
-//		return "Lcs_";
-//	} else if (strcmp(key, "hcs") == 0) {
-//		return "Hcs_";
-//	} else if (strcmp(key, "grnors") == 0) {
-//		return "Grnors_";
-//	} else if (strcmp(key, "grnofr") == 0) {
-//		return "Grnofr_";
-//	} else if (strcmp(key, "grnlof") == 0) {
-//		return "Grnlof_";
-//	} else if (strcmp(key, "gaps") == 0) {
-//		return "Gaps_";
-//	} else if (strcmp(key, "d1") == 0) {
-//		return "D1_";
-//	} else if (strcmp(key, "f1") == 0) {
-//		return "F1_";
-//	} else if (strcmp(key, "d2") == 0) {
-//		return "D2_";
-//	} else if (strcmp(key, "f2") == 0) {
-//		return "F2_";
-//	} else if (strcmp(key, "sfs") == 0) {
-//		return "Sfs_";
-//	} else if (strcmp(key, "ntr") == 0) {
-//		return "Ntr_";
+	} else if (strcmp(key, "gelev") == 0) {
+		return "Gelev";
+	} else if (strcmp(key, "selev") == 0) {
+		return "Selev";
+	} else if (strcmp(key, "sdepth") == 0) {
+		return "Sdepth";
+	} else if (strcmp(key, "gdel") == 0) {
+		return "Gdel";
+	} else if (strcmp(key, "sdel") == 0) {
+		return "Sdel";
+	} else if (strcmp(key, "swdep") == 0) {
+		return "Swdep";
+	} else if (strcmp(key, "gwdep") == 0) {
+		return "Gwdep";
+	} else if (strcmp(key, "scalel") == 0) {
+		return "Scalel";
+	} else if (strcmp(key, "scalco") == 0) {
+		return "Scalco";
+	} else if (strcmp(key, "sx") == 0) {
+		return "Sx";
+	} else if (strcmp(key, "sy") == 0) {
+		return "Sy";
+	} else if (strcmp(key, "gx") == 0) {
+		return "Gx";
+	} else if (strcmp(key, "gy") == 0) {
+		return "Gy";
+	} else if (strcmp(key, "counit") == 0) {
+		return "Counit";
+	} else if (strcmp(key, "wevel") == 0) {
+		return "Wevel";
+	} else if (strcmp(key, "swevel") == 0) {
+		return "Swevel";
+	} else if (strcmp(key, "sut") == 0) {
+		return "Sut";
+	} else if (strcmp(key, "gut") == 0) {
+		return "Gut";
+	} else if (strcmp(key, "sstat") == 0) {
+		return "Sstat";
+	} else if (strcmp(key, "gstat") == 0) {
+		return "Gstat";
+	} else if (strcmp(key, "tstat") == 0) {
+		return "Tstat";
+	} else if (strcmp(key, "laga") == 0) {
+		return "Laga";
+	} else if (strcmp(key, "lagb") == 0) {
+		return "Lagb";
+	} else if (strcmp(key, "delrt") == 0) {
+		return "Delrt";
+	} else if (strcmp(key, "muts") == 0) {
+		return "Muts";
+	} else if (strcmp(key, "mute") == 0) {
+		return "Mute";
+	} else if (strcmp(key, "ns") == 0) {
+		return "Ns";
+	} else if (strcmp(key, "dt") == 0) {
+		return "Dt";
+	} else if (strcmp(key, "gain") == 0) {
+		return "Gain";
+	} else if (strcmp(key, "igc") == 0) {
+		return "Igc";
+	} else if (strcmp(key, "igi") == 0) {
+		return "Igi";
+	} else if (strcmp(key, "corr") == 0) {
+		return "Corr";
+	} else if (strcmp(key, "sfs") == 0) {
+		return "Sfs";
+	} else if (strcmp(key, "sfe") == 0) {
+		return "Sfe";
+	} else if (strcmp(key, "slen") == 0) {
+		return "Slen";
+	} else if (strcmp(key, "styp") == 0) {
+		return "Styp";
+	} else if (strcmp(key, "stas") == 0) {
+		return "Stas";
+	} else if (strcmp(key, "stae") == 0) {
+		return "Stae";
+	} else if (strcmp(key, "tatyp") == 0) {
+		return "Tatyp";
+	} else if (strcmp(key, "afilf") == 0) {
+		return "Afilf";
+	} else if (strcmp(key, "afils") == 0) {
+		return "Afils";
+	} else if (strcmp(key, "nofilf") == 0) {
+		return "Nofilf";
+	} else if (strcmp(key, "nofils") == 0) {
+		return "Nofils";
+	} else if (strcmp(key, "lcf") == 0) {
+		return "Lcf";
+	} else if (strcmp(key, "hcf") == 0) {
+		return "Hcf";
+	} else if (strcmp(key, "lcs") == 0) {
+		return "Lcs";
+	} else if (strcmp(key, "hcs") == 0) {
+		return "Hcs";
+	} else if (strcmp(key, "year") == 0) {
+		return "Year";
+	} else if (strcmp(key, "day") == 0) {
+		return "Day";
+	} else if (strcmp(key, "hour") == 0) {
+		return "Hour";
+	} else if (strcmp(key, "minute") == 0) {
+		return "Minute";
+	} else if (strcmp(key, "sec") == 0) {
+		return "Sec";
+	} else if (strcmp(key, "timbas") == 0) {
+		return "Timbas";
+	} else if (strcmp(key, "trwf") == 0) {
+		return "Trwf";
+	} else if (strcmp(key, "grnors") == 0) {
+		return "Grnors";
+	} else if (strcmp(key, "grnofr") == 0) {
+		return "Grnofr";
+	} else if (strcmp(key, "grnlof") == 0) {
+		return "Grnlof";
+	} else if (strcmp(key, "gaps") == 0) {
+		return "Gaps";
+	} else if (strcmp(key, "otrav") == 0) {
+		return "Otrav";
+	} else if (strcmp(key, "d1") == 0) {
+		return "D1";
+	} else if (strcmp(key, "f1") == 0) {
+		return "F1";
+	} else if (strcmp(key, "d2") == 0) {
+		return "D2";
+	} else if (strcmp(key, "f2") == 0) {
+		return "F2";
+	} else if (strcmp(key, "ungpow") == 0) {
+		return "Ungpow";
+	} else if (strcmp(key, "unscale") == 0) {
+		return "Unscale";
+	} else if (strcmp(key, "ntr") == 0) {
+		return "Ntr";
+	} else if (strcmp(key, "mark") == 0) {
+		return "Mark";
+	} else if (strcmp(key, "shortpad") == 0) {
+		return "Shortpad";
 	} else {
 		return -1;
 	}
+
 }
 
 void
@@ -1642,9 +1829,9 @@ set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head,
 								   );
 				}
 			}
-			rc = daos_seis_trh_update(&trace_hdr_obj,
-						  &(current->trace),
-						  TRACEHDR_BYTES);
+			rc = trace_header_update(&trace_hdr_obj,
+						 &(current->trace),
+						 TRACEHDR_BYTES);
 			if (rc != 0) {
 				err("Updating trace header failed error"
 				    " code = %d \n", rc);
@@ -1758,8 +1945,8 @@ window_headers(traces_list_t **head, char **window_keys,
 }
 
 char**
-daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
-		      int direction)
+fetch_seismic_obj_dkeys(seis_obj_t *seismic_object, int sort, char *key,
+		        int direction)
 {
 	daos_key_desc_t 	*kds;
 	daos_anchor_t 		 anchor = {0};
@@ -1880,8 +2067,8 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
 }
 
 void
-daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
-			  traces_list_t *trace_list, seis_root_obj_t *root)
+replace_seismic_objects(dfs_t *dfs, int daos_mode, char *key,
+			traces_list_t *trace_list, seis_root_obj_t *root)
 {
 	seismic_entry_t 	seismic_entry = {0};
 	seis_obj_t 	       *new_seis_obj;
@@ -1911,15 +2098,15 @@ daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
 			      DS_A_NGATHERS,
 			      (char*) &(existing_obj->number_of_gathers),
 			      sizeof(int), DAOS_IOD_SINGLE);
-	rc = daos_seis_fetch_entry(existing_obj->oh, DAOS_TX_NONE,
-				   &seismic_entry, NULL);
+	rc = fetch_seismic_entry(existing_obj->oh, DAOS_TX_NONE,
+			 &seismic_entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of gathers failed, error "
 		    "code = %d \n", rc);
 		return;
 	}
 	char **temp_keys;
-	temp_keys = daos_seis_fetch_dkeys(existing_obj, 0, key, 1);
+	temp_keys = fetch_seismic_obj_dkeys(existing_obj, 0, key, 1);
 
 	/** Destroy all trace headers oids objects in existing object */
 	for (i = 0; i < existing_obj->number_of_gathers; i++) {
@@ -1929,8 +2116,8 @@ daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
 				      temp_keys[i], DS_A_GATHER_TRACE_OIDS,
 				      (char*) &temp.oid,
 				      sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = daos_seis_fetch_entry(existing_obj->oh, DAOS_TX_NONE,
-					   &seismic_entry, NULL);
+		rc = fetch_seismic_entry(existing_obj->oh, DAOS_TX_NONE,
+				 &seismic_entry, NULL);
 		rc = daos_array_open_with_attr(dfs->coh, temp.oid,
 					       DAOS_TX_NONE, DAOS_OO_RW, 1,
 					       500 * sizeof(daos_obj_id_t),
@@ -1963,8 +2150,8 @@ daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
 		return;
 	}
 	/** Create new seismic object based on key type*/
-	rc = daos_seis_gather_obj_create(dfs, OC_SX, root,
-					 &new_seis_obj, key, index);
+	rc = seismic_gather_obj_create(dfs, OC_SX, root,
+				       &new_seis_obj, key, index);
 
 	if (rc != 0) {
 		err("Creating new seismic object failed, "
@@ -1981,8 +2168,8 @@ daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
 
 		trace_obj->oid = current->trace.trace_header_obj;
 
-		rc = daos_seis_tr_linking(trace_obj, new_seis_obj,
-					  root->keys[index]);
+		rc = trace_linking(trace_obj, new_seis_obj,
+				   root->keys[index]);
 		if (rc != 0) {
 			err("Linking trace to <%s> gather object failed,"
 			    " error code = %d \n",root->keys[index], rc);
@@ -1994,16 +2181,17 @@ daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
 		free(trace_obj);
 	}
 	/** Update new object number of gathers key */
-	rc = update_gather_object(new_seis_obj, DS_D_NGATHERS, DS_A_NGATHERS,
-			(char*) &new_seis_obj->number_of_gathers, sizeof(int),
-			DAOS_IOD_SINGLE);
+	rc = update_seismic_gather_object(new_seis_obj, DS_D_NGATHERS,
+					  DS_A_NGATHERS,
+					  (char*) &new_seis_obj->number_of_gathers,
+					  sizeof(int), DAOS_IOD_SINGLE);
 	if (rc != 0) {
 		err("Adding number of gathers failed, "
 		    "error code = %d \n", rc);
 		return;
 	}
 	/** Create new trace oids object */
-	rc = daos_seis_trace_oids_obj_create(dfs, OC_SX, new_seis_obj,0);
+	rc = trace_oids_obj_create(dfs, OC_SX, new_seis_obj,0);
 	if (rc != 0) {
 		err("Creating new trace oids object failed, "
 		    "error code = %d \n", rc);
@@ -2602,7 +2790,6 @@ release_gathers_list(gathers_list_t *gather_list){
 	free(gather_list);
 }
 
-
 void
 read_headers(bhed *bh, char *ebcbuf, short *nextended,
 	     seis_root_obj_t *root_obj, DAOS_FILE *daos_tape,
@@ -2666,18 +2853,18 @@ write_headers(bhed bh, char *ebcbuf, seis_root_obj_t *root_obj)
 							  SEIS_EBCBYTES);
 	}
 	/** Update text header under root seismic object */
-	rc = daos_seis_root_update(root_obj, DS_D_FILE_HEADER,
-				   DS_A_TEXT_HEADER, tbuf, SEIS_EBCBYTES,
-				   DAOS_IOD_ARRAY);
+	rc = seismic_root_obj_update(root_obj, DS_D_FILE_HEADER,
+				     DS_A_TEXT_HEADER, tbuf, SEIS_EBCBYTES,
+				     DAOS_IOD_ARRAY);
 	if (rc != 0) {
 		err("Updating text header of root seismic object failed, "
 		    "error code = %d \n",rc);
 		return;
 	}
 	/** Update binary header under root seismic object */
-	rc = daos_seis_root_update(root_obj, DS_D_FILE_HEADER,
-				   DS_A_BINARY_HEADER, (char*)&bh,
-				   SEIS_BNYBYTES, DAOS_IOD_ARRAY);
+	rc = seismic_root_obj_update(root_obj, DS_D_FILE_HEADER,
+				     DS_A_BINARY_HEADER, (char*)&bh,
+				     SEIS_BNYBYTES, DAOS_IOD_ARRAY);
 	if (rc != 0) {
 		err("Updating binary header of root seismic object failed, "
 		    "error code = %d \n",rc);
@@ -2693,9 +2880,9 @@ parse_exth(short nextended, DAOS_FILE *daos_tape, char *ebcbuf,
 	int 			rc;
 	int 			i;
 
-	rc = daos_seis_root_update(root_obj, DS_D_FILE_HEADER,
-				   DS_A_NEXTENDED_HEADER, (char*)&nextended,
-				   sizeof(short), DAOS_IOD_SINGLE);
+	rc = seismic_root_obj_update(root_obj, DS_D_FILE_HEADER,
+				     DS_A_NEXTENDED_HEADER, (char*)&nextended,
+				     sizeof(short), DAOS_IOD_SINGLE);
 	if (rc != 0) {
 		err("Updating number of EXTH of root seismic object failed, "
 		    "error code = %d \n",rc);
@@ -2722,9 +2909,9 @@ parse_exth(short nextended, DAOS_FILE *daos_tape, char *ebcbuf,
 			strcat(akey_extended, DS_A_EXTENDED_HEADER);
 			strcat(akey_extended, akey_index);
 
-			rc = daos_seis_root_update(root_obj, DS_D_FILE_HEADER,
-						   akey_extended, ebcbuf,
-						   SEIS_EBCBYTES,DAOS_IOD_ARRAY);
+			rc = seismic_root_obj_update(root_obj, DS_D_FILE_HEADER,
+						     akey_extended, ebcbuf,
+						     SEIS_EBCBYTES,DAOS_IOD_ARRAY);
 			if (rc != 0) {
 				err("Updating extended header of root seismic"
 				    " object failed, error code = %d \n",rc);
@@ -2948,15 +3135,16 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 			      DS_D_NGATHERS, DS_A_NGATHERS,
 			      (char*)&seis_obj->number_of_gathers,
 			      sizeof(int), DAOS_IOD_SINGLE);
-	rc = daos_seis_fetch_entry(seis_obj->oh, DAOS_TX_NONE,
-				   &seismic_entry, NULL);
+	rc = fetch_seismic_entry(seis_obj->oh, DAOS_TX_NONE,
+			 &seismic_entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of gathers failed, error "
 		    "code = %d \n", rc);
 		return;
 	}
 	/** Fetch list of dkeys stored under gather object */
-	char **unique_keys = daos_seis_fetch_dkeys(seis_obj, 1, seis_obj->name, 1);
+	char **unique_keys = fetch_seismic_obj_dkeys(seis_obj, 1,
+						     seis_obj->name, 1);
 	seis_obj->seis_gather_trace_oids_obj =
 				malloc(seis_obj->number_of_gathers *
 				       sizeof(trace_oid_oh_t));
@@ -2966,8 +3154,8 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 				      unique_keys[i], DS_A_NTRACES,
 				      (char*)&(temp_gather.number_of_traces),
 				      sizeof(int), DAOS_IOD_SINGLE);
-		rc = daos_seis_fetch_entry(seis_obj->oh, DAOS_TX_NONE,
-					   &seismic_entry, NULL);
+		rc = fetch_seismic_entry(seis_obj->oh, DAOS_TX_NONE,
+				 &seismic_entry, NULL);
 		if (rc != 0) {
 			err("Fetching number of traces failed, error "
 			    "code = %d \n", rc);
@@ -2978,8 +3166,8 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 				      unique_keys[i], DS_A_UNIQUE_VAL,
 				      (char*)&(temp_gather.unique_key),
 				      sizeof(long), DAOS_IOD_SINGLE);
-		rc = daos_seis_fetch_entry(seis_obj->oh, DAOS_TX_NONE,
-					   &seismic_entry, NULL);
+		rc = fetch_seismic_entry(seis_obj->oh, DAOS_TX_NONE,
+				 &seismic_entry, NULL);
 		if (rc != 0) {
 			err("Fetching unique key value failed, error "
 			    "code = %d \n", rc);
@@ -2991,8 +3179,8 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 				      (char*)
 				      &((seis_obj->seis_gather_trace_oids_obj[i]).oid),
 				      sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = daos_seis_fetch_entry(seis_obj->oh, DAOS_TX_NONE,
-					   &seismic_entry, NULL);
+		rc = fetch_seismic_entry(seis_obj->oh, DAOS_TX_NONE,
+				 &seismic_entry, NULL);
 		if (rc != 0) {
 			err("Fetching traces headers oid failed, error "
 			    "code = %d \n", rc);

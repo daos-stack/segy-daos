@@ -14,22 +14,20 @@
 char *sdoc[] = {
 	        "									",
 		" Parse additional file functionality.					",
-		" It dumps segy file traces headers and data to opened"
+		" It dumps segy file traces headers and data to opened			",
 		" root seismic object and seismic gather objects. 			",
 		"									",
 		"  parse_additional_file pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path out=output_file_path ",
 		"									",
 		"  Required parameters:							",
-		"  pool_id 		the pool uuid to connect to.			",
-		"  container_id 	the container uuid to connect to.		",
-		"  svc_list 		service rank list to connect to.		",
-		"  in_file 		path of the segy file that will be parsed.	",
-		"  out_file 		path of the seismic root object that"
-		"  			will be opened.					",
+		"  pool_id 			the pool uuid to connect to.			",
+		"  container_id			the container uuid to connect to.		",
+		"  svc_list 			service rank list to connect to.		",
+		"  in_file 			path of the segy file that will be parsed.	",
+		"  out_file 			path of the seismic root object that		",
+		"  				will be opened.					",
 		"  Optional parameters:							",
 		"  verbose 			=1 to allow verbose output.		",
-		"  allow_container_creation 	flag to allow creation of container if"
-		"				its not found.				",
 		NULL};
 
 int
@@ -46,7 +44,7 @@ main(int argc, char *argv[])
 	/** string of the path of the file that will be written */
 	char 			       *out_file;
 	/** Flag to allow container creation if not found */
-	int		 		allow_container_creation;
+	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 				verbose;
 
@@ -62,10 +60,6 @@ main(int argc, char *argv[])
 
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
-	}
-
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
 	}
 
 

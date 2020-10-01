@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ "$#" -ne 3 ]; then
+if [ "$#" -ne 5 ]; then
     echo "Illegal number of parameters"
-    echo "Requires 3 parameters : pool uuid, container uuid, svc ranklist"
+    echo "Requires 5 parameters : pool uuid, container uuid, svc ranklist, first segyfile, second segyfile"
     exit 1
 fi
 
@@ -10,8 +10,8 @@ fi
 
 tests_program_path=./build/tests_build
 main_program_path=./build/main_build
-first_file=shots_601_610_cdp_offset_calculated.segy
-second_file=shots_611_620_cdp_offset_calculated.segy
+first_file=$4
+second_file=$5
 
 ## Funtion to compare files.
 function compare_files {
@@ -24,33 +24,33 @@ function compare_files {
 
 function daos_seis_tests {
 	echo "Parse original segy file"
-	time $tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/shot_601_610 out=/SHOTS_601_610_SEIS_ROOT_OBJECT keys=offset
+	time $tests_program_path/seismic_obj_creation pool=$1 container=$2 svc=$3 in=/first_file out=/SEIS_ROOT_OBJECT keys=offset
 	echo "Find number of traces and gathers in original segy file"
-	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
+	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT
 	echo "Read shot traces" 
-	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
+	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
 	echo "Sort traces headers"
-	time $tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
+	time $tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
 	echo "Window traces headers"
-	time $tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,800 
+	time $tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,800 
 	echo "Change traces headers"
-	time $tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
+	time $tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
 	echo "Set traces headers"
-	time $tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
+	time $tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
 	echo "Parse additional segy file"
-	time $tests_program_path/parse_additional_file pool=$1 container=$2 svc=$3 in=/shot_611_620 out=/SHOTS_601_610_SEIS_ROOT_OBJECT
+	time $tests_program_path/parse_additional_file pool=$1 container=$2 svc=$3 in=/second_file out=/SEIS_ROOT_OBJECT
 	echo "Read shot traces after parsing additional file"
-	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_615.su shot_id=615
+	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_855.su shot_id=855
 	echo "Read shot traces after parsing additional file"
-	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_609.su shot_id=609
+	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_609.su shot_id=609
 	echo "Find number of traces and gathers after parsing additional segy file"
-	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT
+	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT
 
 }
 
 function su_tests {
 	echo "Parse first segy file"  
-	time $main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_601_610 >daos_segyread_temp.su
+	time $main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/first_file >daos_segyread_temp.su
 	echo "Find number of traces in segy file"
 	time $main_program_path/daos_sutrcount pool=$1 container=$2 svc=$3 <daos_segyread_temp.su 
 	echo "Window traces headers"
@@ -66,13 +66,13 @@ function su_tests {
 	echo "Set traces headers"
 	time $main_program_path/daos_sushw pool=$1 container=$2 svc=$3 <daos_chw.su key=dt a=4000 >daos_shw.su
 	echo "Parse second segy file"
-	time $main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/shot_611_620 >daos_segyread_shots_611_620.su
+	time $main_program_path/daos_segyread pool=$1 container=$2 svc=$3 tape=/second_file >daos_segyread_second_file_shots.su
 	echo "Window traces headers in second file"
-	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_shots_611_620.su key=fldr min=615 max=615  >daos_segyread_shot_615.su
+	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_second_file_shots.su key=fldr min=855 max=855  >daos_segyread_shot_855.su
 
 	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_shw.su key=fldr min=609 max=609  >daos_segyread_shot_609.su
 	echo "Find number of traces in segy file"
-	time $main_program_path/daos_sutrcount pool=$1 container=$2 svc=$3 <daos_segyread_shots_611_620.su 
+	time $main_program_path/daos_sutrcount pool=$1 container=$2 svc=$3 <daos_segyread_second_file_shots.su 
 }
 
 function run_tests {
@@ -84,15 +84,15 @@ function run_tests {
 
 echo 'Copying segy to DFS container...'
 ## Copy velocity segy file to daos.
-$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$first_file out=/shot_601_610
-$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$second_file out=/shot_611_620
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$first_file out=/first_file
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$second_file out=/second_file
 
 echo 'Running commands...'
 ## Run seismic unix commands.
 run_tests $1 $2 $3
 
 echo 'Copy commands output...'
-file_list=(segyread sort wind chw shw segyread_shot_615 segyread_shot_609)
+file_list=(segyread sort wind chw shw segyread_shot_855 segyread_shot_609)
 ## Copy from daos to posix.
 for i in ${file_list[@]};
 do
@@ -107,7 +107,7 @@ $main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_bina
 $main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
 
 echo 'Compare commands...'
-file_list=(segyread sort wind chw shw segyread_shot_615 segyread_shot_609)
+file_list=(segyread sort wind chw shw segyread_shot_855 segyread_shot_609)
 ## Compare outputs.
 for i in ${file_list[@]};
 do

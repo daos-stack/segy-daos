@@ -16,16 +16,14 @@ char *sdoc[] = {
 		" get_headers pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path keys=...",
 		"									",
 		"  Required parameters:							",
-		"  pool_id 		the pool uuid to connect to.			",
-		"  container_id 	the container uuid to connect to.		",
-		"  svc_list 		service rank list to connect to.		",
-		"  in_file 		path of the seismic root object.		",
-		"  keys			array of keys to fetch their header values.	",
+		"  pool_id 			the pool uuid to connect to.			",
+		"  container_id			the container uuid to connect to.		",
+		"  svc_list 			service rank list to connect to.		",
+		"  in_file 			path of the seismic root object.		",
+		"  keys				array of keys to fetch their header values.	",
 		"									",
 		"  Optional parameters:							",
 		"  verbose 			=1 to allow verbose output.		",
-		"  allow_container_creation 	flag to allow creation of container if",
-		"				its not found.				",
 		"  out_file 			path of the file to which		"
 		"				headers will be written 		",
 		NULL};
@@ -46,7 +44,7 @@ main(int argc, char *argv[])
 	/** string holding keys that will be used to return their header values */
 	char 			       *keys;
 	/** Flag to allow container creation if not found */
-	int		 		allow_container_creation;
+	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 				verbose;
 	int 				ascii = 1;
@@ -63,9 +61,6 @@ main(int argc, char *argv[])
 
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
-	}
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
 	}
 	if(!getparstring("out", &out_file)) {
 		out_file = NULL;

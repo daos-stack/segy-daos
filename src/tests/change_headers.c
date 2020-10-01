@@ -61,7 +61,7 @@ main(int argc, char *argv[])
 	/** string holding keys that will be used to change values of key1*/
 	char 			       *key3;
 	/** Flag to allow container creation if not found */
-	int		 		allow_container_creation;
+	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 				verbose;
 	char			       *a;
@@ -85,9 +85,6 @@ main(int argc, char *argv[])
 	/** optional parameters*/
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
-	}
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
 	}
 	if(!getparstring("key1",  &key1)) {
 		key1 = NULL;

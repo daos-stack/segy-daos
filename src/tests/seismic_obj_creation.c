@@ -10,24 +10,24 @@ char *sdoc[] = {
 	        "									",
 		" Seismic object creation functionality equivalent to Seismic unix"
 		" segyread functionality.						",
-		" It builds the seismic graph by creating root object and"
-		" seismic gather objects then parses the segy file and dumps the"
+		" It builds the seismic graph by creating root object and		",
+		" seismic gather objects then parses the segy file and dumps the	",
 		" file headers, traces headers and data to the created graph.		",
 		"									",
 		"									",
 		" seismic_obj_creation pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path out=output_file_path keys=key1,key2,.. ",
 		"									",
 		"  Required parameters:							",
-		"  pool_id 		the pool uuid to connect to.			",
-		"  container_id 	the container uuid to connect to.		",
-		"  svc_list 		service rank list to connect to.		",
-		"  in_file 		path of the segy file that will be parsed.	",
-		"  out_file 		path of the seismic root object that		"
-		"  			will be created.				",
-		"  keys 		array of keys that will be used in linking	"
-		"			traces to seismic gather objects.		",
+		"  pool_id			the pool uuid to connect to.			",
+		"  container_id			the container uuid to connect to.		",
+		"  svc_list			service rank list to connect to.		",
+		"  in_file			path of the segy file that will be parsed.	",
+		"  out_file			path of the seismic root object that		",
+		"  				will be created.				",
+		"  keys				array of keys that will be used in linking	",
+		"				traces to seismic gather objects.		",
 		"  Optional parameters:							",
-		"  verbose 			=1 to allow verbose output.		",
+		"  verbose			=1 to allow verbose output.			",
 		"  allow_container_creation 	flag to allow creation of container if	",
 		"				its not found.				",
 		NULL};
@@ -190,50 +190,27 @@ main(int argc, char *argv[])
 
 	warn("Time taken to parse one file %f \n", time_taken);
 
-//	warn("OPEN SEIS ROOT OBJECT \n"
-//	     "===================== \n");
-//
-//	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), out_file);
-//	printf("FINDING NUMBER OF GATHERS \n");
-//	int cmp_gathers;
-//	cmp_gathers = daos_seis_get_number_of_gathers(segy_root_object,"cdp");
-//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
-//
-//	int shot_gathers;
-//	shot_gathers = daos_seis_get_number_of_gathers(segy_root_object,"fldr");
-//	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
-//
-//	int offset_gathers;
-//	offset_gathers = daos_seis_get_number_of_gathers(segy_root_object,"offset");
-//	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
-//
-//	printf("READING SEGY ROOT BINARY HEADER KEY == \n");
-////	bhed *binary_header = malloc(sizeof(bhed));
-//	DAOS_FILE *daos_binary;
-//	char *bfile;		/* name of binary header file	*/
-//	bfile = "daos_seis_binary";
-//	daos_binary = open_dfs_file(bfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-//	bhed *binary_header = daos_seis_get_binary_header(segy_root_object);
-//	write_dfs_file(daos_binary, (char *) binary_header, BNYBYTES);
-//	close_dfs_file(daos_binary);
-//	free(binary_header);
-//
-//	printf("READING SEGY ROOT TEXT HEADER KEY == \n");
-////	char *text_header = malloc(EBCBYTES*sizeof(char));
-//
-//    DAOS_FILE *daos_text_header;
-//    char *tfile;		/* name of text header file	*/
-//    int rc;
-//    tfile = "daos_seis_text_header";
-//    daos_text_header = open_dfs_file(tfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
-//    char *text_header = daos_seis_get_text_header(segy_root_object);
-//    write_dfs_file(daos_text_header, text_header, EBCBYTES);
-//    close_dfs_file(daos_text_header);
-//    free(text_header);
-//
-//
-//	printf("CLOSE SEGY ROOT OBJECT== \n");
-//	daos_seis_close_root(segy_root_object);
+	seis_root_obj_t *segy_root_object = daos_seis_open_root_path(get_dfs(), out_file);
+	DAOS_FILE *daos_binary;
+	char *bfile;		/* name of binary header file	*/
+	bfile = "daos_seis_binary";
+	daos_binary = open_dfs_file(bfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
+	bhed *binary_header = daos_seis_get_binary_header(segy_root_object);
+	write_dfs_file(daos_binary, (char *) binary_header, BNYBYTES);
+	close_dfs_file(daos_binary);
+	free(binary_header);
+
+	DAOS_FILE *daos_text_header;
+	char *tfile;		/* name of text header file	*/
+	int rc;
+	tfile = "daos_seis_text_header";
+	daos_text_header = open_dfs_file(tfile, S_IFREG | S_IWUSR | S_IRUSR, 'w', 0);
+	char *text_header = daos_seis_get_text_header(segy_root_object);
+	write_dfs_file(daos_text_header, text_header, EBCBYTES);
+	close_dfs_file(daos_text_header);
+	free(text_header);
+
+	daos_seis_close_root(segy_root_object);
 
 	fini_dfs_api();
 

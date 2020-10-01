@@ -14,17 +14,15 @@ char *sdoc[] = {
 		" read_traces pool=uuid container=uuid svc=r0:r1:r2 in=input_file_path out=output_file_path shot_id= ",
 		"									",
 		"  Required parameters:							",
-		"  pool_id 		the pool uuid to connect to.			",
-		"  container_id 	the container uuid to connect to.		",
-		"  svc_list 		service rank list to connect to.		",
-		"  in_file 		path of the seismic root object.		",
-		"  out_file 		path of the file to which traces will be written",
-		"  shot_id		id of the shot to fetch its traces		",
+		"  pool_id 			the pool uuid to connect to.			",
+		"  container_id			the container uuid to connect to.		",
+		"  svc_list 			service rank list to connect to.		",
+		"  in_file 			path of the seismic root object.		",
+		"  out_file 			path of the file to which traces will be written",
+		"  shot_id			id of the shot to fetch its traces		",
 		"									",
 		"  Optional parameters:							",
 		"  verbose 			=1 to allow verbose output.		",
-		"  allow_container_creation 	flag to allow creation of container if	",
-		"				its not found.				",
 		NULL};
 
 int
@@ -41,7 +39,7 @@ main(int argc, char *argv[])
 	/** string of the path of the file that will be written */
 	char 		*out_file;
 	/** Flag to allow container creation if not found */
-	int		allow_container_creation;
+	int		allow_container_creation = 0;
 	/** Flag to allow verbose output */
 	int 		verbose;
 	/** Shot id to read its traces */
@@ -62,9 +60,6 @@ main(int argc, char *argv[])
 		verbose = 0;
 	}
 
-	if (!getparint("contcreation", &allow_container_creation)) {
-		allow_container_creation = 1;
-	}
 
 	struct timeval 		tv1;
 	struct timeval		tv2;

@@ -74,7 +74,7 @@ dfs_get_parent_of_file(dfs_t *dfs, const char *file_directory,
  *		error_code otherwise
  */
 int
-daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th,
+fetch_seismic_entry(daos_handle_t oh, daos_handle_t th,
 		      seismic_entry_t *entry, daos_event_t *ev);
 
 /** Function responsible for creating seismic root object under root dfs
@@ -97,7 +97,7 @@ daos_seis_fetch_entry(daos_handle_t oh, daos_handle_t th,
  * 		error_code otherwise
  */
 int
-daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
+seismic_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
 			  daos_oclass_id_t cid,	char *name, dfs_obj_t *parent,
 			  int num_of_keys, char **keys);
 
@@ -114,7 +114,7 @@ daos_seis_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
  *		error_code otherwise
  */
 int
-daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, seismic_entry_t entry);
+seismic_obj_update(daos_handle_t oh, daos_handle_t th, seismic_entry_t entry);
 
 /** Function responsible for preparing seismic entry to update keys stored
  *  under root seismic object.
@@ -140,7 +140,7 @@ daos_seis_obj_update(daos_handle_t oh, daos_handle_t th, seismic_entry_t entry);
  * 		error_code otherwise
  */
 int
-daos_seis_root_update(seis_root_obj_t* root_obj, char* dkey_name,
+seismic_root_obj_update(seis_root_obj_t* root_obj, char* dkey_name,
 		      char* akey_name , char* databuf, int nbytes,
 		      daos_iod_type_t iod_type);
 
@@ -247,8 +247,8 @@ check_key_value(Value target, char *key, gathers_list_t *head,
  * 		error_code otherwise
  */
 int
-daos_seis_trace_oids_obj_create(dfs_t* dfs, daos_oclass_id_t cid,
-				seis_obj_t *seis_obj, int num_of_gathers);
+trace_oids_obj_create(dfs_t* dfs, daos_oclass_id_t cid,
+		      seis_obj_t *seis_obj, int num_of_gathers);
 
 /** Function responsible for creating seismic gather objects.
  *
@@ -266,9 +266,9 @@ daos_seis_trace_oids_obj_create(dfs_t* dfs, daos_oclass_id_t cid,
  *
  */
 int
-daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid,
-			    seis_root_obj_t *parent, seis_obj_t **obj,
-			    char* key, int index);
+seismic_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid,
+			  seis_root_obj_t *parent, seis_obj_t **obj,
+			  char* key, int index);
 
 /** Function responsible for preparing seismic entry with trace header data
  *  and calling object update functionality.
@@ -287,7 +287,7 @@ daos_seis_gather_obj_create(dfs_t* dfs,daos_oclass_id_t cid,
  *		error_code otherwise
  */
 int
-daos_seis_trh_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
+trace_header_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
 
 /** Function responsible for writing trace data as DAOS_ARRAY under
  *  specific trace data object. It is called to update/insert trace
@@ -303,7 +303,7 @@ daos_seis_trh_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
  *		error_code otherwise
  */
 int
-daos_seis_tr_data_update(trace_oid_oh_t* trace_data_obj, segy *trace);
+trace_data_update(trace_oid_oh_t* trace_data_obj, segy *trace);
 
 /** Function responsible for updating gather_TRACE_OIDS array object.
  *  It is called mainly at the end of the parsing function and
@@ -319,8 +319,8 @@ daos_seis_tr_data_update(trace_oid_oh_t* trace_data_obj, segy *trace);
  * 		error_code otherwise
  */
 int
-daos_seis_gather_oids_array_update(trace_oid_oh_t* object,
-				   seis_gather_t *gather);
+gather_oids_array_update(trace_oid_oh_t* object,
+			 seis_gather_t *gather);
 
 /** Function responsible for calculating the object id of trace_data_object
  *  from object_id of trace_header_object.
@@ -333,7 +333,7 @@ daos_seis_gather_oids_array_update(trace_oid_oh_t* object,
  *
  */
 daos_obj_id_t
-get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid);
+get_trace_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid);
 
 /** Function responsible for creating trace_header_object & trace_data_object
  *  It is called once for each trace while parsing the segy_file.
@@ -351,7 +351,7 @@ get_tr_data_oid(daos_obj_id_t *tr_hdr, daos_oclass_id_t cid);
  * 		error_code otherwise
  */
 int
-daos_seis_tr_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index,
+trace_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index,
 			segy *trace);
 
 /** Function responsible for preparing the seismic entry.
@@ -396,8 +396,9 @@ prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid,
  * 		error_code otherwise
  */
 int
-update_gather_object(seis_obj_t *gather_obj, char *dkey_name, char *akey_name,
-       		     char *data, int nbytes, daos_iod_type_t type);
+update_seismic_gather_object(seis_obj_t *gather_obj, char *dkey_name,
+			     char *akey_name, char *data, int nbytes,
+			     daos_iod_type_t type);
 
 /** Function responsible for linking each trace to the seismic object gathers.
  *  It is called once while creating the trace header & data objects.
@@ -414,7 +415,7 @@ update_gather_object(seis_obj_t *gather_obj, char *dkey_name, char *akey_name,
  * 		error_code otherwise
  */
 int
-daos_seis_tr_linking(trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key);
+trace_linking(trace_obj_t* trace_obj, seis_obj_t *seis_obj, char *key);
 
 /** Function responsible for creating two pipes.
  *  It is called to enable reading and writing directly through the pipe
@@ -732,8 +733,8 @@ window_headers(traces_list_t **head, char **window_keys, int number_of_keys,
  *
  */
 char **
-daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
-		      int direction);
+fetch_seismic_obj_dkeys(seis_obj_t *seismic_object, int sort, char *key,
+		      	int direction);
 
 /** Function responsible for destroying existing seismic object
  *  and creating new one.
@@ -754,8 +755,8 @@ daos_seis_fetch_dkeys(seis_obj_t *seismic_object, int sort, char *key,
  *  \param[in]	root			pointer to opened root seismic object.
  */
 void
-daos_seis_replace_objects(dfs_t *dfs, int daos_mode, char *key,
-			  traces_list_t *trace_list, seis_root_obj_t *root);
+replace_seismic_objects(dfs_t *dfs, int daos_mode, char *key,
+			traces_list_t *trace_list, seis_root_obj_t *root);
 
 /** Function responsible for tokenizing a string given a separator
  *
