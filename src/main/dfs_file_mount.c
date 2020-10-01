@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     int allow_container_creation;   /* Flag to allow container creation if not found */
     int validate;                   /* Flag for validation after write */
     int daostoposix;                /* Flag to indicate a transfer from DAOS DFS to Posix, otherwise opposite */
-
+    int i;
 
     /* Variables used in program */
     daos_size_t size;
@@ -95,7 +95,6 @@ int main(int argc, char *argv[]) {
                 printf("File size read back from Posix is %ld \n", len);
             }
             // Compare byte arrays.
-            int i;
             for(i=0 ; i<len; i++){
                 if(ret[i]!=read[i]){
                     printf("Validation fails : bytes mismatch \n");
@@ -139,7 +138,6 @@ int main(int argc, char *argv[]) {
                 printf("File size read back from DAOS is %ld \n", read_size);
             }
             // Compare byte arrays.
-            int i;
             for(i=0 ; i<len; i++){
                 if(ret[i]!=read[i]){
                     printf("Validation fails : bytes mismatch \n");
