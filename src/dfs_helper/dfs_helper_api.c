@@ -227,6 +227,7 @@ daos_size_t read_dfs_file_with_offset(DAOS_FILE* file, char *byte_array, long le
     if (verbose_output) {
         warn("File size read is %ld \n", size);
     }
+
     return size;
 }
 
@@ -338,3 +339,9 @@ void remove_dfs_file(const char *file){
         warn("File %s doesn't exist to be removed \n", file);
     }
 }
+
+
+dfs_t* get_dfs(){
+	return dfs;
+}
+

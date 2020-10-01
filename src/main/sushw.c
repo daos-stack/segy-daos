@@ -308,7 +308,6 @@ main(int argc, char **argv)
 			}
 
 		}
-
 		++itr;
 		puttr(&tr);
 	}

@@ -207,6 +207,7 @@ size_t write_posix(const char *file, char *byte_array, int len);
 void remove_dfs_file(const char *file);
 
 
+dfs_t* get_dfs();
 
 #if defined(__cplusplus)
 }

@@ -230,8 +230,8 @@ void fputtr_internal(FILE *fp, segy *tp, cwp_Bool fixed_length)
 		break;
 		case DISK:
 		    infoptr->is_dfs = 1;
-            get_file_name(fp, infoptr->fname);
-            infoptr->daos_out = open_dfs_file(infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
+		  get_file_name(fp, infoptr->fname);
+            	infoptr->daos_out = open_dfs_file(infoptr->fname, S_IFREG | S_IWUSR | S_IRUSR, 'w', 1);
         break;
 		default:  /* the rest are ok */
 		break;
