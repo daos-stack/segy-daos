@@ -9,8 +9,6 @@
 
 #include <daos/event.h>
 
-#define TRACEHDR_BYTES 240
-
 #define GET_MACRO(_1,_2,_3,_4,NAME,...) NAME
 #define warn(...) GET_MACRO(__VA_ARGS__, warn4, warn3, warn2, warn1)(__VA_ARGS__)
 #define warn1(x) fprintf(stderr,x)
@@ -61,7 +59,7 @@ daos_seis_open_root_path(dfs_t *dfs, const char *root_path)
 	mode_t 			 mode;
 	int 		 	 rc;
 
-	/** Open the dfs object containing the root seismic object **/
+	/** Lookup and open the dfs object containing the root seismic object **/
 	rc = dfs_lookup(dfs, root_path, O_RDWR, &root, &mode, &stbuf);
 	if (rc != 0) {
 		err("Looking up path<%s> in dfs failed , error code = %d \n",
@@ -70,7 +68,7 @@ daos_seis_open_root_path(dfs_t *dfs, const char *root_path)
 	}
 
 	/** Fetch parameters of the seismic root object **/
-	root_obj = daos_seis_open_root(dfs, root);
+	root_obj = fetch_seismic_root_entries(dfs, root);
 
 	return root_obj;
 }
@@ -142,7 +140,7 @@ daos_seis_get_binary_header(seis_root_obj_t *root)
 	bhdr = malloc(sizeof(bhed));
 	/** prepare seismic entry & fetch binary header from root object */
 	prepare_seismic_entry(&entry, root->root_obj->oid, DS_D_FILE_HEADER,
-			      DS_A_BINARY_HEADER, (char*) bhdr, BNYBYTES,
+			      DS_A_BINARY_HEADER, (char*) bhdr, SEIS_BNYBYTES,
 			      DAOS_IOD_ARRAY);
 	rc = daos_seis_fetch_entry(root->root_obj->oh, DAOS_TX_NONE, &entry,
 				   NULL);
@@ -162,10 +160,10 @@ daos_seis_get_text_header(seis_root_obj_t *root)
 	char 		       *text_header;
 	int	 		rc;
 
-	text_header = malloc(EBCBYTES * sizeof(char));
+	text_header = malloc(SEIS_EBCBYTES * sizeof(char));
 	/** prepare seismic entry & fetch text header from root object */
 	prepare_seismic_entry(&entry, root->root_obj->oid, DS_D_FILE_HEADER,
-			      DS_A_TEXT_HEADER, text_header, EBCBYTES,
+			      DS_A_TEXT_HEADER, text_header, SEIS_EBCBYTES,
 		              DAOS_IOD_ARRAY);
 	rc = daos_seis_fetch_entry(root->root_obj->oh, DAOS_TX_NONE, &entry,
 				   NULL);
@@ -259,19 +257,19 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 	cmdbuf = (char*) malloc(BUFSIZ * sizeof(char));
 
 	char *ebcbuf; /* ebcdic data buffer			*/
-	ebcbuf = (char*) malloc(EBCBYTES * sizeof(char));
+	ebcbuf = (char*) malloc(SEIS_EBCBYTES * sizeof(char));
 	int ebcdic = 1; /* ebcdic to ascii conversion flag	*/
 
 	cwp_String *key1; /* output key(s)		*/
-	key1 = (cwp_String*) malloc(SU_NKEYS * sizeof(cwp_String));
-	cwp_String key2[SU_NKEYS]; /* first input key(s)		*/
-	cwp_String type1[SU_NKEYS]; /* array of types for key1	*/
-	char type2[SU_NKEYS]; /* array of types for key2	*/
-	int ubyte[SU_NKEYS];
+	key1 = (cwp_String*) malloc(SEIS__NKEYS * sizeof(cwp_String));
+	cwp_String key2[SEIS__NKEYS]; /* first input key(s)		*/
+	cwp_String type1[SEIS__NKEYS]; /* array of types for key1	*/
+	char type2[SEIS__NKEYS]; /* array of types for key2	*/
+	int ubyte[SEIS__NKEYS];
 	int nkeys; /* number of keys to be computed*/
 	int n; /* counter of keys getparred	*/
 	int ikey; /* loop counter of keys 	*/
-	int index1[SU_NKEYS]; /* array of indexes for key1 	*/
+	int index1[SEIS__NKEYS]; /* array of indexes for key1 	*/
 
 	/* deal with number of extended text headers */
 	short nextended;
@@ -337,8 +335,10 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 		/** Write binary and text headers to root object */
 		write_headers(bh, ebcbuf, root_obj);
 	}
+
 	/** Parse Extended text headers */
 	parse_exth(nextended, daos_tape,ebcbuf, root_obj);
+	free(ebcbuf);
 
 	/* Read the traces */
 	nsflag = cwp_false;
@@ -380,9 +380,9 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 			seismic_obj[i]->seis_gather_trace_oids_obj = NULL;
 			read_object_gathers(root_obj, seismic_obj[i]);
 			num_of_gathers[i]= seismic_obj[i]->number_of_gathers;
-//			printf("number of gathers in object %s is %d %d \n",
-//			       seismic_obj[i]->name, seismic_obj[i]->gathers->size,
-//			       seismic_obj[i]->number_of_gathers);
+			printf("number of gathers in object %s is %ld %d \n",
+			       seismic_obj[i]->name, seismic_obj[i]->gathers->size,
+			       seismic_obj[i]->number_of_gathers);
 		}
 //		printf("FINISHED FETCHING LINKED LIST OF GATHERS \n");
 	}
@@ -490,8 +490,8 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 //	printf("Created trace oids objects \n");
 
 	for(i=0; i< num_of_keys; i++) {
-		rc = update_gather_traces(dfs, seismic_obj[i]->gathers, seismic_obj[i],
-					  get_dkey(seismic_obj[i]->name), DS_A_NTRACES);
+		rc = update_gather_data(dfs, seismic_obj[i]->gathers, seismic_obj[i],
+					  get_dkey(seismic_obj[i]->name));
 		if (rc != 0) {
 			err("Updating number of traces key"
 			    " failed, error code = %d \n", rc);
@@ -643,9 +643,9 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		/**Allocate oids array , size = number of traces */
 		daos_obj_id_t *oids = malloc(num_of_traces * sizeof(daos_obj_id_t));
 		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers(root, oids,
-						  &gather_traces_oids,
-						  num_of_traces);
+		rc = fetch_array_of_trace_headers_oids(root, oids,
+						       &gather_traces_oids,
+						       num_of_traces);
 		if(rc != 0) {
 			err("Fetching array of traces headers failed, error"
 			    " code = %d \n", rc);
@@ -690,7 +690,7 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		}
 		/** fetch traces data and merge the two linked lists */
 		if (gather_trace_list->head != NULL) {
-			fetch_traces_data(root->coh, &gather_trace_list,
+			daos_seis_fetch_traces_data(root->coh, &gather_trace_list,
 					  daos_mode);
 			merge_trace_lists(&trace_list, &gather_trace_list);
 		}
@@ -859,9 +859,9 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 		/** Allocate oids array , size = number of traces */
 		daos_obj_id_t *oids = malloc(number_of_traces * sizeof(daos_obj_id_t));
 		/** Fetch array of trace headers oids*/
-		rc = fetch_array_of_trace_headers(root, oids,
-						  &gather_traces_oids,
-						  number_of_traces);
+		rc = fetch_array_of_trace_headers_oids(root, oids,
+						       &gather_traces_oids,
+						       number_of_traces);
 		if(rc != 0) {
 			err("Fetching array of traces headers oids failed, error"
 			    " code = %d \n", rc);
@@ -875,7 +875,7 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 	window_headers(&trace_list, window_keys, number_of_keys,
 		       type, min_keys, max_keys);
 	/** Fetch traces data */
-	fetch_traces_data(root->coh, &trace_list, daos_mode);
+	daos_seis_fetch_traces_data(root->coh, &trace_list, daos_mode);
 	/** Close seismic object */
 	rc = daos_obj_close(seismic_object->oh, NULL);
 	if(rc != 0) {
@@ -996,9 +996,9 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 		/** Allocate oids array , size = number of traces */
 		oids = malloc(number_of_traces * sizeof(daos_obj_id_t));
 		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers(root, oids,
-						  &gather_traces_oids,
-						  number_of_traces);
+		rc = fetch_array_of_trace_headers_oids(root, oids,
+						       &gather_traces_oids,
+						       number_of_traces);
 		if(rc != 0) {
 			err("Fetching array of traces headers oids failed,"
 			    " error code = %d \n", rc);
@@ -1128,9 +1128,9 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 		/** Allocate oids array , size = number of traces */
 		oids = malloc(num_of_traces * sizeof(daos_obj_id_t));
 		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers(root, oids,
-						  &gather_traces_oids,
-						  num_of_traces);
+		rc = fetch_array_of_trace_headers_oids(root, oids,
+						       &gather_traces_oids,
+						       num_of_traces);
 		if(rc != 0) {
 			err("Fetching array of traces headers oids failed, "
 			    "error code = %d \n", rc);
@@ -1241,9 +1241,9 @@ daos_seis_get_headers(seis_root_obj_t *root)
 		/** Allocate oids array , size = number of traces */
 		oids = malloc(number_of_traces * sizeof(daos_obj_id_t));
 		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers(root, oids,
-						  &gather_traces_oids,
-						  number_of_traces);
+		rc = fetch_array_of_trace_headers_oids(root, oids,
+						       &gather_traces_oids,
+						       number_of_traces);
 		if(rc != 0) {
 			err("Fetching array of traces headers oids failed, "
 			    "error code = %d \n", rc);
@@ -1352,7 +1352,7 @@ daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 			if(ihead==0) {
 				tr.tracl = ++tracl;
 			} else {
-				read_dfs_file(daos_headfp, (char *)&tr, HDRBYTES);
+				read_dfs_file(daos_headfp, (char *)&tr, TRACEHDR_BYTES);
 			}
 			tr.ns = ns;
 			tr.trid = TREAL;
@@ -1421,10 +1421,9 @@ daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 //	printf("Created trace oids objects \n");
 
 	for(i=0; i< root->num_of_keys; i++) {
-		rc = update_gather_traces(dfs, seismic_obj[i]->gathers,
+		rc = update_gather_data(dfs, seismic_obj[i]->gathers,
 					  seismic_obj[i],
-					  get_dkey(seismic_obj[i]->name),
-					  DS_A_NTRACES);
+					  get_dkey(seismic_obj[i]->name));
 		if (rc != 0) {
 			err("Updating number of traces key"
 			    " failed, error code = %d \n", rc);
@@ -1504,7 +1503,7 @@ daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
 				   DAOS_IOD_SINGLE);
 	if (rc != 0) {
 		err("Updating root object num_of_keys failed, "
-		    "error code = %d \n",keys[i], rc);
+		    "error code = %d \n", rc);
 		return;
 	}
 
@@ -1525,5 +1524,72 @@ daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
 	}
 }
 
+void
+daos_seis_fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
+		  	    int daos_mode)
+{
+	daos_array_iod_t 	iod;
+	seismic_entry_t 	seismic_entry = {0};
+	traces_headers_t       *current;
+	trace_oid_oh_t 		trace_data_obj;
+	daos_obj_id_t		hdr_obj_id;
+	daos_range_t 		rg;
+	d_sg_list_t 		sgl;
+	d_iov_t 		iov;
+	int 			rc;
+	int 			i;
+
+	current = (*head_traces)->head;
+	if (current == NULL) {
+		warn("Linked list of traces headers is empty.\n");
+		return;
+	}
+
+	while (current != NULL) {
+		/** calculate trace data oid from header oid*/
+		hdr_obj_id = current->trace.trace_header_obj;
+		trace_data_obj.oid = get_tr_data_oid(&hdr_obj_id, OC_SX);
+		/** open trace data object */
+		rc = daos_array_open_with_attr(coh, (trace_data_obj).oid,
+					       DAOS_TX_NONE, DAOS_OO_RW, 1,
+					       200 * sizeof(float),
+					       &(trace_data_obj.oh), NULL);
+		if (rc != 0) {
+			err("Opening trace data object with attr() failed, "
+			    "error code = %d \n", rc);
+			return;
+		}
+		/** set scatter gather list and io descriptor */
+		sgl.sg_nr = 1;
+		sgl.sg_nr_out = 0;
+		current->trace.data = malloc(current->trace.ns *
+					     sizeof(float));
+		seismic_entry.data = (char*) current->trace.data;
+		d_iov_set(&iov, (void*) (seismic_entry.data),
+			  current->trace.ns * sizeof(float));
+		sgl.sg_iovs = &iov;
+		iod.arr_nr = 1;
+		rg.rg_len = current->trace.ns * sizeof(float);
+		rg.rg_idx = 0;
+		iod.arr_rgs = &rg;
+		/** Read trace data */
+		rc = daos_array_read(trace_data_obj.oh, DAOS_TX_NONE,
+				     &iod, &sgl, NULL);
+		if (rc != 0) {
+			err("Reading trace data failed, error"
+			    " code = %d \n", rc);
+			return;
+		}
+		/** close trace data object */
+		rc = daos_array_close(trace_data_obj.oh, NULL);
+		if(rc != 0){
+			err("Closing trace data object failed, error code "
+					"= %d \n", rc);
+			return;
+		}
+		current = current->next_trace;
+	}
+
+}
 
 

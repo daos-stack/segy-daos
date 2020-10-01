@@ -170,7 +170,7 @@ main(int argc, char *argv[])
 	dfs_obj_t 		*parent = NULL;
 	file_name = malloc(1024 * sizeof(char));
 
-	parent = get_parent_of_file_new(get_dfs(), out_file, 1, file_name, 1);
+	parent = dfs_get_parent_of_file(get_dfs(), out_file, 1, file_name, 1);
 
 	seis_root_obj_t 	*root_obj;
 	seis_obj_t 		**seismic_obj;
@@ -219,7 +219,6 @@ main(int argc, char *argv[])
 
 	/** Close opened segy file */
 	close_dfs_file(segyfile);
-
 
 	time_taken = (double) (tv2.tv_usec - tv1.tv_usec) / 1000000 +
 		     (double) (tv2.tv_sec - tv1.tv_sec);

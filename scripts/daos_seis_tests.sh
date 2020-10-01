@@ -6,6 +6,8 @@ if [ "$#" -ne 3 ]; then
     exit 1
 fi
 
+#cd data
+
 tests_program_path=./build/tests_build
 main_program_path=./build/main_build
 first_file=shots_601_610_cdp_offset_calculated.segy
@@ -82,8 +84,8 @@ function run_tests {
 
 echo 'Copying segy to DFS container...'
 ## Copy velocity segy file to daos.
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=$first_file out=/shot_601_610
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=$second_file out=/shot_611_620
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$first_file out=/shot_601_610
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$second_file out=/shot_611_620
 
 echo 'Running commands...'
 ## Run seismic unix commands.
@@ -94,15 +96,15 @@ file_list=(segyread sort wind chw shw segyread_shot_615 segyread_shot_609)
 ## Copy from daos to posix.
 for i in ${file_list[@]};
 do
-	./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_$i.su" out="daos_seis_$i.su" daostoposix=1
-	./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_$i.su" out="daos_$i.su" daostoposix=1
+	$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_$i.su" out="daos_seis_$i.su" daostoposix=1
+	$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_$i.su" out="daos_$i.su" daostoposix=1
 	
 done
 
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="binary" out="daos_binary" daostoposix=1
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="header" out="daos_header" daostoposix=1
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_binary" out="daos_seis_binary" daostoposix=1
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="binary" out="daos_binary" daostoposix=1
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="header" out="daos_header" daostoposix=1
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_binary" out="daos_seis_binary" daostoposix=1
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
 
 echo 'Compare commands...'
 file_list=(segyread sort wind chw shw segyread_shot_615 segyread_shot_609)

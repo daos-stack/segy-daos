@@ -28,12 +28,14 @@ export LD_LIBRARY_PATH=/usr/lib:/home/daos/daos/build/src/common:/home/daos/daos
 * DAOS_Segy mapping target is to convert seismic data stored in segy files back to its native format through utilizing the DAOS API and object storage. 
 * This will help get rid of segy files(widely used in seismic processing) constraints by directly accessing the required data(traces) saving the time wasted in passing through all data stored.
 
-##Run DAOS-SEIS mapping test.
+##Prepare tests
+* Make sure you have the original seismic unix running.
+* Run ./scripts/daos_seis_prepare_tests.sh to download two shot files of the BP model, and calculate the cdp and offset header values.
+
+##DAOS-SEIS mapping tests.
 * Make sure you have daos_server and daos_agent processes running.
 * Make sure to export needed shared libraries
    eg: export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/daosteam/mirna/daos-segy/build/dfs_helper_build:/home/daosteam/mirna/daos-segy/build/client/seis_build:
-* Make sure first to download two segy files.
-   eg: BP model segy files through the following link: https://wiki.seg.org/wiki/2004_BP_velocity_estimation_benchmark_model
 * Create a pool using dmg pool create command.
 * Run ./scripts/daos_seis_tests.sh <pool_uuid> <container_uuid> <ranklist>, will mount the downloaded segy files, and run a series of seismic processing commands:
  	* Parse the segy file and build the DAOS-SEIS mapping graph.
@@ -51,7 +53,7 @@ Then the same flow of the processing commands will be executed using the previou
 Then all created files through the processing flows will be copied from the daos file system to the posix directory and compared.
 NOTE: daos_seis_tests.sh script can be updated to change the first and second file paths.
 
-##Run time test.
+##time tests.
 This test simply compares the run time of the main processing commands in the original seismic unix on posix system vs original seismic unix in dfs container vs modified(light) seismic unix in dfs container vs daos seis mapping in dfs container.
  
 * Make sure you have daos_server and daos_agent processes running.

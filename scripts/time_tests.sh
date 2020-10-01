@@ -6,8 +6,10 @@ if [ "$#" -ne 4 ]; then
     exit 1
 fi
 
-tests_program_path=./build/tests_build
-main_program_path=./build/main_build
+cd data 
+
+tests_program_path=./../build/tests_build
+main_program_path=./../build/main_build
 first_file=shots_601_610_cdp_offset_calculated.segy
 second_file=shots_611_620_cdp_offset_calculated.segy
 mount_path=/tmp/dfs_test
@@ -72,7 +74,6 @@ function daos_seis_mapping_time_tests {
 	{ time $4/sort_traces pool=$1 container=$2 svc=$3 in=/SHOTS_601_610_SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+cdp,+gx; } 2>> $5
 }
 
-
 function run_tests {
 	echo "Running Original SU commands outside dfs container." >>$4
 	original_su_time_tests $first_file $4
@@ -86,8 +87,8 @@ function run_tests {
 
 echo 'Copying segy to DFS container...'
 ## Copy velocity segy file to daos.
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=$first_file out=/shot_601_610
-./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in=$second_file out=/shot_611_620
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$first_file out=/shot_601_610
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in=$second_file out=/shot_611_620
 
 echo 'Running commands...'
 ## Run seismic unix commands.
@@ -98,8 +99,7 @@ file_list=(segyread wind sort)
 ## Copy from daos to posix.
 for i in ${file_list[@]};
 do
-	./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_$i.su" out="daos_seis_$i.su" daostoposix=1
-	./build/main_build/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_$i.su" out="daos_$i.su" daostoposix=1
-	
+	$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_$i.su" out="daos_seis_$i.su" daostoposix=1
+	$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_$i.su" out="daos_$i.su" daostoposix=1
 done
 

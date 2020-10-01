@@ -204,7 +204,7 @@ main(int argc, char *argv[])
 	/** Get traces headers */
 	traces_list_t *traces = daos_seis_get_headers(seis_root_object);
 	/** Get traces data */
-	fetch_traces_data((get_dfs())->coh, &traces,get_daos_obj_mode(O_RDWR));
+	daos_seis_fetch_traces_data((get_dfs())->coh, &traces,get_daos_obj_mode(O_RDWR));
 	/** Open output file to write traces to */
 	FILE *fd = fopen(out_file, "w");
 

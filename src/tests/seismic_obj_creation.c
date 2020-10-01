@@ -148,7 +148,7 @@ main(int argc, char *argv[])
 
 	file_name = malloc(1024 * sizeof(char));
 
-	parent = get_parent_of_file_new(get_dfs(), out_file, 1, file_name, 1);
+	parent = dfs_get_parent_of_file(get_dfs(), out_file, 1, file_name, 1);
 
 	seis_root_obj_t 	*root_obj;
 	seis_obj_t 		**seismic_obj;
