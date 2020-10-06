@@ -74,22 +74,12 @@ main(int argc, char *argv[])
 	}
 
 	/** keys tokenization */
-	char 			temp[4096];
 	char			*temp_keys = malloc((strlen(keys) +1) * sizeof(char));
 	int 			number_of_keys =0;
-	const char 		*sep = ",";
-	char 			*token;
 	char 		        **header_keys;
 
 	strcpy(temp_keys, keys);
-	strcpy(temp, keys);
-	token = strtok(temp, sep);
-	while( token != NULL ) {
-		number_of_keys++;
-		token = strtok(NULL, sep);
-	}
-	header_keys = malloc(number_of_keys * sizeof(char*));
-	tokenize_str((void**)header_keys,",", keys, 0);
+	tokenize_str((void***)&header_keys,",", keys, 0, &number_of_keys);
 
 	int 			i;
 	/** integer flag, it is set to check if fldr key exists or not */
@@ -121,8 +111,7 @@ main(int argc, char *argv[])
 		strcpy(old_keys, temp_keys);
 		strcpy(key_buffer, "fldr,");
 		strcat(key_buffer,temp_keys);
-		updated_keys = malloc(number_of_keys * sizeof(char*));
-		tokenize_str((void**)updated_keys,",", key_buffer, 0);
+		tokenize_str((void***)&updated_keys,",", key_buffer, 0, &number_of_keys);
 		free(old_keys);
 		free(key_buffer);
 		for(i = 0; i<  number_of_keys - 1; i++){
@@ -130,7 +119,6 @@ main(int argc, char *argv[])
 		}
 		free(header_keys);
 	}
-
 //	warn("\n PARSING SEGY FILE \n"
 //	     "================= \n");
 
@@ -159,8 +147,8 @@ main(int argc, char *argv[])
 		daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys,
 				       header_keys, &root_obj, seismic_obj);
 		gettimeofday(&tv1, NULL);
-		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
-				     header_keys, root_obj, seismic_obj, 0);
+		daos_seis_parse_segy(get_dfs(), segyfile->file,
+				     root_obj, seismic_obj, 0);
 		gettimeofday(&tv2, NULL);
 
 		/** Free the allocated array of keys */
@@ -172,8 +160,8 @@ main(int argc, char *argv[])
 		daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys,
 				       updated_keys, &root_obj, seismic_obj);
 		gettimeofday(&tv1, NULL);
-		daos_seis_parse_segy(get_dfs(), segyfile->file, number_of_keys,
-				     updated_keys, root_obj, seismic_obj, 0);
+		daos_seis_parse_segy(get_dfs(), segyfile->file,
+				     root_obj, seismic_obj, 0);
 		gettimeofday(&tv2, NULL);
 		/** Free the allocated array of keys */
 		for(i = 0; i<  number_of_keys; i++){

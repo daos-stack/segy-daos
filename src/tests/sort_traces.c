@@ -137,29 +137,16 @@ main(int argc, char *argv[])
 	cwp_String 	       *type;
 
 	if(w_keys != NULL) {
-		strcpy(temp, w_keys);
-		token = strtok(temp, sep);
-		while( token != NULL ) {
-			number_of_window_keys++;
-			token = strtok(NULL, sep);
-		}
-		window_keys = malloc(number_of_window_keys * sizeof(char*));
+		tokenize_str((void***)&window_keys,",", w_keys, 0, &number_of_window_keys);
 		min_keys = malloc(number_of_window_keys * sizeof(Value));
 		max_keys = malloc(number_of_window_keys * sizeof(Value));
 		type = malloc(number_of_window_keys * sizeof(cwp_String));
-		i = 0;
-		strcpy(temp,w_keys);
+		for(i=0; i<number_of_window_keys; i++) {
+			type[i] = hdtype(window_keys[i]);
+		}
 		strcpy(min_temp,min);
 		strcpy(max_temp,max);
-		token = strtok(temp,sep);
-		while(token != NULL){
-			window_keys[i]= malloc((strlen(token) + 1) *
-					       sizeof(char));
-			strcpy(window_keys[i], token);
-			type[i] = hdtype(window_keys[i]);
-			token = strtok(NULL,sep);
-			i++;
-		}
+
 		char *min_token = strtok(min_temp, sep);
 		i = 0;
 		while(min_token != NULL){

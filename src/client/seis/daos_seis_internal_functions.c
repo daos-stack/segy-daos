@@ -1264,506 +1264,36 @@ MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction,
 void
 get_header_value(trace_t trace, char *sort_key, Value *value)
 {
-	if (strcmp(sort_key, "tracl") == 0) {
-		value->i = trace.tracl;
-	} else if (strcmp(sort_key, "tracr") == 0) {
-		value->i = trace.tracr;
-	} else if (strcmp(sort_key, "fldr") == 0) {
-		value->i = trace.fldr;
-	} else if (strcmp(sort_key, "tracf") == 0) {
-		value->i = trace.tracf;
-	} else if (strcmp(sort_key, "ep") == 0) {
-		value->i = trace.ep;
-	} else if (strcmp(sort_key, "cdp") == 0) {
-		value->i = trace.cdp;
-	} else if (strcmp(sort_key, "cdpt") == 0) {
-		value->i = trace.cdpt;
-	} else if (strcmp(sort_key, "trid") == 0) {
-		value->h = trace.trid;
-	} else if (strcmp(sort_key, "nvs") == 0) {
-		value->h = trace.nvs;
-	} else if (strcmp(sort_key, "nhs") == 0) {
-		value->h = trace.nhs;
-	} else if (strcmp(sort_key, "duse") == 0) {
-		value->h = trace.duse;
-	} else if (strcmp(sort_key, "offset") == 0) {
-		value->i = trace.offset;
-	} else if (strcmp(sort_key, "gelev") == 0) {
-		value->u = trace.gelev;
-	} else if (strcmp(sort_key, "selev") == 0) {
-		value->i = trace.selev;
-	} else if (strcmp(sort_key, "sdepth") == 0) {
-		value->i = trace.sdepth;
-	} else if (strcmp(sort_key, "gdel") == 0) {
-		value->i = trace.gdel;
-	} else if (strcmp(sort_key, "sdel") == 0) {
-		value->i = trace.sdel;
-	} else if (strcmp(sort_key, "swdep") == 0) {
-		value->i = trace.swdep;
-	} else if (strcmp(sort_key, "gwdep") == 0) {
-		value->i = trace.gwdep;
-	} else if (strcmp(sort_key, "scalel") == 0) {
-		value->h = trace.scalel;
-	} else if (strcmp(sort_key, "scalco") == 0) {
-		value->h = trace.scalco;
-	} else if (strcmp(sort_key, "sx") == 0) {
-		value->i = trace.sx;
-	} else if (strcmp(sort_key, "sy") == 0) {
-		value->i = trace.sy;
-	} else if (strcmp(sort_key, "gx") == 0) {
-		value->i = trace.gx;
-	} else if (strcmp(sort_key, "gy") == 0) {
-		value->i = trace.gy;
-	} else if (strcmp(sort_key, "counit") == 0) {
-		value->h = trace.counit;
-	} else if (strcmp(sort_key, "wevel") == 0) {
-		value->h = trace.wevel;
-	} else if (strcmp(sort_key, "swevel") == 0) {
-		value->h = trace.swevel;
-	} else if (strcmp(sort_key, "sut") == 0) {
-		value->h = trace.sut;
-	} else if (strcmp(sort_key, "gut") == 0) {
-		value->h = trace.gut;
-	} else if (strcmp(sort_key, "sstat") == 0) {
-		value->h = trace.sstat;
-	} else if (strcmp(sort_key, "gstat") == 0) {
-		value->h = trace.gstat;
-	} else if (strcmp(sort_key, "tstat") == 0) {
-		value->h = trace.tstat;
-	} else if (strcmp(sort_key, "laga") == 0) {
-		value->h = trace.laga;
-	} else if (strcmp(sort_key, "lagb") == 0) {
-		value->h = trace.lagb;
-	} else if (strcmp(sort_key, "delrt") == 0) {
-		value->h = trace.delrt;
-	} else if (strcmp(sort_key, "muts") == 0) {
-		value->h = trace.muts;
-	} else if (strcmp(sort_key, "mute") == 0) {
-		value->h = trace.mute;
-	} else if (strcmp(sort_key, "ns") == 0) {
-		value->u = trace.ns;
-	} else if (strcmp(sort_key, "dt") == 0) {
-		value->u = trace.dt;
-	} else if (strcmp(sort_key, "gain") == 0) {
-		value->h = trace.gain;
-	} else if (strcmp(sort_key, "igc") == 0) {
-		value->h = trace.igc;
-	} else if (strcmp(sort_key, "igi") == 0) {
-		value->h = trace.igi;
-	} else if (strcmp(sort_key, "corr") == 0) {
-		value->h = trace.corr;
-	} else if (strcmp(sort_key, "sfs") == 0) {
-		value->h = trace.sfs;
-	} else if (strcmp(sort_key, "sfe") == 0) {
-		value->h = trace.sfe;
-	} else if (strcmp(sort_key, "slen") == 0) {
-		value->h = trace.slen;
-	} else if (strcmp(sort_key, "styp") == 0) {
-		value->h = trace.styp;
-	} else if (strcmp(sort_key, "stas") == 0) {
-		value->h = trace.stas;
-	} else if (strcmp(sort_key, "stae") == 0) {
-		value->h = trace.stae;
-	} else if (strcmp(sort_key, "tatyp") == 0) {
-		value->h = trace.tatyp;
-	} else if (strcmp(sort_key, "afilf") == 0) {
-		value->h = trace.afilf;
-	} else if (strcmp(sort_key, "afils") == 0) {
-		value->h = trace.afils;
-	} else if (strcmp(sort_key, "nofilf") == 0) {
-		value->h = trace.nofilf;
-	} else if (strcmp(sort_key, "nofils") == 0) {
-		value->h = trace.nofils;
-	} else if (strcmp(sort_key, "lcf") == 0) {
-		value->h = trace.lcf;
-	} else if (strcmp(sort_key, "hcf") == 0) {
-		value->h = trace.hcf;
-	} else if (strcmp(sort_key, "lcs") == 0) {
-		value->h = trace.lcs;
-	} else if (strcmp(sort_key, "hcs") == 0) {
-		value->h = trace.hcs;
-	} else if (strcmp(sort_key, "year") == 0) {
-		value->h = trace.year;
-	} else if (strcmp(sort_key, "day") == 0) {
-		value->h = trace.day;
-	} else if (strcmp(sort_key, "hour") == 0) {
-		value->h = trace.hour;
-	} else if (strcmp(sort_key, "minute") == 0) {
-		value->h = trace.minute;
-	} else if (strcmp(sort_key, "sec") == 0) {
-		value->h = trace.sec;
-	} else if (strcmp(sort_key, "timbas") == 0) {
-		value->h = trace.timbas;
-	} else if (strcmp(sort_key, "trwf") == 0) {
-		value->h = trace.trwf;
-	} else if (strcmp(sort_key, "grnors") == 0) {
-		value->h = trace.grnors;
-	} else if (strcmp(sort_key, "grnofr") == 0) {
-		value->h = trace.grnofr;
-	} else if (strcmp(sort_key, "grnlof") == 0) {
-		value->h = trace.grnlof;
-	} else if (strcmp(sort_key, "gaps") == 0) {
-		value->h = trace.gaps;
-	} else if (strcmp(sort_key, "otrav") == 0) {
-		value->h = trace.otrav;
-	} else if (strcmp(sort_key, "d1") == 0) {
-		value->f = trace.d1;
-	} else if (strcmp(sort_key, "f1") == 0) {
-		value->f = trace.f1;
-	} else if (strcmp(sort_key, "d2") == 0) {
-		value->f = trace.d2;
-	} else if (strcmp(sort_key, "f2") == 0) {
-		value->f = trace.f2;
-	} else if (strcmp(sort_key, "ungpow") == 0) {
-		value->f = trace.ungpow;
-	} else if (strcmp(sort_key, "unscale") == 0) {
-		value->f = trace.unscale;
-	} else if (strcmp(sort_key, "ntr") == 0) {
-		value->i = trace.ntr;
-	} else if (strcmp(sort_key, "mark") == 0) {
-		value->h = trace.mark;
-	} else if (strcmp(sort_key, "shortpad") == 0) {
-		value->h = trace.shortpad;
-	} else {
-		return;
+	int		i;
+	for(i=0; i<SEIS__NKEYS; i++) {
+		if(strcmp(sort_key, hdr[i].key) == 0) {
+			seis_gethval(&trace, i, value);
+			break;
+		}
 	}
 }
 
 void
 set_header_value(trace_t *trace, char *sort_key, Value *value)
 {
-	if (strcmp(sort_key, "tracl") == 0) {
-		trace->tracl = value->i;
-	} else if (strcmp(sort_key, "tracr") == 0) {
-		trace->tracr = value->i;
-	} else if (strcmp(sort_key, "fldr") == 0) {
-		trace->fldr = value->i;
-	} else if (strcmp(sort_key, "tracf") == 0) {
-		trace->tracf = value->i;
-	} else if (strcmp(sort_key, "ep") == 0) {
-		trace->ep = value->i;
-	} else if (strcmp(sort_key, "cdp") == 0) {
-		trace->cdp = value->i;
-	} else if (strcmp(sort_key, "cdpt") == 0) {
-		trace->cdpt = value->i;
-	} else if (strcmp(sort_key, "trid") == 0) {
-		trace->trid = value->h;
-	} else if (strcmp(sort_key, "nvs") == 0) {
-		trace->nvs = value->h;
-	} else if (strcmp(sort_key, "nhs") == 0) {
-		trace->nhs = value->h;
-	} else if (strcmp(sort_key, "duse") == 0) {
-		trace->duse = value->h;
-	} else if (strcmp(sort_key, "offset") == 0) {
-		trace->offset = value->i;
-	} else if (strcmp(sort_key, "gelev") == 0) {
-		trace->gelev = value->u;
-	} else if (strcmp(sort_key, "selev") == 0) {
-		trace->selev = value->i;
-	} else if (strcmp(sort_key, "sdepth") == 0) {
-		trace->sdepth = value->i;
-	} else if (strcmp(sort_key, "gdel") == 0) {
-		trace->gdel = value->i;
-	} else if (strcmp(sort_key, "sdel") == 0) {
-		trace->sdel = value->i;
-	} else if (strcmp(sort_key, "swdep") == 0) {
-		trace->swdep = value->i;
-	} else if (strcmp(sort_key, "gwdep") == 0) {
-		trace->gwdep = value->i;
-	} else if (strcmp(sort_key, "scalel") == 0) {
-		trace->scalel = value->h;
-	} else if (strcmp(sort_key, "scalco") == 0) {
-		trace->scalco = value->h;
-	} else if (strcmp(sort_key, "sx") == 0) {
-		trace->sx = value->i;
-	} else if (strcmp(sort_key, "sy") == 0) {
-		trace->sy = value->i;
-	} else if (strcmp(sort_key, "gx") == 0) {
-		trace->gx = value->i;
-	} else if (strcmp(sort_key, "gy") == 0) {
-		trace->gy = value->i;
-	} else if (strcmp(sort_key, "counit") == 0) {
-		trace->counit = value->h;
-	} else if (strcmp(sort_key, "wevel") == 0) {
-		trace->wevel = value->h;
-	} else if (strcmp(sort_key, "swevel") == 0) {
-		trace->swevel = value->h;
-	} else if (strcmp(sort_key, "sut") == 0) {
-		trace->sut = value->h;
-	} else if (strcmp(sort_key, "gut") == 0) {
-		trace->gut = value->h;
-	} else if (strcmp(sort_key, "sstat") == 0) {
-		trace->sstat = value->h;
-	} else if (strcmp(sort_key, "gstat") == 0) {
-		trace->gstat = value->h;
-	} else if (strcmp(sort_key, "tstat") == 0) {
-		trace->tstat = value->h;
-	} else if (strcmp(sort_key, "laga") == 0) {
-		trace->laga = value->h;
-	} else if (strcmp(sort_key, "lagb") == 0) {
-		trace->lagb = value->h;
-	} else if (strcmp(sort_key, "delrt") == 0) {
-		trace->delrt = value->h;
-	} else if (strcmp(sort_key, "muts") == 0) {
-		trace->muts = value->h;
-	} else if (strcmp(sort_key, "mute") == 0) {
-		trace->mute = value->h;
-	} else if (strcmp(sort_key, "ns") == 0) {
-		trace->ns = value->u;
-	} else if (strcmp(sort_key, "dt") == 0) {
-		trace->dt = value->u;
-	} else if (strcmp(sort_key, "gain") == 0) {
-		trace->gain = value->h;
-	} else if (strcmp(sort_key, "igc") == 0) {
-		trace->igc = value->h;
-	} else if (strcmp(sort_key, "igi") == 0) {
-		trace->igi = value->h;
-	} else if (strcmp(sort_key, "corr") == 0) {
-		trace->corr = value->h;
-	} else if (strcmp(sort_key, "sfs") == 0) {
-		trace->sfs = value->h;
-	} else if (strcmp(sort_key, "sfe") == 0) {
-		trace->sfe = value->h;
-	} else if (strcmp(sort_key, "slen") == 0) {
-		trace->slen = value->h;
-	} else if (strcmp(sort_key, "styp") == 0) {
-		trace->styp = value->h;
-	} else if (strcmp(sort_key, "stas") == 0) {
-		trace->stas = value->h;
-	} else if (strcmp(sort_key, "stae") == 0) {
-		trace->stae = value->h;
-	} else if (strcmp(sort_key, "tatyp") == 0) {
-		trace->tatyp = value->h;
-	} else if (strcmp(sort_key, "afilf") == 0) {
-		trace->afilf = value->h;
-	} else if (strcmp(sort_key, "afils") == 0) {
-		trace->afils = value->h;
-	} else if (strcmp(sort_key, "nofilf") == 0) {
-		trace->nofilf = value->h;
-	} else if (strcmp(sort_key, "nofils") == 0) {
-		trace->nofils = value->h;
-	} else if (strcmp(sort_key, "lcf") == 0) {
-		trace->lcf = value->h;
-	} else if (strcmp(sort_key, "hcf") == 0) {
-		trace->hcf = value->h;
-	} else if (strcmp(sort_key, "lcs") == 0) {
-		trace->lcs = value->h;
-	} else if (strcmp(sort_key, "hcs") == 0) {
-		trace->hcs = value->h;
-	} else if (strcmp(sort_key, "year") == 0) {
-		trace->year = value->h;
-	} else if (strcmp(sort_key, "day") == 0) {
-		trace->day = value->h;
-	} else if (strcmp(sort_key, "hour") == 0) {
-		trace->hour = value->h;
-	} else if (strcmp(sort_key, "minute") == 0) {
-		trace->minute = value->h;
-	} else if (strcmp(sort_key, "sec") == 0) {
-		trace->sec = value->h;
-	} else if (strcmp(sort_key, "timbas") == 0) {
-		trace->timbas = value->h;
-	} else if (strcmp(sort_key, "trwf") == 0) {
-		trace->trwf = value->h;
-	} else if (strcmp(sort_key, "grnors") == 0) {
-		trace->grnors = value->h;
-	} else if (strcmp(sort_key, "grnofr") == 0) {
-		trace->grnofr = value->h;
-	} else if (strcmp(sort_key, "grnlof") == 0) {
-		trace->grnlof = value->h;
-	} else if (strcmp(sort_key, "gaps") == 0) {
-		trace->gaps = value->h;
-	} else if (strcmp(sort_key, "otrav") == 0) {
-		trace->otrav = value->h;
-	} else if (strcmp(sort_key, "d1") == 0) {
-		trace->d1 = value->f;
-	} else if (strcmp(sort_key, "f1") == 0) {
-		trace->f1 = value->f;
-	} else if (strcmp(sort_key, "d2") == 0) {
-		trace->d2 = value->f;
-	} else if (strcmp(sort_key, "f2") == 0) {
-		trace->f2 = value->f;
-	} else if (strcmp(sort_key, "ungpow") == 0) {
-		trace->ungpow = value->f;
-	} else if (strcmp(sort_key, "unscale") == 0) {
-		trace->unscale = value->f;
-	} else if (strcmp(sort_key, "ntr") == 0) {
-		trace->ntr = value->i;
-	} else if (strcmp(sort_key, "mark") == 0) {
-		trace->mark = value->h;
-	} else if (strcmp(sort_key, "shortpad") == 0) {
-		trace->shortpad = value->h;
-	} else {
-		return;
+	int		i;
+	for(i=0; i<SEIS__NKEYS; i++) {
+		if(strcmp(sort_key, hdr[i].key) == 0) {
+			seis_puthval(trace,i,value);
+			break;
+		}
 	}
 }
 
 char*
 get_dkey(char *key)
 {
-	if (strcmp(key, "tracl") == 0) {
-		return "Tracl";
-	} else if (strcmp(key, "tracr") == 0) {
-		return "Tracr";
-	} else if (strcmp(key, "fldr") == 0) {
-		return "Fldr";
-	} else if (strcmp(key, "tracf") == 0) {
-		return "Tracf";
-	} else if (strcmp(key, "ep") == 0) {
-		return "Ep";
-	} else if (strcmp(key, "cdp") == 0) {
-		return "Cdp";
-	} else if (strcmp(key, "cdpt") == 0) {
-		return "Cdpt";
-	} else if (strcmp(key, "trid") == 0) {
-		return "Trid";
-	} else if (strcmp(key, "nvs") == 0) {
-		return "Nvs";
-	} else if (strcmp(key, "nhs") == 0) {
-		return "Nhs";
-	} else if (strcmp(key, "duse") == 0) {
-		return "Duse";
-	} else if (strcmp(key, "offset") == 0) {
-		return "Offset";
-	} else if (strcmp(key, "gelev") == 0) {
-		return "Gelev";
-	} else if (strcmp(key, "selev") == 0) {
-		return "Selev";
-	} else if (strcmp(key, "sdepth") == 0) {
-		return "Sdepth";
-	} else if (strcmp(key, "gdel") == 0) {
-		return "Gdel";
-	} else if (strcmp(key, "sdel") == 0) {
-		return "Sdel";
-	} else if (strcmp(key, "swdep") == 0) {
-		return "Swdep";
-	} else if (strcmp(key, "gwdep") == 0) {
-		return "Gwdep";
-	} else if (strcmp(key, "scalel") == 0) {
-		return "Scalel";
-	} else if (strcmp(key, "scalco") == 0) {
-		return "Scalco";
-	} else if (strcmp(key, "sx") == 0) {
-		return "Sx";
-	} else if (strcmp(key, "sy") == 0) {
-		return "Sy";
-	} else if (strcmp(key, "gx") == 0) {
-		return "Gx";
-	} else if (strcmp(key, "gy") == 0) {
-		return "Gy";
-	} else if (strcmp(key, "counit") == 0) {
-		return "Counit";
-	} else if (strcmp(key, "wevel") == 0) {
-		return "Wevel";
-	} else if (strcmp(key, "swevel") == 0) {
-		return "Swevel";
-	} else if (strcmp(key, "sut") == 0) {
-		return "Sut";
-	} else if (strcmp(key, "gut") == 0) {
-		return "Gut";
-	} else if (strcmp(key, "sstat") == 0) {
-		return "Sstat";
-	} else if (strcmp(key, "gstat") == 0) {
-		return "Gstat";
-	} else if (strcmp(key, "tstat") == 0) {
-		return "Tstat";
-	} else if (strcmp(key, "laga") == 0) {
-		return "Laga";
-	} else if (strcmp(key, "lagb") == 0) {
-		return "Lagb";
-	} else if (strcmp(key, "delrt") == 0) {
-		return "Delrt";
-	} else if (strcmp(key, "muts") == 0) {
-		return "Muts";
-	} else if (strcmp(key, "mute") == 0) {
-		return "Mute";
-	} else if (strcmp(key, "ns") == 0) {
-		return "Ns";
-	} else if (strcmp(key, "dt") == 0) {
-		return "Dt";
-	} else if (strcmp(key, "gain") == 0) {
-		return "Gain";
-	} else if (strcmp(key, "igc") == 0) {
-		return "Igc";
-	} else if (strcmp(key, "igi") == 0) {
-		return "Igi";
-	} else if (strcmp(key, "corr") == 0) {
-		return "Corr";
-	} else if (strcmp(key, "sfs") == 0) {
-		return "Sfs";
-	} else if (strcmp(key, "sfe") == 0) {
-		return "Sfe";
-	} else if (strcmp(key, "slen") == 0) {
-		return "Slen";
-	} else if (strcmp(key, "styp") == 0) {
-		return "Styp";
-	} else if (strcmp(key, "stas") == 0) {
-		return "Stas";
-	} else if (strcmp(key, "stae") == 0) {
-		return "Stae";
-	} else if (strcmp(key, "tatyp") == 0) {
-		return "Tatyp";
-	} else if (strcmp(key, "afilf") == 0) {
-		return "Afilf";
-	} else if (strcmp(key, "afils") == 0) {
-		return "Afils";
-	} else if (strcmp(key, "nofilf") == 0) {
-		return "Nofilf";
-	} else if (strcmp(key, "nofils") == 0) {
-		return "Nofils";
-	} else if (strcmp(key, "lcf") == 0) {
-		return "Lcf";
-	} else if (strcmp(key, "hcf") == 0) {
-		return "Hcf";
-	} else if (strcmp(key, "lcs") == 0) {
-		return "Lcs";
-	} else if (strcmp(key, "hcs") == 0) {
-		return "Hcs";
-	} else if (strcmp(key, "year") == 0) {
-		return "Year";
-	} else if (strcmp(key, "day") == 0) {
-		return "Day";
-	} else if (strcmp(key, "hour") == 0) {
-		return "Hour";
-	} else if (strcmp(key, "minute") == 0) {
-		return "Minute";
-	} else if (strcmp(key, "sec") == 0) {
-		return "Sec";
-	} else if (strcmp(key, "timbas") == 0) {
-		return "Timbas";
-	} else if (strcmp(key, "trwf") == 0) {
-		return "Trwf";
-	} else if (strcmp(key, "grnors") == 0) {
-		return "Grnors";
-	} else if (strcmp(key, "grnofr") == 0) {
-		return "Grnofr";
-	} else if (strcmp(key, "grnlof") == 0) {
-		return "Grnlof";
-	} else if (strcmp(key, "gaps") == 0) {
-		return "Gaps";
-	} else if (strcmp(key, "otrav") == 0) {
-		return "Otrav";
-	} else if (strcmp(key, "d1") == 0) {
-		return "D1";
-	} else if (strcmp(key, "f1") == 0) {
-		return "F1";
-	} else if (strcmp(key, "d2") == 0) {
-		return "D2";
-	} else if (strcmp(key, "f2") == 0) {
-		return "F2";
-	} else if (strcmp(key, "ungpow") == 0) {
-		return "Ungpow";
-	} else if (strcmp(key, "unscale") == 0) {
-		return "Unscale";
-	} else if (strcmp(key, "ntr") == 0) {
-		return "Ntr";
-	} else if (strcmp(key, "mark") == 0) {
-		return "Mark";
-	} else if (strcmp(key, "shortpad") == 0) {
-		return "Shortpad";
-	} else {
-		return -1;
+	int		i;
+	for(i=0; i<SEIS__NKEYS; i++) {
+		if(strcmp(key, hdr[i].key) == 0) {
+			return hdr[i].key;
+		}
 	}
-
 }
 
 void
@@ -2211,7 +1741,8 @@ replace_seismic_objects(dfs_t *dfs, int daos_mode, char *key,
 }
 
 void
-tokenize_str(void **str, char *sep, char *string, int type)
+tokenize_str(void ***str, char *sep, char *string, int type,
+	     int *number_of_keys)
 {
 	double 	       *temp_d;
 	char 		temp[4096];
@@ -2219,24 +1750,38 @@ tokenize_str(void **str, char *sep, char *string, int type)
 	char 	       *ptr;
 	long 	       *temp_l;
 	int 		i = 0;
+	char 		temp_keys[4096];
+	char 		*token;
+	strcpy(temp_keys, string);
 
-	strcpy(temp, string);
-	char *token = strtok(temp, sep);
+	if (*number_of_keys == 0) {
+		strcpy(temp, string);
+
+		token = strtok(temp, sep);
+		while( token != NULL ) {
+			(*number_of_keys)++;
+			token = strtok(NULL, sep);
+		}
+	}
+	token = strtok(temp_keys, sep);
 
 
 	while (token != NULL) {
 		switch (type) {
 		case 0:
-			temp_c = (char**) str;
+			if(i==0) {
+				(*str) = (char**) malloc((*number_of_keys) * sizeof(char*));
+			}
+			temp_c = ((char**)(*str));
 			temp_c[i] = malloc((strlen(token) + 1) * sizeof(char));
 			strcpy(temp_c[i], token);
 			break;
 		case 1:
-			temp_l = *((long**) str);
+			temp_l = *((long**)(*str));
 			temp_l[i] = atol(token);
 			break;
 		case 2:
-			temp_d = *((double**) str);
+			temp_d = *((double**)(*str));
 			temp_d[i] = strtod(token, &ptr);
 			break;
 		default:

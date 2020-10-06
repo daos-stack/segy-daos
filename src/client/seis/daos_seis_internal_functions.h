@@ -767,11 +767,12 @@ replace_seismic_objects(dfs_t *dfs, int daos_mode, char *key,
  * \param[in]	string			string that will be tokenized.
  * \param[in]	type			integer specifying the type the string
  * 					will be casted to (char/ double/ long)
+ * \param[in]	number_of_keys		integer pointer to the number of keys
+ * 					to be set.
  *
- * \return	array of strings after tokenization
  */
 void
-tokenize_str(void **str, char *sep, char *string, int type);
+tokenize_str(void ***str, char *sep, char *string, int type, int *number_of_keys);
 
 /** Function responsible for finding ranges of traces headers.
  *  It is called while executing range headers programs.

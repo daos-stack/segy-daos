@@ -98,9 +98,6 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root);
  *
  * \param[in]   dfs            	pointer to mounted DAOS file system.
  * \param[in]   segy_root     	pointer to segy file that will be parsed.
- * \param[in]	num_of_keys	Number of strings(keys) in the array of keys.
- * \param[in]	keys		array of strings containing header_keys that
- * 				will be used to create gather objects.
  * \param[in]	root_obj	pointer to opened root seismic object.
  * \param[in]	seismic_obj	array of allocated pointers to root seismic objects.
  * 				Objects will be opened in case of parsing
@@ -114,8 +111,7 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root);
  * 		error_code otherwise
  */
 int
-daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys,
-		     char **keys, seis_root_obj_t *root_obj,
+daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj,
 		     seis_obj_t **seismic_obj, int additional);
 
 /** Sort traces headers based on any number of primary and optionally secondary

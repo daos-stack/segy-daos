@@ -73,21 +73,12 @@ main(int argc, char *argv[])
 //	warn("\n Get header values \n"
 //	     "==================== \n");
 	/** keys tokenization */
-	char 			temp[4096];
 	int 			number_of_keys =0;
 	const char 		*sep = ",";
 	char 			*token;
 	char 		       **header_keys;
 
-	strcpy(temp, keys);
-	token = strtok(temp, sep);
-	while( token != NULL ) {
-		number_of_keys++;
-		token = strtok(NULL, sep);
-	}
-
-	header_keys = malloc(number_of_keys * sizeof(char*));
-	tokenize_str((void**)header_keys,",", keys, 0);
+	tokenize_str((void***)&header_keys,",", keys, 0, &number_of_keys);
 
 	init_dfs_api(pool_id, svc_list, container_id, allow_container_creation,
 		     verbose);
@@ -125,7 +116,6 @@ main(int argc, char *argv[])
 	} else {
 		/** Open output file to write traces to */
 		FILE *fd = fopen(out_file, "w");
-//		printf("Write headers in out file \n");
 		if(temp_trace == NULL) {
 			warn("Linked list of traces is empty \n");
 			return 0;

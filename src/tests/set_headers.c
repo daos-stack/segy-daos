@@ -107,7 +107,7 @@ main(int argc, char *argv[])
 //	warn("\n Set header values \n"
 //	     "==================== \n");
 	/** keys tokenization */
-	char 			temp[4096];
+//	char 			temp[4096];
 	int 			number_of_keys =0;
 	const char 		*sep = ",";
 	char 			*token;
@@ -118,63 +118,58 @@ main(int argc, char *argv[])
 	double 			*d_values;
 	double 			*j_values;
 
-	if(keys != NULL) {
-		strcpy(temp, keys);
-		token = strtok(temp, sep);
-		while( token != NULL ) {
-			number_of_keys++;
-			token = strtok(NULL, sep);
-		}
-	} else {
-		number_of_keys = 1;
-	}
-
-	header_keys = malloc(number_of_keys * sizeof(char*));
 	a_values = malloc(number_of_keys * sizeof(double));
+	double **a_temp = &a_values;
 	b_values = malloc(number_of_keys * sizeof(double));
+	double **b_temp = &b_values;
 	c_values = malloc(number_of_keys * sizeof(double));
+	double **c_temp = &c_values;
 	d_values = malloc(number_of_keys * sizeof(double));
+	double **d_temp = &d_values;
 	j_values = malloc(number_of_keys * sizeof(double));
+	double **j_temp = &j_values;
 
 	int 		k;
 	if(keys != NULL) {
-		tokenize_str((void**)header_keys,",", keys, 0);
+		tokenize_str((void***)&header_keys,",", keys, 0, &number_of_keys);
 	} else {
+		number_of_keys = 1;
+		header_keys = malloc(number_of_keys * sizeof(char*));
 		for(k = 0; k < number_of_keys; k++) {
 			header_keys[k] = malloc((strlen("cdp")+1) * sizeof(char));
 			strcpy(header_keys[k], "cdp");
 		}
 	}
 	if(a != NULL) {
-		tokenize_str((void**)&a_values,",", a, 2);
+		tokenize_str((void***)&a_temp,",", a, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			a_values[k] = 0;
 		}
 	}
 	if(b != NULL) {
-		tokenize_str((void**)&b_values,",", b, 2);
+		tokenize_str((void***)&b_temp,",", b, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			b_values[k] = 0;
 		}
 	}
 	if(c != NULL) {
-		tokenize_str((void**)&c_values,",", c, 2);
+		tokenize_str((void***)&c_temp,",", c, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			c_values[k] = 0;
 		}
 	}
 	if(d != NULL) {
-		tokenize_str((void**)&d_values,",", d, 2);
+		tokenize_str((void***)&d_temp,",", d, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++) {
 			d_values[k] = 0;
 		}
 	}
 	if (j != NULL){
-		tokenize_str((void**)&j_values,",", j, 2);
+		tokenize_str((void***)&j_temp,",", j, 2, &number_of_keys);
 		for(k=0; k< number_of_keys; k++) {
 			if(j_values[k]==0) {
 				j_values[k]=ULONG_MAX;

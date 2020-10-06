@@ -17,7 +17,7 @@
 #include "tapebhdr.h"
 #include "bheader.h"
 #include "header.h"
-
+#include "daos_seis_datatypes.h"
 /* TYPEDEFS */
 
 
@@ -133,5 +133,9 @@ double mod(double x, double y);
 void changeval(cwp_String type1, Value *valp1, cwp_String type2,
 	       Value *valp2, cwp_String type3, Value *valp3,
 		double a, double b, double c, double d, double e, double f);
+
+void seis_gethval(trace_t *tr, int index, Value *valp);
+
+void seis_puthval(trace_t *tr, int index, Value *valp);
 
 #endif /* LSU_SRC_CLIENT_SEIS_SU_HELPERS_H_ */
