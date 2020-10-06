@@ -1275,7 +1275,7 @@ daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list)
 	for (i = 0; i < trace_list->size; i++) {
 		data_oids.oid =	get_trace_data_oid(&(current->trace.trace_header_obj),
 						   OC_SX);
-		segy *trace = trace_to_segy(&current->trace);
+		segy *trace = daos_seis_trace_to_segy(&current->trace);
 
 		rc = daos_array_open_with_attr(root->coh, data_oids.oid,
 					       DAOS_TX_NONE, DAOS_OO_RW, 1,
@@ -1593,4 +1593,80 @@ daos_seis_fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
 
 }
 
+dfs_obj_t*
+dfs_get_parent_of_file(dfs_t *dfs, const char *file_directory,
+		       int allow_creation, char *file_name,
+		       int verbose_output)
+{
+	daos_oclass_id_t 	cid = OC_SX;
+	dfs_obj_t 	       *parent = NULL;
+	char 			temp[2048];
+	int 			array_len = 0;
+	int 			err;
+	strcpy(temp, file_directory);
+	const char 		*sep = "/";
+	char *token = strtok(temp, sep);
+	while (token != NULL) {
+		array_len++;
+		token = strtok(NULL, sep);
+	}
+	char **array = malloc(sizeof(char*) * array_len);
+	strcpy(temp, file_directory);
+	token = strtok(temp, sep);
+	int 			i = 0;
+	while (token != NULL) {
+		array[i] = malloc(sizeof(char) * (strlen(token) + 1));
+		strcpy(array[i], token);
+		token = strtok(NULL, sep);
+		i++;
+	}
+
+	for (i = 0; i < array_len - 1; i++) {
+		dfs_obj_t 	*temp_obj;
+		err = dfs_lookup_rel(dfs, parent, array[i], O_RDWR,
+				     &temp_obj, NULL, NULL);
+		if (err == 0) {
+			if (verbose_output) {
+				warn("Subdirectory '%s' already exist \n",
+				     array[i]);
+			}
+		} else if (allow_creation) {
+			mode_t mode = 0666;
+			err = dfs_mkdir(dfs, parent, array[i], mode, cid);
+			if (err == 0) {
+				if (verbose_output) {
+					warn("Created directory '%s'\n",
+					     array[i]);
+				}
+				dfs_lookup_rel(dfs, parent, array[i], O_RDWR,
+					       &temp_obj, NULL, NULL);
+			} else {
+				warn("Mkdir on %s failed with error code :"
+				     " %d \n", array[i], err);
+			}
+		} else {
+			warn("Relative lookup on %s failed with error code :"
+			     " %d \n", array[i], err);
+		}
+		parent = temp_obj;
+	}
+	strcpy(file_name, array[array_len - 1]);
+	for (i = 0; i < array_len; i++) {
+		free(array[i]);
+	}
+	free(array);
+
+	return parent;
+}
+
+segy*
+daos_seis_trace_to_segy(trace_t *trace)
+{
+	segy 		*tp;
+
+	tp = malloc(sizeof(segy));
+	memcpy(tp, trace, TRACEHDR_BYTES);
+	memcpy(tp->data, trace->data, tp->ns * sizeof(float));
+	return tp;
+}
 

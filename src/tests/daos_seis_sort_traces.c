@@ -192,7 +192,7 @@ main(int argc, char *argv[])
 	} else {
 		while(temp_trace != NULL) {
 			/** convert trace struct back to original segy struct */
-			segy* tp = trace_to_segy(&(temp_trace->trace));
+			segy* tp = daos_seis_trace_to_segy(&(temp_trace->trace));
 			tp->tracl = tp->tracr = tracl_mod;
 			tracl_mod++;
 			/** Write segy struct to file */

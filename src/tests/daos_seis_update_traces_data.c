@@ -101,7 +101,7 @@ main(int argc, char *argv[])
 			memcpy(temp_dst->trace.data, temp_src->trace.data,
 			       temp_src->trace.ns * sizeof(float));
 			/** convert trace struct back to original segy struct */
-			segy *tp = trace_to_segy(&(temp_src->trace));
+			segy *tp = daos_seis_trace_to_segy(&(temp_src->trace));
 			/** Write segy struct to file */
 			fputtr(fd, tp);
 			temp_src = temp_src->next_trace;
@@ -125,7 +125,7 @@ main(int argc, char *argv[])
 	} else {
 		while(temp != NULL) {
 			/** convert trace struct back to original segy struct */
-			segy* tp = trace_to_segy(&(temp->trace));
+			segy* tp = daos_seis_trace_to_segy(&(temp->trace));
 			/** Write segy struct to file */
 			fputtr(fd, tp);
 			temp = temp->next_trace;

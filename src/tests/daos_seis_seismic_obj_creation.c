@@ -136,7 +136,8 @@ main(int argc, char *argv[])
 
 	file_name = malloc(1024 * sizeof(char));
 
-	parent = dfs_get_parent_of_file(get_dfs(), out_file, 1, file_name, 1);
+	parent = dfs_get_parent_of_file(get_dfs(), out_file, 1,
+					file_name, 1);
 
 	seis_root_obj_t 	*root_obj;
 	seis_obj_t 		**seismic_obj;
@@ -144,8 +145,9 @@ main(int argc, char *argv[])
 	seismic_obj = malloc(number_of_keys * sizeof(seis_obj_t*));
 
 	if(fldr_exist == 1){
-		daos_seis_create_graph(get_dfs(), parent, file_name, number_of_keys,
-				       header_keys, &root_obj, seismic_obj);
+		daos_seis_create_graph(get_dfs(), parent, file_name,
+				       number_of_keys, header_keys,
+				       &root_obj, seismic_obj);
 		gettimeofday(&tv1, NULL);
 		daos_seis_parse_segy(get_dfs(), segyfile->file,
 				     root_obj, seismic_obj, 0);

@@ -12,11 +12,9 @@
 #include <string.h>
 
 #include "dfs_helper_api.h"
-#include "su_helpers.h"
-#include "dfs_helpers.h"
-#include "daos_seis_internal_functions.h"
 #include "daos.h"
 #include "daos_fs.h"
+#include "daos_seis_internal_functions.h"
 
 /** closes opened root object
  *
@@ -320,5 +318,38 @@ daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
 void
 daos_seis_fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
 			    int daos_mode);
+
+/** Function responsible for finding the parent dfs object of file
+ *  given its absolute path.
+ *  It is called once at the beginning of seismic_object_creation.
+ *  Function.
+ *
+ * \param[in]   dfs             pointer to mounted DAOS file system.
+ * \param[in	file_directory  absolute path of file to find its parent object.
+ * \param[in]	allow_creation  boolean flag to allow creation of directories
+ * 				in the path in case they doesn't exist.
+ * \param[in]	file_name	array of characters containing name of the
+ * 				file.
+ * \param[in]	verbose_output	boolean flag to enable verbosity.
+ *
+ * \return	pointer to opened parent dfs object, seismic root object
+ * 		will be created later in the parse_segy_file
+ * 		under the opened parent
+ */
+dfs_obj_t*
+dfs_get_parent_of_file(dfs_t *dfs, const char *file_directory,
+		       	     int allow_creation, char *file_name,
+			     int verbose_output);
+
+/** Function responsible for converting the trace struct back
+ *  to the original segy struct(defined in segy.h)
+ *
+ * \param[in]	trace	pointer to the trace struct that will be converted
+ *
+ * \return	segy struct.
+ *
+ */
+segy*
+daos_seis_trace_to_segy(trace_t *trace);
 
 #endif /* DAOS_SEIS_DAOS_SEIS_H_ */
