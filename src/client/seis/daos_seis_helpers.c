@@ -410,7 +410,7 @@ void
 get_header_value(trace_t trace, char *sort_key, Value *value)
 {
 	int		i;
-	for(i=0; i<SEIS__NKEYS; i++) {
+	for(i=0; i<SEIS_NKEYS; i++) {
 		if(strcmp(sort_key, hdr[i].key) == 0) {
 			seis_gethval(&trace, i, value);
 			break;
@@ -422,7 +422,7 @@ void
 set_header_value(trace_t *trace, char *sort_key, Value *value)
 {
 	int		i;
-	for(i=0; i<SEIS__NKEYS; i++) {
+	for(i=0; i<SEIS_NKEYS; i++) {
 		if(strcmp(sort_key, hdr[i].key) == 0) {
 			seis_puthval(trace,i,value);
 			break;
@@ -431,7 +431,7 @@ set_header_value(trace_t *trace, char *sort_key, Value *value)
 }
 
 void
-calculate_new_header_value(traces_headers_t *current, char *key1, char *key2,
+calculate_new_header_value(trace_node_t *current, char *key1, char *key2,
 			   char *key3, double a, double b, double c, double d,
 			   double e, double f, double j, int itr,
 			   header_operation_type_t type,
@@ -530,7 +530,7 @@ print_headers_ranges(headers_ranges_t headers_ranges)
 	int 		i;
 
 	if (headers_ranges.number_of_keys == 0) {
-		kmax = SEIS__NKEYS;
+		kmax = SEIS_NKEYS;
 	} else {
 		kmax = headers_ranges.number_of_keys;
 	}

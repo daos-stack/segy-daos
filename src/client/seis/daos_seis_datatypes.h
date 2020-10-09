@@ -32,7 +32,7 @@
 #define	DS_D_KEYS "KEYS"
 #define	DS_A_KEYS "KEY_"
 #define KEY_SEPARATOR "_"
-#define SEIS__NKEYS 80
+#define SEIS_NKEYS 80
 #define TRACEHDR_BYTES 240
 #define	SEIS_EBCBYTES 3200
 #define	SEIS_BNYBYTES 400
@@ -99,7 +99,6 @@ typedef struct seis_obj {
 	/** number of gathers */
 	int number_of_gathers;
 	/**linked list of gathers */
-//	seis_gather_t *gathers;
 	gathers_list_t *gathers;
 	/** pointer to array of trace_oids objects*/
 	trace_oid_oh_t *seis_gather_trace_oids_obj;
@@ -629,24 +628,49 @@ typedef struct read_traces{
 	trace_t *traces ;
 }read_traces;
 
-/** struct that is used as a linked list holding trace struct holding all trace data
- *  also holds pointer to next trace.
+/** linked list holding trace header and data.
+ *  and pointer to next trace.
  */
-typedef struct traces_headers{
+typedef struct trace_node{
 	trace_t trace;
-	struct traces_headers *next_trace;
-}traces_headers_t;
+	struct trace_node *next_trace;
+}trace_node_t;
 
-/** struct of traces list wrapping the linked list of headers defined by defining
+/** linked list holding pointer to each ensemble first trace node
+ *  and pointer to next ensemble.
+ */
+typedef struct ensemble_node{
+	trace_node_t *ensemble;
+	struct ensemble_node *next_ensemble;
+}ensemble_node_t;
+
+/** traces list struct wrapping the traces nodes it holds
  *  pointer to head (first trace returned to user), pointer to tail (last trace),
  *  and size of linked list(number of traces).
  *  This is the main struct returned after sorting/ windowing/ read headers/...
  */
 typedef struct traces_list{
-	traces_headers_t *head;
-	traces_headers_t *tail;
+	trace_node_t *head;
+	trace_node_t *tail;
 	long size;
 }traces_list_t;
+
+/** ensembles list struct wrapping the ensembles nodes, it holds pointer
+ *  to first ensemble, last ensemble, and the number of ensembles.
+ */
+typedef struct ensembles_list{
+	ensemble_node_t *first_ensemble;
+	ensemble_node_t *last_ensemble;
+	long num_of_ensembles;
+}ensembles_list_t;
+
+/** trace metadata struct returned to user it holds all traces related metadata
+ *  and data. It currently holds traces and ensembles lists.
+ */
+typedef struct traces_metadata {
+	traces_list_t *traces_list;
+	ensembles_list_t *ensembles_list;
+}traces_metadata_t;
 
 /** enum used in set header value.
  *  0 for SET_HEADERS.

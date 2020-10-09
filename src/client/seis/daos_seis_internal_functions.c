@@ -244,7 +244,7 @@ seismic_root_obj_update(seis_root_obj_t *root_obj, char *dkey_name,
 void
 merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list)
 {
-	traces_headers_t 	*temp = (*headers)->head;
+	trace_node_t	 	*temp = (*headers)->head;
 
 	if ((*temp_list)->head == NULL) {
 //		warn("Temp linked list of traces is empty.\n");
@@ -263,23 +263,40 @@ merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list)
 }
 
 void
-add_trace_header(trace_t *trace, traces_list_t **head)
+add_trace_header(trace_t *trace, traces_list_t **traces,
+		 ensembles_list_t **ensembles, int index)
 {
-	traces_headers_t 	*new_node;
-
-	new_node = (traces_headers_t*) malloc(sizeof(traces_headers_t));
+	trace_node_t 	*new_node;
+	ensemble_node_t		*new_ensemble;
+	new_node = (trace_node_t*) malloc(sizeof(trace_node_t));
 	new_node->trace = *trace;
 	new_node->trace.data = NULL;
 	new_node->next_trace = NULL;
 
-	if ((*head)->head == NULL) {
-		(*head)->head = new_node;
-		(*head)->tail = new_node;
-		(*head)->size++;
+	if ((*traces)->head == NULL) {
+		(*traces)->head = new_node;
+		(*traces)->tail = new_node;
+		(*traces)->size++;
+		new_ensemble = (ensemble_node_t*) malloc(sizeof(ensemble_node_t));
+		new_ensemble->ensemble = new_node;
+		new_ensemble->next_ensemble = NULL;
+		(*ensembles)->first_ensemble = new_ensemble;
+		(*ensembles)->last_ensemble = new_ensemble;
+		(*ensembles)->last_ensemble->next_ensemble = NULL;
+		(*ensembles)->num_of_ensembles++;
 	} else {
-		(*head)->tail->next_trace = new_node;
-		(*head)->tail = new_node;
-		(*head)->size++;
+		(*traces)->tail->next_trace = new_node;
+		(*traces)->tail = new_node;
+		(*traces)->size++;
+		if(index == 0) {
+			new_ensemble = (ensemble_node_t*) malloc(sizeof(ensemble_node_t));
+			new_ensemble->ensemble = new_node;
+			new_ensemble->next_ensemble = NULL;
+			(*ensembles)->last_ensemble->next_ensemble = new_ensemble;
+			(*ensembles)->last_ensemble = new_ensemble;
+			(*ensembles)->last_ensemble->next_ensemble = NULL;
+			(*ensembles)->num_of_ensembles++;
+		}
 	}
 }
 
@@ -726,8 +743,8 @@ fetch_traces_header_read_traces(daos_handle_t coh, daos_obj_id_t *oids,
 
 void
 fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
-				traces_list_t **head_traces, int daos_mode,
-				int num_of_traces)
+				traces_metadata_t *traces_metadata,
+				int daos_mode, int num_of_traces)
 {
 	seismic_entry_t 	seismic_entry = {0};
 	trace_oid_oh_t		trace_hdr_obj;
@@ -760,7 +777,8 @@ fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
 		/** close header object */
 		daos_obj_close(trace_hdr_obj.oh, NULL);
 		temp_trace.trace_header_obj = oids[i];
-		add_trace_header(&temp_trace, head_traces);
+		add_trace_header(&temp_trace, &(traces_metadata->traces_list),
+				 &(traces_metadata->ensembles_list), i);
 	}
 }
 
@@ -778,7 +796,7 @@ char*
 get_dkey(char *key)
 {
 	int		i;
-	for(i=0; i<SEIS__NKEYS; i++) {
+	for(i=0; i<SEIS_NKEYS; i++) {
 		if(strcmp(key, hdr[i].key) == 0) {
 			return hdr[i].key;
 		}
@@ -791,7 +809,7 @@ set_traces_header(daos_handle_t coh, int daos_mode, traces_list_t **head,
 		  double *a, double *b, double *c, double *d, double *e,
 		  double *f, double *j, header_operation_type_t type)
 {
-	traces_headers_t 	*current;
+	trace_node_t 	*current;
 	trace_oid_oh_t 		 trace_hdr_obj;
 	cwp_String 		 type_key1[num_of_keys];
 	cwp_String 		 type_key2[num_of_keys];
@@ -873,8 +891,8 @@ window_headers(traces_list_t **head, char **window_keys,
 	       int number_of_keys, cwp_String *type,
 	       Value *min_keys, Value *max_keys)
 {
-	traces_headers_t 	*current;
-	traces_headers_t 	*previous;
+	trace_node_t 		*current;
+	trace_node_t 		*previous;
 	Value 			 val;
 	int 			 i;
 	int 			 break_loop;
@@ -1145,7 +1163,7 @@ replace_seismic_objects(dfs_t *dfs, int daos_mode, char *key,
 		return;
 	}
 	/** Start linking trace list to the created gather object */
-	traces_headers_t 	*current = trace_list->head;
+	trace_node_t 		*current = trace_list->head;
 	while (current != NULL) {
 		trace_obj_t *trace_obj = malloc(sizeof(trace_obj_t));
 		trace_obj->trace = malloc(sizeof(trace_t));
@@ -1200,7 +1218,7 @@ headers_ranges_t
 range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 		     char **keys, int dim)
 {
-	traces_headers_t 	*current;
+	trace_node_t	 	*current;
 	headers_ranges_t	headers_ranges;
 	trace_t 		*trmin;
 	trace_t 		*trmax;
@@ -1253,7 +1271,7 @@ range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 	north_cmp[1] = south_cmp[1] = east_cmp[1] = west_cmp[1] = 0.0;
 
 	if (number_of_keys == 0) {
-		for (i = 0; i < SEIS__NKEYS; i++) {
+		for (i = 0; i < SEIS_NKEYS; i++) {
 			get_header_value(current->trace, keys[i], &val);
 			set_header_value(trmin, keys[i], &val);
 			set_header_value(trmax, keys[i], &val);
@@ -1305,7 +1323,7 @@ range_traces_headers(traces_list_t *trace_list, int number_of_keys,
 	while (current != NULL) {
 		sx = sy = gx = gy = mx = my = 0.0;
 		if (number_of_keys == 0) {
-			for (i = 0; i < SEIS__NKEYS; i++) {
+			for (i = 0; i < SEIS_NKEYS; i++) {
 				get_header_value(current->trace, keys[i],
 						 &val);
 				get_header_value(*trmin, keys[i], &valmin);
@@ -1974,4 +1992,40 @@ read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj){
 		add_gather(&temp_gather, &(seis_obj->gathers),1);
 		free(temp_gather.oids);
 	}
+}
+
+void
+release_traces_list(traces_list_t *trace_list)
+{
+	trace_node_t	 	*temp;
+	trace_node_t	 	*next;
+
+	temp = trace_list->head;
+
+	while(temp != NULL ){
+		next = temp->next_trace;
+		if (temp->trace.data != NULL) {
+			free(temp->trace.data);
+		}
+		free(temp);
+		temp = next;
+	}
+	free(trace_list);
+}
+
+void
+release_ensembles_list(ensembles_list_t *ensembles_list)
+{
+	ensemble_node_t 	*temp;
+	ensemble_node_t 	*next;
+
+	temp = ensembles_list->first_ensemble;
+
+	while(temp != NULL) {
+		next = temp->next_ensemble;
+		free(temp);
+		temp = next;
+	}
+
+	free(ensembles_list);
 }

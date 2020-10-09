@@ -120,16 +120,17 @@ main(int argc, char *argv[])
 								     in_file);
 	gettimeofday(&tv1, NULL);
 	/** Window traces headers */
-	traces_list_t *trace_list = daos_seis_wind_traces(seis_root_object,
-							  window_keys,
-							  number_of_keys,
-							  min_keys, max_keys,
-							  type);
+	traces_metadata_t *traces_metadata = daos_seis_wind_traces(seis_root_object,
+							  	   window_keys,
+								   number_of_keys,
+								   min_keys,
+								   max_keys,
+								   type);
 	gettimeofday(&tv2, NULL);
 	/** Open output file to write traces to */
 	FILE *fd = fopen(out_file, "w");
 
-	traces_headers_t *temp_trace = trace_list->head;
+	trace_node_t *temp_trace = traces_metadata->traces_list->head;
 	/** Fetch traces from linked list and write them to out_file */
 	if(temp_trace == NULL) {
 		warn("Linked list of traces is empty \n");
@@ -149,7 +150,7 @@ main(int argc, char *argv[])
 	}
 	free(window_keys);
 	/** Release allocated linked list */
-	daos_seis_release_traces_list(trace_list);
+	daos_seis_release_traces_metadata(traces_metadata);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

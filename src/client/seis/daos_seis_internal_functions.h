@@ -133,7 +133,8 @@ merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list);
  * 				new node will be created and linked to the list.
  */
 void
-add_trace_header(trace_t *trace, traces_list_t **head);
+add_trace_header(trace_t *trace, traces_list_t **traces,
+		 ensembles_list_t **ensembles, int index);
 
 /** Function responsible for updating gather keys at the end of parsing function.
  *  It writes the number_of_traces key(akey) under each gather(dkey).
@@ -333,8 +334,8 @@ fetch_traces_header_read_traces(daos_handle_t coh, daos_obj_id_t *oids,
  */
 void
 fetch_traces_header_traces_list(daos_handle_t coh, daos_obj_id_t *oids,
-				traces_list_t **head_traces, int daos_mode,
-				int num_of_traces);
+				traces_metadata_t *traces_metadata,
+				int daos_mode, int num_of_traces);
 
 /** Function responsible for sorting traces headers.
  *  It is called while sorting headers and internally merge sort the headers
@@ -612,5 +613,21 @@ process_trace(tapesegy tapetr, segy *tr, bhed bh, int ns, int swaphdrs,
  */
 void
 read_object_gathers(seis_root_obj_t *root, seis_obj_t *seis_obj);
+
+/** Function responsible for releasing allocated linked list of traces.
+ *
+ * \param[in]	trace_list	pointer to linked list of traces.
+ *
+ */
+void
+release_traces_list(traces_list_t *trace_list);
+
+/** Function responsible for releasing allocated linked list of ensembles.
+ *
+ * \param[in]	trace_list	pointer to linked list of ensembles.
+ *
+ */
+void
+release_ensembles_list(ensembles_list_t *ensembles_list);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

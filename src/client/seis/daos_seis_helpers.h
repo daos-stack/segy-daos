@@ -268,7 +268,7 @@ set_header_value(trace_t *trace, char *sort_key, Value *value);
  *
  */
 void
-calculate_new_header_value(traces_headers_t *current, char *key1, char *key2,
+calculate_new_header_value(trace_node_t *current, char *key1, char *key2,
 			   char *key3, double a, double b, double c, double d,
 			   double e, double f, double j, int itr,
 			   header_operation_type_t type, cwp_String type_key1,

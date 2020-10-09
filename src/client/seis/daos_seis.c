@@ -176,10 +176,10 @@ daos_seis_get_text_header(seis_root_obj_t *root)
 	return text_header;
 }
 
-traces_list_t*
+traces_metadata_t*
 daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 {
-	traces_list_t 		*trace_list;
+	traces_metadata_t	*shot_metadata;
 	Value 			 min;
 	char 			*key;
 	char 			*type;
@@ -189,10 +189,10 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 	strcpy(key, "fldr");
 	type = hdtype(key);
 
-	trace_list = daos_seis_wind_traces(root, &key, 1, &min, &min, &type);
+	shot_metadata = daos_seis_wind_traces(root, &key, 1, &min, &min, &type);
 
 	free(key);
-	return trace_list;
+	return shot_metadata;
 }
 
 int
@@ -261,15 +261,15 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 	int ebcdic = 1; /* ebcdic to ascii conversion flag	*/
 
 	cwp_String *key1; /* output key(s)		*/
-	key1 = (cwp_String*) malloc(SEIS__NKEYS * sizeof(cwp_String));
-	cwp_String key2[SEIS__NKEYS]; /* first input key(s)		*/
-	cwp_String type1[SEIS__NKEYS]; /* array of types for key1	*/
-	char type2[SEIS__NKEYS]; /* array of types for key2	*/
-	int ubyte[SEIS__NKEYS];
+	key1 = (cwp_String*) malloc(SEIS_NKEYS * sizeof(cwp_String));
+	cwp_String key2[SEIS_NKEYS]; /* first input key(s)		*/
+	cwp_String type1[SEIS_NKEYS]; /* array of types for key1	*/
+	char type2[SEIS_NKEYS]; /* array of types for key2	*/
+	int ubyte[SEIS_NKEYS];
 	int nkeys; /* number of keys to be computed*/
 	int n; /* counter of keys getparred	*/
 	int ikey; /* loop counter of keys 	*/
-	int index1[SEIS__NKEYS]; /* array of indexes for key1 	*/
+	int index1[SEIS_NKEYS]; /* array of indexes for key1 	*/
 
 	/* deal with number of extended text headers */
 	short nextended;
@@ -525,14 +525,16 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 
 }
 
-traces_list_t*
+traces_metadata_t*
 daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		      char **sort_keys, int *directions,
 		      int number_of_window_keys, char **window_keys,
 		      cwp_String *type, Value *min_keys, Value *max_keys)
 {
 	seismic_entry_t 	seismic_entry = {0};
+	traces_metadata_t      *traces_metadata;
 	traces_list_t	       *trace_list;
+	ensembles_list_t       *ensemble_list;
 	seis_obj_t 	       *seismic_object;
 	read_traces	       *gather_traces;
 	int 		 	temp_number_of_keys;
@@ -546,11 +548,17 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 
 	seismic_object = malloc(sizeof(seis_obj_t));
 	daos_mode = get_daos_obj_mode(O_RDWR);
+	traces_metadata = malloc(sizeof(traces_metadata_t));
 	trace_list = malloc(sizeof(traces_list_t));
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
-
+	ensemble_list = malloc(sizeof(ensembles_list_t));
+	ensemble_list->first_ensemble = NULL;
+	ensemble_list->last_ensemble = NULL;
+	ensemble_list->num_of_ensembles = 0;
+	traces_metadata->traces_list = trace_list;
+	traces_metadata->ensembles_list = ensemble_list;
 
 	for(i = 0; i< root->num_of_keys; i++){
 		if(strcmp(root->keys[i], sort_keys[0]) == 0) {
@@ -679,7 +687,7 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		 */
 		for (k = 0; k < gather_traces[i].number_of_traces; k++) {
 			add_trace_header(&(gather_traces[i].traces[k]),
-					 &gather_trace_list);
+					 &gather_trace_list, &ensemble_list, k);
 		}
 		/** check array of window keys if not null
 		 *  then call window headers functionality
@@ -716,16 +724,18 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 	free(seismic_object->seis_gather_trace_oids_obj);
 	free(seismic_object);
 
-	return trace_list;
+	return traces_metadata;
 }
 
-traces_list_t* 
+traces_metadata_t*
 daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys, 
 		      int number_of_keys, Value *min_keys,
 		      Value *max_keys, cwp_String *type)
 {
 	seismic_entry_t 	seismic_entry = {0};
 	traces_list_t 	       *trace_list;
+	ensembles_list_t       *ensemble_list;
+	traces_metadata_t      *traces_metadata;
 	seis_obj_t 	       *seismic_object;
 	char 			temp[4096];
 	int 			daos_mode;
@@ -739,6 +749,13 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
+	ensemble_list = malloc(sizeof(ensembles_list_t));
+	ensemble_list->first_ensemble = NULL;
+	ensemble_list->last_ensemble = NULL;
+	ensemble_list->num_of_ensembles = 0;
+	traces_metadata = malloc(sizeof(traces_metadata_t));
+	traces_metadata->traces_list = trace_list;
+	traces_metadata->ensembles_list = ensemble_list;
 
 	while(i < number_of_keys){
 		for(j = 0; j < root->num_of_keys; j++){
@@ -868,8 +885,8 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 			    " code = %d \n", rc);
 			exit(rc);
 		}
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
-						daos_mode,number_of_traces);
+		fetch_traces_header_traces_list(root->coh, oids, traces_metadata,
+						daos_mode, number_of_traces);
 		free(oids);
  	}
  	/** apply window on headers fetched */
@@ -888,7 +905,7 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 	free(seismic_object->seis_gather_trace_oids_obj);
 	free(seismic_object);
 
-	return trace_list;
+	return traces_metadata;
 }
 
 void
@@ -902,6 +919,8 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 	trace_oid_oh_t 		gather_traces_oids;
 	daos_obj_id_t 	       *oids;
 	traces_list_t	       *trace_list;
+	traces_metadata_t      *traces_metadata;
+	ensembles_list_t       *ensembles_list;
 	seis_obj_t 	       *seismic_object;
 	int 			number_of_traces = 0;
 	int			existing_keys[num_of_keys];
@@ -916,7 +935,13 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
-
+	ensembles_list = malloc(sizeof(ensembles_list_t));
+	ensembles_list->first_ensemble = NULL;
+	ensembles_list->last_ensemble = NULL;
+	ensembles_list->num_of_ensembles = 0;
+	traces_metadata = malloc(sizeof(traces_metadata_t));
+	traces_metadata->traces_list = trace_list;
+	traces_metadata->ensembles_list = ensembles_list;
 	for (i = 0; i < num_of_keys; i++) {
 		existing_keys[i] = 0;
 		for(k = 0; k < num_of_keys; k++) {
@@ -1006,7 +1031,7 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 			return;
 		}
 
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
+		fetch_traces_header_traces_list(root->coh, oids, traces_metadata,
 						daos_mode, number_of_traces);
 		free(oids);
 	}
@@ -1031,7 +1056,7 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 		return;
 	}
 	/** Release traces list */
-	daos_seis_release_traces_list(trace_list);
+	release_traces_list(trace_list);
 	/** Free allocated memory */
 	free(seismic_object->seis_gather_trace_oids_obj);
 	free(seismic_object);
@@ -1044,6 +1069,8 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 	seismic_entry_t 	seismic_entry = {0};
 	trace_oid_oh_t		gather_traces_oids;
 	traces_list_t 	       *trace_list;
+	ensembles_list_t       *ensembles_list;
+	traces_metadata_t      *traces_metadata;
 	daos_obj_id_t 	       *oids;
 	seis_obj_t 	       *seismic_object;
 	int 			daos_mode;
@@ -1056,6 +1083,13 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
+	ensembles_list = malloc(sizeof(ensembles_list_t));
+	ensembles_list->first_ensemble = NULL;
+	ensembles_list->last_ensemble = NULL;
+	ensembles_list->num_of_ensembles = 0;
+	traces_metadata = malloc(sizeof(traces_metadata_t));
+	traces_metadata->traces_list = trace_list;
+	traces_metadata->ensembles_list = ensembles_list;
 
 	seismic_object->oid = root->gather_oids[0];
 	strcpy(seismic_object->name, root->keys[0]);
@@ -1138,7 +1172,7 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 			exit(rc);
 		}
 
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
+		fetch_traces_header_traces_list(root->coh, oids, traces_metadata,
 						daos_mode, num_of_traces);
 		free(oids);
 	}
@@ -1148,7 +1182,7 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 						       dim);
 
 	/** Release traces list */
-	daos_seis_release_traces_list(trace_list);
+	release_traces_list(trace_list);
 	/** Free allocated memory */
 	free(seismic_object->seis_gather_trace_oids_obj);
 	free(seismic_object);
@@ -1156,12 +1190,12 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 	return ranges;
 }
 
-traces_list_t*
+traces_metadata_t*
 daos_seis_get_headers(seis_root_obj_t *root)
 {
 	seismic_entry_t 	seismic_entry = {0};
 	trace_oid_oh_t		gather_traces_oids;
-	traces_list_t 	       *trace_list;
+	traces_metadata_t      *traces_metadata;
 	daos_obj_id_t 	       *oids;
 	seis_obj_t 	       *seismic_object;
 	int 			daos_mode;
@@ -1170,10 +1204,16 @@ daos_seis_get_headers(seis_root_obj_t *root)
 
 	daos_mode = get_daos_obj_mode(O_RDWR);
 	seismic_object = malloc(sizeof(seis_obj_t));
-	trace_list = malloc(sizeof(traces_list_t));
-	trace_list->head = NULL;
-	trace_list->tail = NULL;
-	trace_list->size = 0;
+	traces_metadata = malloc(sizeof(traces_metadata_t));
+	traces_metadata->traces_list = malloc(sizeof(traces_list_t));
+	traces_metadata->ensembles_list = malloc(sizeof(ensembles_list_t));
+	traces_metadata->traces_list->head = NULL;
+	traces_metadata->traces_list->tail = NULL;
+	traces_metadata->traces_list->size = 0;
+	traces_metadata->ensembles_list->first_ensemble = NULL;
+	traces_metadata->ensembles_list->last_ensemble = NULL;
+	traces_metadata->ensembles_list->num_of_ensembles = 0;
+
 
 	seismic_object->oid = root->gather_oids[0];
 	strcpy(seismic_object->name, root->keys[0]);
@@ -1251,21 +1291,22 @@ daos_seis_get_headers(seis_root_obj_t *root)
 			exit(rc);
 		}
 
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
-				daos_mode, number_of_traces);
+		fetch_traces_header_traces_list(root->coh, oids,
+						traces_metadata, daos_mode,
+						number_of_traces);
 		free(oids);
 	}
 	/** Free allocated memory */
 	free(seismic_object->seis_gather_trace_oids_obj);
 	free(seismic_object);
 
-	return trace_list;
+	return traces_metadata;
 }
 
 void
 daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list)
 {
-	traces_headers_t 	*current;
+	trace_node_t 	*current;
 	trace_oid_oh_t 		data_oids;
 	int 			 rc;
 	int 			 i;
@@ -1452,22 +1493,11 @@ daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 }
 
 void
-daos_seis_release_traces_list(traces_list_t *trace_list)
+daos_seis_release_traces_metadata(traces_metadata_t *traces_metadata)
 {
-	traces_headers_t 	*temp;
-	traces_headers_t 	*next;
-
-	temp = trace_list->head;
-
-	while(temp != NULL ){
-		next = temp->next_trace;
-		if (temp->trace.data != NULL) {
-			free(temp->trace.data);
-		}
-		free(temp);
-		temp = next;
-	}
-	free(trace_list);
+	release_traces_list(traces_metadata->traces_list);
+	release_ensembles_list(traces_metadata->ensembles_list);
+	free(traces_metadata);
 }
 
 void
@@ -1531,7 +1561,7 @@ daos_seis_fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
 {
 	daos_array_iod_t 	iod;
 	seismic_entry_t 	seismic_entry = {0};
-	traces_headers_t       *current;
+	trace_node_t	       *current;
 	trace_oid_oh_t 		trace_data_obj;
 	daos_obj_id_t		hdr_obj_id;
 	daos_range_t 		rg;

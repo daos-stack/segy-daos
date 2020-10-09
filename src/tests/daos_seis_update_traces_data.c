@@ -84,13 +84,13 @@ main(int argc, char *argv[])
 	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
 	/** Read 2 seperate shots traces in 2 linked lists */
-	traces_list_t *src_trace_list = daos_seis_get_shot_traces(src_shot_id, seis_root_object);
-	traces_list_t *dst_trace_list = daos_seis_get_shot_traces(dest_shot_id, seis_root_object);
+	traces_metadata_t *src_traces_metadata = daos_seis_get_shot_traces(src_shot_id, seis_root_object);
+	traces_metadata_t *dest_traces_metadata = daos_seis_get_shot_traces(dest_shot_id, seis_root_object);
 	/** Open output file to write original traces to */
 	FILE *fd = fopen(src_out_file, "w");
 
-	traces_headers_t *temp_src = src_trace_list->head;
-	traces_headers_t *temp_dst = dst_trace_list->head;
+	trace_node_t *temp_src = src_traces_metadata->traces_list->head;
+	trace_node_t *temp_dst = dest_traces_metadata->traces_list->head;
 
 	/** Fetch traces from linked list and write them to out_file */
 	if (temp_src == NULL) {
@@ -106,18 +106,19 @@ main(int argc, char *argv[])
 			fputtr(fd, tp);
 			temp_src = temp_src->next_trace;
 			temp_dst = temp_dst->next_trace;
+			free(tp);
 		}
 	}
 	gettimeofday(&tv1, NULL);
 	/** update traces data */
-	daos_seis_set_data(seis_root_object, dst_trace_list);
+	daos_seis_set_data(seis_root_object, dest_traces_metadata->traces_list);
 	gettimeofday(&tv2, NULL);
 	/** read shot 601 after writing shot_id traces in it */
-	traces_list_t *trace_list = daos_seis_get_shot_traces(dest_shot_id, seis_root_object);
+	traces_metadata_t *traces_metadata = daos_seis_get_shot_traces(dest_shot_id, seis_root_object);
 	/** Open a new output file to write updated shot_601 traces to */
 	fd = fopen(dest_out_file, "w");
 
-	traces_headers_t *temp = trace_list->head;
+	trace_node_t *temp = traces_metadata->traces_list->head;
 
 	if (temp == NULL) {
 //		warn("Linked list of traces is empty \n");
@@ -129,12 +130,13 @@ main(int argc, char *argv[])
 			/** Write segy struct to file */
 			fputtr(fd, tp);
 			temp = temp->next_trace;
+			free(tp);
 		}
 	}
 	/** Release allocated linked list */
-	daos_seis_release_traces_list(src_trace_list);
-	daos_seis_release_traces_list(dst_trace_list);
-	daos_seis_release_traces_list(trace_list);
+	daos_seis_release_traces_metadata(src_traces_metadata);
+	daos_seis_release_traces_metadata(dest_traces_metadata);
+	daos_seis_release_traces_metadata(traces_metadata);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 
