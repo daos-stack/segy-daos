@@ -8,7 +8,8 @@
 char *sdoc[] = {
 		"									",
 		" Update traces data functionality					",
-		" It reads shot_id traces, then copies the data read to another shot object.",
+		" It reads src_shot_id traces data, then copies the data read to 	 ",
+		" dest_shot_id traces data.",
 		"									",
 		" update_traces_data pool=uuid container=uuid svc=r0:r1:r2 in=root_obj_path out=output_file_path shot_id=..					",
 		"									",
@@ -17,9 +18,12 @@ char *sdoc[] = {
 		" container=			container uuid to connect		        ",
 		" svc=				service ranklist of pool seperated by: 		",
 		" in_file 			path of the seismic root object.		",
-		" out_file 			path of the file to which			",
-		"				traces will be written after update		",
-		" shot_id			id of the shot to read its traces		",
+		" src_out_file 			path of the file to which src_shot		",
+		"				traces will be written.				",
+		" dest_out_file 		path of the file to which dest_shot		",
+		"				traces will be written after update.				",
+		" src_shot_id			id of the shot to read its traces		",
+		" dest_shot_id			id of the shot to update its traces		",
 		"									",
 		" Optional Parameters:							",
 		" verbose=0			=1 for verbose				",
@@ -37,10 +41,14 @@ main(int argc, char *argv[])
 	char 			       *svc_list;
 	/** string of the path of the file that will be read */
 	char 			       *in_file;
-	/** string of the path of the file that will be written */
-	char 			       *out_file;
+	/** string of the path of the file src trace will be written to */
+	char 			       *src_out_file;
+	/** string of the path of the file trace after update will be written to */
+	char 			       *dest_out_file;
 	/** integer holding shot_id value to read */
-	int 				shot_id;
+	int 				src_shot_id;
+	/** integer holding shot_id value to read */
+	int 				dest_shot_id;
 	/** Flag to allow container creation if not found */
 	int		 		allow_container_creation = 0;
 	/** Flag to allow verbose output */
@@ -54,8 +62,10 @@ main(int argc, char *argv[])
 	MUSTGETPARSTRING("container",  &container_id);
 	MUSTGETPARSTRING("svc",  &svc_list);
 	MUSTGETPARSTRING("in",  &in_file);
-	MUSTGETPARSTRING("out",  &out_file);
-	MUSTGETPARINT("shot_id",  &shot_id);
+	MUSTGETPARSTRING("src_out",  &src_out_file);
+	MUSTGETPARSTRING("dest_out",  &dest_out_file);
+	MUSTGETPARINT("src_shot_id",  &src_shot_id);
+	MUSTGETPARINT("dest_shot_id",  &dest_shot_id);
 
 	if (!getparint("verbose", &verbose)) {
 		verbose = 0;
@@ -74,24 +84,24 @@ main(int argc, char *argv[])
 	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 
 	/** Read 2 seperate shots traces in 2 linked lists */
-	traces_list_t *src_trace_list = daos_seis_get_shot_traces(shot_id, seis_root_object);
-	traces_list_t *dst_trace_list = daos_seis_get_shot_traces( 601, seis_root_object);
+	traces_list_t *src_trace_list = daos_seis_get_shot_traces(src_shot_id, seis_root_object);
+	traces_list_t *dst_trace_list = daos_seis_get_shot_traces(dest_shot_id, seis_root_object);
 	/** Open output file to write original traces to */
-	FILE *fd = fopen(out_file, "w");
+	FILE *fd = fopen(src_out_file, "w");
 
 	traces_headers_t *temp_src = src_trace_list->head;
 	traces_headers_t *temp_dst = dst_trace_list->head;
 
 	/** Fetch traces from linked list and write them to out_file */
 	if (temp_src == NULL) {
-		warn("Linked list of traces is empty \n");
+//		warn("Linked list of traces is empty \n");
 		return 0;
 	} else {
 		while(temp_src != NULL){
 			memcpy(temp_dst->trace.data, temp_src->trace.data,
 			       temp_src->trace.ns * sizeof(float));
 			/** convert trace struct back to original segy struct */
-			segy *tp = trace_to_segy(&(temp_src->trace));
+			segy *tp = daos_seis_trace_to_segy(&(temp_src->trace));
 			/** Write segy struct to file */
 			fputtr(fd, tp);
 			temp_src = temp_src->next_trace;
@@ -103,19 +113,19 @@ main(int argc, char *argv[])
 	daos_seis_set_data(seis_root_object, dst_trace_list);
 	gettimeofday(&tv2, NULL);
 	/** read shot 601 after writing shot_id traces in it */
-	traces_list_t *trace_list = daos_seis_get_shot_traces(601, seis_root_object);
+	traces_list_t *trace_list = daos_seis_get_shot_traces(dest_shot_id, seis_root_object);
 	/** Open a new output file to write updated shot_601 traces to */
-	fd = fopen("shot_601.su", "w");
+	fd = fopen(dest_out_file, "w");
 
 	traces_headers_t *temp = trace_list->head;
 
 	if (temp == NULL) {
-		warn("Linked list of traces is empty \n");
+//		warn("Linked list of traces is empty \n");
 		return 0;
 	} else {
 		while(temp != NULL) {
 			/** convert trace struct back to original segy struct */
-			segy* tp = trace_to_segy(&(temp->trace));
+			segy* tp = daos_seis_trace_to_segy(&(temp->trace));
 			/** Write segy struct to file */
 			fputtr(fd, tp);
 			temp = temp->next_trace;

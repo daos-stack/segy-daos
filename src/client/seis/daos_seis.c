@@ -196,8 +196,8 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 }
 
 int
-daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **keys,
-		     seis_root_obj_t *root_obj, seis_obj_t **seismic_obj, int additional)
+daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj,
+		     seis_obj_t **seismic_obj, int additional)
 {
 	DAOS_FILE 		*daos_tape;
 	char 			*temp_name;
@@ -292,7 +292,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 
 	errmax = 0;
 	buff = 1;
-	int num_of_gathers[num_of_keys];
+	int num_of_gathers[root_obj->num_of_keys];
 
 	/* Override binary format value */
 	over = 0;
@@ -358,7 +358,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 			return rc;
 		}
 
-		for(i = 0; i < num_of_keys; i++) {
+		for(i = 0; i < root_obj->num_of_keys; i++) {
 			seismic_obj[i] = (seis_obj_t*)malloc(sizeof(seis_obj_t));
 			seismic_obj[i]->oid = root_obj->gather_oids[i];
 			strcpy(seismic_obj[i]->name, root_obj->keys[i]);
@@ -419,13 +419,13 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 			    " error code = %d \n", rc);
 			return rc;
 		}
-		for(i = 0; i < num_of_keys; i++) {
+		for(i = 0; i < root_obj->num_of_keys; i++) {
 			rc = trace_linking(trace_obj,
 					   seismic_obj[i],
-					   keys[i]);
+					   root_obj->keys[i]);
 			if (rc != 0) {
 				err("Linking trace to <%s> gather object failed,"
-				    " error code = %d \n",keys[i], rc);
+				    " error code = %d \n",root_obj->keys[i], rc);
 				return rc;
 			}
 		}
@@ -457,7 +457,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 		return rc;
 	}
 
-	for(i=0; i< num_of_keys; i++) {
+	for(i=0; i< root_obj->num_of_keys; i++) {
 		rc = update_seismic_gather_object(seismic_obj[i],
 						  DS_D_NGATHERS,
 					  	  DS_A_NGATHERS,
@@ -465,14 +465,14 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 						  sizeof(int), DAOS_IOD_SINGLE);
 		if (rc != 0) {
 			err("Adding number of gathers to <%s> gather object"
-			    " failed, error code = %d \n",keys[i], rc);
+			    " failed, error code = %d \n",root_obj->keys[i], rc);
 			return rc;
 		}
 	}
 
 //	printf("Updated all gathers numbers...\n");
 
-	for(i=0; i< num_of_keys; i++) {
+	for(i=0; i< root_obj->num_of_keys; i++) {
 		if(additional == 1){
 			rc = trace_oids_obj_create(dfs, OC_SX,
 						   seismic_obj[i],
@@ -490,7 +490,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 	}
 //	printf("Created trace oids objects \n");
 
-	for(i=0; i< num_of_keys; i++) {
+	for(i=0; i< root_obj->num_of_keys; i++) {
 		rc = update_gather_data(dfs, seismic_obj[i]->gathers, seismic_obj[i],
 					  get_dkey(seismic_obj[i]->name));
 		if (rc != 0) {
@@ -501,13 +501,13 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 	}
 //	printf("Updated all gathers traces...\n");
 
-	for(i=0; i< num_of_keys; i++) {
+	for(i=0; i< root_obj->num_of_keys; i++) {
 		release_gathers_list(seismic_obj[i]->gathers);
 		free(seismic_obj[i]->seis_gather_trace_oids_obj);
 		rc = daos_obj_close(seismic_obj[i]->oh, NULL);
 		if (rc != 0) {
 			err("Closing seismic object %s failed, "
-			    "error code = %d \n",keys[i], rc);
+			    "error code = %d \n",root_obj->keys[i], rc);
 			return rc;
 		}
 	}
@@ -515,7 +515,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, int num_of_keys, char **k
 		rc = daos_obj_close(root_obj->root_obj->oh, NULL);
 		if (rc != 0) {
 			err("Closing root seismic object %s failed, "
-			    "error code = %d \n",keys[i], rc);
+			    "error code = %d \n",root_obj->keys[i], rc);
 			return rc;
 		}
 	}
@@ -1275,7 +1275,7 @@ daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list)
 	for (i = 0; i < trace_list->size; i++) {
 		data_oids.oid =	get_trace_data_oid(&(current->trace.trace_header_obj),
 						   OC_SX);
-		segy *trace = trace_to_segy(&current->trace);
+		segy *trace = daos_seis_trace_to_segy(&current->trace);
 
 		rc = daos_array_open_with_attr(root->coh, data_oids.oid,
 					       DAOS_TX_NONE, DAOS_OO_RW, 1,
@@ -1593,4 +1593,80 @@ daos_seis_fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
 
 }
 
+dfs_obj_t*
+dfs_get_parent_of_file(dfs_t *dfs, const char *file_directory,
+		       int allow_creation, char *file_name,
+		       int verbose_output)
+{
+	daos_oclass_id_t 	cid = OC_SX;
+	dfs_obj_t 	       *parent = NULL;
+	char 			temp[2048];
+	int 			array_len = 0;
+	int 			err;
+	strcpy(temp, file_directory);
+	const char 		*sep = "/";
+	char *token = strtok(temp, sep);
+	while (token != NULL) {
+		array_len++;
+		token = strtok(NULL, sep);
+	}
+	char **array = malloc(sizeof(char*) * array_len);
+	strcpy(temp, file_directory);
+	token = strtok(temp, sep);
+	int 			i = 0;
+	while (token != NULL) {
+		array[i] = malloc(sizeof(char) * (strlen(token) + 1));
+		strcpy(array[i], token);
+		token = strtok(NULL, sep);
+		i++;
+	}
+
+	for (i = 0; i < array_len - 1; i++) {
+		dfs_obj_t 	*temp_obj;
+		err = dfs_lookup_rel(dfs, parent, array[i], O_RDWR,
+				     &temp_obj, NULL, NULL);
+		if (err == 0) {
+			if (verbose_output) {
+				warn("Subdirectory '%s' already exist \n",
+				     array[i]);
+			}
+		} else if (allow_creation) {
+			mode_t mode = 0666;
+			err = dfs_mkdir(dfs, parent, array[i], mode, cid);
+			if (err == 0) {
+				if (verbose_output) {
+					warn("Created directory '%s'\n",
+					     array[i]);
+				}
+				dfs_lookup_rel(dfs, parent, array[i], O_RDWR,
+					       &temp_obj, NULL, NULL);
+			} else {
+				warn("Mkdir on %s failed with error code :"
+				     " %d \n", array[i], err);
+			}
+		} else {
+			warn("Relative lookup on %s failed with error code :"
+			     " %d \n", array[i], err);
+		}
+		parent = temp_obj;
+	}
+	strcpy(file_name, array[array_len - 1]);
+	for (i = 0; i < array_len; i++) {
+		free(array[i]);
+	}
+	free(array);
+
+	return parent;
+}
+
+segy*
+daos_seis_trace_to_segy(trace_t *trace)
+{
+	segy 		*tp;
+
+	tp = malloc(sizeof(segy));
+	memcpy(tp, trace, TRACEHDR_BYTES);
+	memcpy(tp->data, trace->data, tp->ns * sizeof(float));
+	return tp;
+}
 

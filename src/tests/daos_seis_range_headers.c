@@ -95,19 +95,14 @@ main(int argc, char *argv[])
 			token = strtok(NULL, sep);
 		}
 	} else {
-		number_of_keys = 0;
-	}
-
-	if(number_of_keys == 0){
-		range_keys = malloc(SU_NKEYS * sizeof(char*));
-	} else{
-		range_keys = malloc(number_of_keys * sizeof(char*));
+		number_of_keys = SU_NKEYS;
 	}
 
 	int 			k;
 	if(keys != NULL) {
-		tokenize_str((void**)range_keys,",", keys, 0);
+		tokenize_str((void***)&range_keys,",", keys, 0, &number_of_keys);
 	} else {
+		range_keys = malloc(SU_NKEYS * sizeof(char*));
 		for(k = 0; k < SU_NKEYS; k++) {
 			range_keys[k]= malloc((strlen(hdr[k].key)+1) *
 					      sizeof(char));

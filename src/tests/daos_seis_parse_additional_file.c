@@ -83,27 +83,11 @@ main(int argc, char *argv[])
 	seis_root_object = daos_seis_open_root_path(get_dfs(),out_file);
 	seismic_obj = malloc(seis_root_object->num_of_keys * sizeof(seis_obj_t*));
 
-	daos_seis_parse_segy(get_dfs(), segyfile->file, seis_root_object->num_of_keys,
-			     seis_root_object->keys, seis_root_object, seismic_obj, 1);
+	daos_seis_parse_segy(get_dfs(), segyfile->file, seis_root_object,
+			     seismic_obj, 1);
 
 	/** Close opened segy file */
 	close_dfs_file(segyfile);
-//
-//	printf(" OPEN SEIS ROOT OBJECT== \n");
-////	seis_root_obj_t *root_object = daos_seis_open_root_path(get_dfs(), out_file);
-//	printf("FINDING NUMBER OF GATHERS \n");
-//	int cmp_gathers;
-//	cmp_gathers = daos_seis_get_number_of_gathers(segy_root_object,"cdp");
-//	printf("NUMBER OF CMP GATHERSS== %d \n", cmp_gathers);
-//
-//	int shot_gathers;
-//	shot_gathers = daos_seis_get_number_of_gathers(segy_root_object,"fldr");
-//	printf("NUMBER OF SHOT GATHERS== %d \n", shot_gathers);
-//
-//	int offset_gathers;
-//	offset_gathers = daos_seis_get_number_of_gathers(segy_root_object,"offset");
-//	printf("NUMBER OF OFFSET GATHERSS == %d \n\n", offset_gathers);
-
 
 	/** Close opened root seis object */
 	daos_seis_close_root(seis_root_object);

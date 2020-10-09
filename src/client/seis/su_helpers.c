@@ -507,3 +507,45 @@ void changeval(cwp_String type1, Value *valp1, cwp_String type2,
 //	}
 //}
 //
+
+void seis_gethval(trace_t *tr, int index, Value *valp)
+{
+	char *tp = (char*) tr;
+
+	switch(*(hdr[index].type)) {
+	case 's': (void) strcpy(valp->s, tp + hdr[index].offs);  break;
+	case 'h': valp->h = *((short*)  (tp + hdr[index].offs)); break;
+	case 'u': valp->u = *((unsigned short*) (tp + hdr[index].offs)); break;
+	case 'i': valp->i = *((int*)   (tp + hdr[index].offs)); break;
+	case 'p': valp->p = *((unsigned int*)   (tp + hdr[index].offs)); break;
+	case 'l': valp->l = *((long*)   (tp + hdr[index].offs)); break;
+	case 'v': valp->v = *((unsigned long*)  (tp + hdr[index].offs)); break;
+	case 'f': valp->f = *((float*)  (tp + hdr[index].offs)); break;
+	case 'd': valp->d = *((double*) (tp + hdr[index].offs)); break;
+	default: err("%s: %s: mysterious data type", __FILE__,__LINE__); break;
+	}
+
+	return;
+}
+
+void seis_puthval(trace_t *tr, int index, Value *valp)
+{
+	char *tp = (char*) tr;
+
+	switch(*(hdr[index].type)) {
+	case 's': (void) strcpy(tp + hdr[index].offs, valp->s);  break;
+	case 'h': *((short*)  (tp + hdr[index].offs)) = valp->h; break;
+	case 'u': *((unsigned short*) (tp + hdr[index].offs)) = valp->u; break;
+	case 'i': *((int*)   (tp + hdr[index].offs)) = valp->i; break;
+	case 'p': *((unsigned int*)   (tp + hdr[index].offs)) = valp->p; break;
+	case 'l': *((long*)   (tp + hdr[index].offs)) = valp->l; break;
+	case 'v': *((unsigned long*)  (tp + hdr[index].offs)) = valp->v; break;
+	case 'f': *((float*)  (tp + hdr[index].offs)) = valp->f; break;
+	case 'd': *((double*) (tp + hdr[index].offs)) = valp->d; break;
+	default: err("%s: %s: mysterious data type", __FILE__,__LINE__); break;
+	}
+
+	return;
+}
+
+

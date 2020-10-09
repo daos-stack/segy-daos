@@ -88,7 +88,7 @@ main(int argc, char *argv[])
 	} else {
 		while(temp_src != NULL){
 			/** convert trace struct back to original segy struct */
-			segy* tp = trace_to_segy(&(temp_src->trace));
+			segy* tp = daos_seis_trace_to_segy(&(temp_src->trace));
 			/** Write segy struct to file */
 			fputtr(fd, tp);
 			temp_src = temp_src->next_trace;

@@ -127,17 +127,6 @@ main(int argc, char *argv[])
 	const char 		*sep = ",";
 	char 			*token;
 
-	if(key1 != NULL) {
-		strcpy(temp, key1);
-		token = strtok(temp, sep);
-		while( token != NULL ) {
-			number_of_keys++;
-			token = strtok(NULL, sep);
-		}
-	} else {
-		number_of_keys = 1;
-	}
-
 	char 		       **keys_1;
 	char 		       **keys_2;
 	char 		       **keys_3;
@@ -148,82 +137,88 @@ main(int argc, char *argv[])
 	double 			*e_values;
 	double 			*f_values;
 
-	keys_1 = malloc(number_of_keys * sizeof(char*));
-	keys_2 = malloc(number_of_keys * sizeof(char*));
-	keys_3 = malloc(number_of_keys * sizeof(char*));
 	a_values = malloc(number_of_keys * sizeof(double));
+	double **a_temp = &a_values;
 	b_values = malloc(number_of_keys * sizeof(double));
+	double **b_temp = &b_values;
 	c_values = malloc(number_of_keys * sizeof(double));
+	double **c_temp = &c_values;
 	d_values = malloc(number_of_keys * sizeof(double));
+	double **d_temp = &d_values;
 	e_values = malloc(number_of_keys * sizeof(double));
+	double **e_temp = &e_values;
 	f_values = malloc(number_of_keys * sizeof(double));
+	double **f_temp = &f_values;
 	int 			k;
 
 	if(key1 != NULL) {
-		tokenize_str((void**)keys_1,",", key1, 0);
+		tokenize_str((void***)&keys_1,",", key1, 0, &number_of_keys);
 	} else {
+		number_of_keys = 1;
+		keys_1 = malloc(number_of_keys * sizeof(char*));
 		for(k = 0; k < number_of_keys; k++) {
 			keys_1[k] = malloc((strlen("cdp")+1) * sizeof(char));
 			strcpy(keys_1[k], "cdp");		}
 	}
 	if(key2 != NULL) {
-		tokenize_str((void**)keys_2,",", key2, 0);
+		tokenize_str((void***)&keys_2,",", key2, 0, &number_of_keys);
 	} else {
+		keys_2 = malloc(number_of_keys * sizeof(char*));
 		for(k = 0; k < number_of_keys; k++) {
 			keys_2[k] = malloc((strlen("cdp")+1) * sizeof(char));
 			strcpy(keys_2[k], "cdp");		}
 	}
 	if(key3 != NULL) {
-		tokenize_str((void**)keys_3,",", key3, 0);
+		tokenize_str((void***)&keys_3,",", key3, 0, &number_of_keys);
 	} else {
+		keys_3 = malloc(number_of_keys * sizeof(char*));
 		for(k = 0; k < number_of_keys; k++) {
 			keys_3[k] = malloc((strlen("cdp")+1) * sizeof(char));
 			strcpy(keys_3[k], "cdp");
 		}
 	}
 	if(a != NULL) {
-		tokenize_str((void**)&a_values,",", a, 2);
+		tokenize_str(((void***)&(a_temp)),",", a, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			a_values[k] = 0;
 		}
 	}
 	if(b != NULL) {
-		tokenize_str((void**)&b_values,",", b, 2);
+		tokenize_str((void***)&(b_temp),",", b, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			b_values[k] = 1;
 		}
 	}
 	if(c != NULL) {
-		tokenize_str((void**)&c_values,",", c, 2);
+		tokenize_str((void***)&(c_temp),",", c, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			c_values[k] = 0;
 		}
 	}
 	if(d != NULL) {
-		tokenize_str((void**)&d_values,",", d, 2);
+		tokenize_str((void***)&(d_temp),",", d, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			d_values[k] = 1;
 		}
 	}
 	if(e != NULL) {
-		tokenize_str((void**)&e_values,",", e, 2);
+		tokenize_str((void***)&(e_temp),",", e, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			e_values[k] = 1;
 		}
 	}
 	if(f != NULL) {
-		tokenize_str((void**)&f_values,",", f, 2);
+		tokenize_str((void***)&(f_temp),",", f, 2, &number_of_keys);
 	} else {
 		for(k=0; k< number_of_keys; k++){
 			f_values[k] = 1;
 		}
 	}
-
 	init_dfs_api(pool_id, svc_list, container_id,
 		     allow_container_creation, verbose);
 
@@ -251,7 +246,7 @@ main(int argc, char *argv[])
 	}
 	while(temp_trace != NULL) {
 		/** convert trace struct back to original segy struct */
-		segy* tp = trace_to_segy(&(temp_trace->trace));
+		segy* tp = daos_seis_trace_to_segy(&(temp_trace->trace));
 		/** Write segy struct to file */
 		fputtr(fd, tp);
 		temp_trace = temp_trace->next_trace;

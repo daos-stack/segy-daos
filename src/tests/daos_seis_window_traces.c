@@ -77,39 +77,24 @@ main(int argc, char *argv[])
 	char 			temp[4096];
 	char 			min_temp[4096];
 	char 			max_temp[4096];
-	int 			number_of_keys =0;
+	int 			number_of_keys = 0;
 	const char 		*sep = ",";
 	char 			*token;
 	char 		       **window_keys;
 	int 			 i;
 
-	strcpy(temp, keys);
-	token = strtok(temp, sep);
-	while( token != NULL ) {
-		number_of_keys++;
-		token = strtok(NULL, sep);
-	}
-	window_keys = malloc(number_of_keys * sizeof(char*));
+	strcpy(min_temp,min);
+	strcpy(max_temp,max);
+	tokenize_str((void***)&window_keys,",", keys, 0, &number_of_keys);
 
 	Value 			min_keys[number_of_keys];
 	Value 			max_keys[number_of_keys];
 	cwp_String		type[number_of_keys];
 
-
-	i = 0;
-
-	strcpy(temp,keys);
-	strcpy(min_temp,min);
-	strcpy(max_temp,max);
-	token =strtok(temp,sep);
-	while(token != NULL){
-		window_keys[i] = malloc((strlen(token) + 1)*sizeof(char));
-		strcpy(window_keys[i], token);
+	for(i=0; i<number_of_keys; i++) {
 		type[i] = hdtype(window_keys[i]);
-		token = strtok(NULL,sep);
-		i++;
 	}
-	char *min_token =strtok(min_temp, sep);
+	char *min_token = strtok(min_temp, sep);
 	i = 0;
 	while(min_token != NULL){
 		atoval(type[i], min_token, &min_keys[i]);
@@ -152,7 +137,7 @@ main(int argc, char *argv[])
 	} else {
 		while(temp_trace != NULL){
 		/** convert trace struct back to original segy struct */
-	    	segy* tp = trace_to_segy(&(temp_trace->trace));
+	    	segy* tp = daos_seis_trace_to_segy(&(temp_trace->trace));
 		/** Write segy struct to file */
 	    	fputtr(fd, tp);
 	    	temp_trace = temp_trace->next_trace;

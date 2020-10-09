@@ -6,10 +6,10 @@ if [ "$#" -ne 5 ]; then
     exit 1
 fi
 
-cd data
+#cd data
 
-tests_program_path=./../build/tests_build
-main_program_path=./../build/main_build
+tests_program_path=./build/tests_build
+main_program_path=./build/main_build
 first_file=$4
 second_file=$5
 
@@ -37,6 +37,8 @@ function daos_seis_tests {
 	time $tests_program_path/change_headers pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_chw.su key1=tracr key2=tracr a=1000  
 	echo "Set traces headers"
 	time $tests_program_path/set_headers pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_shw.su keys=dt a=4000
+	echo "Get headers"
+	time $tests_program_path/get_headers pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT keys=fldr,tracl,cdp,offset
 	echo "Parse additional segy file"
 	time $tests_program_path/parse_additional_file pool=$1 container=$2 svc=$3 in=/second_file out=/SEIS_ROOT_OBJECT
 	echo "Read shot traces after parsing additional file"
@@ -45,7 +47,8 @@ function daos_seis_tests {
 	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_segyread_shot_609.su shot_id=609
 	echo "Find number of traces and gathers after parsing additional segy file"
 	time $tests_program_path/get_traces_count pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT
-
+	echo "Update traces data"
+	time $tests_program_path/update_traces_data pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT src_out=daos_seis_shot_601_src.su dest_out=daos_seis_shot_608_dest.su src_shot_id=601 dest_shot_id=608 
 }
 
 function su_tests {
@@ -105,6 +108,9 @@ $main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="binary" out="d
 $main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="header" out="daos_header" daostoposix=1
 $main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_binary" out="daos_seis_binary" daostoposix=1
 $main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_text_header" out="daos_seis_text_header" daostoposix=1
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_shot_601_src.su" out="daos_seis_shot_601_src.su" daostoposix=1
+$main_program_path/dfs_file_mount pool=$1 container=$2 svc=$3 in="daos_seis_shot_608_dest.su" out="daos_seis_shot_608_dest.su" daostoposix=1
 
 echo 'Compare commands...'
 file_list=(segyread sort wind chw shw segyread_shot_855 segyread_shot_609)
@@ -116,5 +122,5 @@ done
 
 compare_files "daos_seis_binary" "daos_binary" "binary"
 compare_files "daos_seis_text_header" "daos_header" "text_header"
-
+compare_files "daos_seis_shot_601_src.su" "daos_seis_shot_608_dest.su" "Update_traces"
 
