@@ -242,7 +242,7 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
  *
  */
 traces_metadata_t*
-daos_seis_get_headers(seis_root_obj_t *root);
+daos_seis_get_headers(seis_root_obj_t *root, char *key);
 
 /** Update traces data
  *

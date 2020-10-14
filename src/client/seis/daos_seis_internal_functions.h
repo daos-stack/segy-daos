@@ -665,4 +665,21 @@ tokenize_dkeys_list(seis_obj_t *object);
 int
 trace_header_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
 
+/** Function responsible for fetching array of traces headers oids
+ *  of a unique gather of a specific seismic object.
+ *
+ *  \param[in]	root			pointer to opened root seismic object.
+ *  \param[in]	seismic_object		pointer to opened seismic object.
+ *  \param[in]	dkey_name		string holding the dkey of specific
+ *  					gather under the seismic object.
+ *  \param[in]	number_of_traces	pointer to number of traces stored
+ *  					under this gather.
+ *
+ *  \return	array of traces headers oids of specific gather.
+ *
+ */
+daos_obj_id_t *
+get_gather_oids(seis_root_obj_t *root, seis_obj_t *seismic_object,
+		char *dkey_name, int *number_of_traces);
+
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

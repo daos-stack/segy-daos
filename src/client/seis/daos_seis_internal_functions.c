@@ -2120,3 +2120,49 @@ trace_header_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
 
 	return rc;
 }
+
+daos_obj_id_t *
+get_gather_oids(seis_root_obj_t *root, seis_obj_t *seismic_object,
+		char *dkey_name, int *number_of_traces)
+{
+	seismic_entry_t		seismic_entry = {0};
+	trace_oid_oh_t 		gather_traces_oids;
+	int			rc;
+
+	/** Fetch number of traces */
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
+			      dkey_name, DS_A_NTRACES,
+			      (char*)number_of_traces, sizeof(int),
+			      DAOS_IOD_SINGLE);
+	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
+				 &seismic_entry, NULL);
+	if (rc != 0) {
+		err("Fetching number of traces failed, error "
+		    "code = %d \n", rc);
+		exit(rc);
+	}
+	/** Fetch trace headers object id */
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
+			      dkey_name, DS_A_GATHER_TRACE_OIDS,
+			      (char*)&gather_traces_oids.oid,
+			      sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
+	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
+			 &seismic_entry, NULL);
+	if (rc != 0) {
+		err("Fetching traces headers oid failed, error "
+		    "code = %d \n", rc);
+		exit(rc);
+	}
+	/** Allocate oids array , size = number of traces */
+	daos_obj_id_t *oids = malloc(*number_of_traces * sizeof(daos_obj_id_t));
+	/** Fetch array of trace headers oids*/
+	rc = fetch_array_of_trace_headers_oids(root, oids,
+					       &gather_traces_oids,
+					       *number_of_traces);
+	if(rc != 0) {
+		err("Fetching array of traces headers oids failed, error"
+		    " code = %d \n", rc);
+		exit(rc);
+	}
+	return oids;
+}

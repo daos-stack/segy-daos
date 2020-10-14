@@ -87,7 +87,7 @@ main(int argc, char *argv[])
 
 	gettimeofday(&tv1, NULL);
 	/** Get header values */
-	traces_metadata_t *traces_metadata = daos_seis_get_headers( seis_root_object);
+	traces_metadata_t *traces_metadata = daos_seis_get_headers(seis_root_object, NULL);
 	gettimeofday(&tv2, NULL);
 	trace_node_t *temp_trace = traces_metadata->traces_list->head;
 

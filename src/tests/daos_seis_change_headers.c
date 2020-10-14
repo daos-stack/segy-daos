@@ -232,7 +232,7 @@ main(int argc, char *argv[])
 			      type);
 	gettimeofday(&tv2, NULL);
 	/** Get traces headers */
-	traces_metadata_t *traces_metadata = daos_seis_get_headers(seis_root_object);
+	traces_metadata_t *traces_metadata = daos_seis_get_headers(seis_root_object, NULL);
 	/** Get traces data */
 	daos_seis_fetch_traces_data((get_dfs())->coh,
 				    &(traces_metadata->traces_list),
