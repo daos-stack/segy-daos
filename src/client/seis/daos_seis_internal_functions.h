@@ -129,12 +129,21 @@ merge_trace_lists(traces_list_t **headers, traces_list_t **temp_list);
  *
  * \param[in]	trace		pointer to the trace header struct that will be
  * 				added to the linked list of traces(trace_list).
- * \param[in]	head		pointer to pointer of the traces linked list,
+ * \param[in]	traces_list	pointer the traces linked list,
  * 				new node will be created and linked to the list.
+ * \param[in]	ensembles_list	pointer to ensembles linked list. New ensemble
+ * 				node is created and linked to the list.
+ * \param[in]	index		index of the trace, if index is zero then a new
+ * 				node will be created and linked to the ensemble
+ * 				list.
+ * \param[in]	num_of_traces	total number of traces of each ensemble, will be
+ * 				used only if the index is zero to set the number
+ * 				of traces of this ensemble.
  */
 void
-add_trace_header(trace_t *trace, traces_list_t **traces,
-		 ensembles_list_t **ensembles, int index);
+add_trace_header(trace_t *trace, traces_list_t **traces_list,
+		 ensembles_list_t **ensembles_list, int index,
+		 int num_of_traces);
 
 /** Function responsible for updating gather keys at the end of parsing function.
  *  It writes the number_of_traces key(akey) under each gather(dkey).
@@ -429,7 +438,6 @@ window_headers(traces_list_t **head, char **window_keys, int number_of_keys,
  *  and optionally sort dkeys in ascending or descending order.
  *
  *  \param[in]	seismic_object	pointer to opened seismic object.
- *  \param[in]	sort		sorting flag, if set then dkeys will be sorted.
  *  \param[in]	key		string containing seismic object unique key.
  *  \param[in]	direction	only used in case of sorting to check the direction
  *  				of sorting (ascending or descending)
@@ -438,7 +446,7 @@ window_headers(traces_list_t **head, char **window_keys, int number_of_keys,
  *
  */
 char **
-fetch_seismic_obj_dkeys(seis_obj_t *seismic_object, int sort, char *key,
+fetch_seismic_obj_dkeys(seis_obj_t *seismic_object, char *key,
 		      	int direction);
 
 /** Function responsible for destroying existing seismic object
@@ -629,5 +637,32 @@ release_traces_list(traces_list_t *trace_list);
  */
 void
 release_ensembles_list(ensembles_list_t *ensembles_list);
+
+/** Function responsible for tokenizing seismic object dkeys list and
+ *  creates an array of strings holding sorted dkeys.
+ *
+ *  \param[in]	object		pointer to opened seismic object.
+ */
+char**
+tokenize_dkeys_list(seis_obj_t *object);
+
+/** Function responsible for preparing seismic entry with trace header data
+ *  and calling object update functionality.
+ *  It is called to update/insert trace header data under
+ *  specific trace_header_object.
+ *
+ * \param[in]	tr_obj		pointer to opened trace header object
+ *  				to update its header.
+ * \param[in]	tr		trace struct holding all trace headers and
+ * 				data array, only the trace headers is written
+ * 				to the trace header object.
+ * \param[in]	hdrbytes	number of bytes to be updated in trace header
+ *  				object(240 bytes as defined in segy.h).
+ *
+ * \return      0 on success
+ *		error_code otherwise
+ */
+int
+trace_header_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
 
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

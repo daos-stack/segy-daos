@@ -142,7 +142,9 @@ main(int argc, char *argv[])
 	ensemble_node_t *ensemble= traces_metadata->ensembles_list->first_ensemble;
 	i=0;
 	while(ensemble !=  NULL){
-		printf("shot id of ensemble %d is %d \n",i, ensemble->ensemble->trace.fldr);
+		printf("shot id of ensemble %d is %d ,"
+			" num of traces = %d \n",i, ensemble->ensemble->trace.fldr,
+			ensemble->number_of_traces);
 		ensemble = ensemble->next_ensemble;
 		i++;
 	}

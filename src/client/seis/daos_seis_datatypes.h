@@ -31,6 +31,8 @@
 #define	DS_A_NUM_OF_KEYS "NUMBER_OF_KEYS"
 #define	DS_D_KEYS "KEYS"
 #define	DS_A_KEYS "KEY_"
+#define DS_D_DKEYS_LIST "Dkeys_list"
+#define DS_A_DKEYS_LIST "Dkeys_list"
 #define KEY_SEPARATOR "_"
 #define SEIS_NKEYS 80
 #define TRACEHDR_BYTES 240
@@ -97,11 +99,12 @@ typedef struct seis_obj {
 	/** entry name of the object */
 	char			name[SEIS_MAX_PATH + 1];
 	/** number of gathers */
-	int number_of_gathers;
+	int 			number_of_gathers;
 	/**linked list of gathers */
-	gathers_list_t *gathers;
+	gathers_list_t 		*gathers;
 	/** pointer to array of trace_oids objects*/
-	trace_oid_oh_t *seis_gather_trace_oids_obj;
+	trace_oid_oh_t 		*seis_gather_trace_oids_obj;
+	char			*dkeys_list;
 }seis_obj_t;
 
 /** struct that is instantiated to fetch or write data under seismic object */
@@ -640,6 +643,7 @@ typedef struct trace_node{
  *  and pointer to next ensemble.
  */
 typedef struct ensemble_node{
+	int number_of_traces;
 	trace_node_t *ensemble;
 	struct ensemble_node *next_ensemble;
 }ensemble_node_t;

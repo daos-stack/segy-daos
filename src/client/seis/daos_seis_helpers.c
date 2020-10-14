@@ -122,24 +122,6 @@ check_key_value(Value target, char *key, gathers_list_t *gathers_list,
 }
 
 int
-trace_header_update(trace_oid_oh_t *tr_obj, trace_t *tr, int hdrbytes)
-{
-	seismic_entry_t 	tr_entry = {0};
-	int 			rc;
-
-	prepare_seismic_entry(&tr_entry, tr_obj->oid, DS_D_TRACE_HEADER,
-			      DS_A_TRACE_HEADER, (char*) tr, hdrbytes,
-			      DAOS_IOD_ARRAY);
-	rc = seismic_obj_update(tr_obj->oh, DAOS_TX_NONE, tr_entry);
-	if (rc != 0) {
-		err("Updating trace header failed error code = %d\n", rc);
-		return rc;
-	}
-
-	return rc;
-}
-
-int
 gather_oids_array_update(trace_oid_oh_t *object,
 			 seis_gather_t *gather)
 {
@@ -330,8 +312,8 @@ sort_dkeys_list(long *values, int number_of_gathers, char **unique_keys,
 }
 
 void
-Merge(trace_t *arr, int low, int mid, int high, char **sort_key,
-      int *direction, int num_of_keys)
+merge_traces(trace_t *arr, int low, int mid, int high, char **sort_key,
+	     int *direction, int num_of_keys)
 {
 	trace_t 	*temp;
 	Value 		 val1;
@@ -390,19 +372,20 @@ Merge(trace_t *arr, int low, int mid, int high, char **sort_key,
 }
 
 void
-MergeSort(trace_t *arr, int low, int high, char **sort_key, int *direction,
-	  int num_of_keys)
+merge_sort_traces(trace_t *arr, int low, int high, char **sort_key,
+		  int *direction, int num_of_keys)
 {
 	int		mid;
 	if (low < high) {
 		mid = (low + high) / 2;
 
-		MergeSort(arr, low, mid, sort_key, direction, num_of_keys);
-		MergeSort(arr, mid + 1, high, sort_key, direction,
-			  num_of_keys);
+		merge_sort_traces(arr, low, mid, sort_key, direction,
+				  num_of_keys);
+		merge_sort_traces(arr, mid + 1, high, sort_key, direction,
+				  num_of_keys);
 
-		Merge(arr, low, mid, high, sort_key, direction,
-		      num_of_keys);
+		merge_traces(arr, low, mid, high, sort_key, direction,
+			     num_of_keys);
 	}
 }
 
@@ -688,5 +671,90 @@ val_sprintf(char *temp, Value unique_value, char *key)
 	}
 
 	return;
+
+}
+
+void
+create_dkeys_list(seis_obj_t *object, long *gather_keys) {
+	int		  z;
+
+	merge_sort(gather_keys, 0, object->number_of_gathers - 1, 1);
+
+	object->dkeys_list = malloc((object->number_of_gathers * sizeof(long)) +
+				    (object->number_of_gathers - 1));
+
+	char temp_key[200] = "";
+	sprintf(temp_key, "%ld", gather_keys[0]);
+	strcpy(object->dkeys_list, temp_key);
+	strcat(object->dkeys_list, ",");
+	for(z = 1; z < object->number_of_gathers; z++) {
+		char temp_key[200] = "";
+		sprintf(temp_key, "%ld", gather_keys[z]);
+		strcat(object->dkeys_list, temp_key);
+		if(z == (object->number_of_gathers - 1)) {
+			break;
+		}
+		strcat(object->dkeys_list, ",");
+	}
+}
+
+void
+merge(long *gather_keys, int low, int mid, int high, int direction)
+{
+
+	int 		 mergePos;
+	int 		 leftPos;
+	int 		 rightPos;
+	long		 *temp;
+
+	temp = malloc((high - low + 1) * sizeof(long));
+
+	mergePos = 0;
+	leftPos = low;
+	rightPos = mid + 1;
+	while (leftPos <= mid && rightPos <= high) {
+			/** Compare values */
+			if (gather_keys[leftPos] <= gather_keys[rightPos]) {
+				if (direction == 1) {
+					temp[mergePos++] = gather_keys[leftPos++];
+				} else {
+					temp[mergePos++] = gather_keys[rightPos++];
+				}
+			} else if (gather_keys[leftPos] > gather_keys[rightPos]) {
+				if (direction == 1) {
+					temp[mergePos++] = gather_keys[rightPos++];
+				} else {
+					temp[mergePos++] = gather_keys[leftPos++];
+				}
+			}
+	}
+
+	while (leftPos <= mid) {
+		temp[mergePos++] = gather_keys[leftPos++];
+	}
+
+	while (rightPos <= high) {
+		temp[mergePos++] = gather_keys[rightPos++];
+	}
+
+	for (mergePos = 0; mergePos < (high - low + 1); ++mergePos) {
+		gather_keys[low + mergePos] = temp[mergePos];
+	}
+
+	free(temp);
+}
+
+void
+merge_sort(long *gather_keys, int low, int high, int direction)
+{
+	int		mid;
+	if (low < high) {
+		mid = (low + high) / 2;
+
+		merge_sort(gather_keys, low, mid, direction);
+		merge_sort(gather_keys, mid + 1, high, direction);
+
+		merge(gather_keys, low, mid, high, direction);
+	}
 
 }

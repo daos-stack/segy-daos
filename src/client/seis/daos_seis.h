@@ -277,7 +277,11 @@ void
 daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 		       	  seis_obj_t **seismic_obj, dfs_obj_t *input_file,
 			  dfs_obj_t *header_file, int ns, int ftn);
-
+/** Release traces metadata struct
+ *  It will release all traces metadata and data previously allocated.
+ *
+ *  \param[in]	traces_metadata		pointer to traces metadata struct.
+ */
 void
 daos_seis_release_traces_metadata(traces_metadata_t *traces_metadata);
 
