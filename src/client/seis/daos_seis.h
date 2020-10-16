@@ -89,7 +89,7 @@ daos_seis_get_text_header(seis_root_obj_t *root);
  * \return      returns head, tail and size of a linked list of shot traces
  * 		each node will be holding a trace header and data.
  */
-traces_list_t*
+traces_metadata_t*
 daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root);
 
 /** Parse segy file and build equivalent daos-seismic graph
@@ -139,7 +139,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
  * 		and size of linked list of traces headers
  * 		and data after sorting and optionally after windowing.
  */
-traces_list_t*
+traces_metadata_t*
 daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		      char **sort_keys, int *directions,
 		      int number_of_window_keys, char **window_keys,
@@ -162,7 +162,7 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
  * 		and size of linked list of traces headers
  * 		and data after applying window.
  */
-traces_list_t*
+traces_metadata_t*
 daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 		      int number_of_keys, Value *min_keys,
 		      Value *max_keys, cwp_String *type);
@@ -222,14 +222,14 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys,
  * \param[in]	dim		dim seismic flag (0 -> not dim)
  * 				(1 -> coord in ft) (2 -> coord in m)
  *
- * \return      headers ranges struct holding:
- * 			number of traces
- * 			key min max (first - last).
- * 			north-south-east-west limits of	shot/receiver/midpoint.
- * 			midpoint interval and
- * 			line length if dim.
+ * \return      pointer to header ranges struct holding:
+ * 				number of traces
+ * 				key min max (first - last).
+ * 				north-south-east-west limits of	shot/receiver/midpoint.
+ * 				midpoint interval and
+ * 				line length if dim.
  */
-headers_ranges_t
+headers_ranges_t*
 daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 			char **keys, int dim);
 
@@ -241,8 +241,8 @@ daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
  * 		and size of linked list of headers values.
  *
  */
-traces_list_t*
-daos_seis_get_headers(seis_root_obj_t *root);
+traces_metadata_t*
+daos_seis_get_headers(seis_root_obj_t *root, char *key);
 
 /** Update traces data
  *
@@ -277,14 +277,13 @@ void
 daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 		       	  seis_obj_t **seismic_obj, dfs_obj_t *input_file,
 			  dfs_obj_t *header_file, int ns, int ftn);
-
-/** Function responsible for releasing allocated linked list of traces.
+/** Release traces metadata struct
+ *  It will release all traces metadata and data previously allocated.
  *
- * \param[in]	trace_list	pointer to linked list of traces.
- *
+ *  \param[in]	traces_metadata		pointer to traces metadata struct.
  */
 void
-daos_seis_release_traces_list(traces_list_t *trace_list);
+daos_seis_release_traces_metadata(traces_metadata_t *traces_metadata);
 
 /** Function responsible for creating an empty graph
  *  seismic root and gather objects.
@@ -338,8 +337,8 @@ daos_seis_fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
  */
 dfs_obj_t*
 dfs_get_parent_of_file(dfs_t *dfs, const char *file_directory,
-		       	     int allow_creation, char *file_name,
-			     int verbose_output);
+		       int allow_creation, char *file_name,
+		       int verbose_output);
 
 /** Function responsible for converting the trace struct back
  *  to the original segy struct(defined in segy.h)

@@ -173,7 +173,7 @@ main(int argc, char *argv[])
 
 	gettimeofday(&tv1, NULL);
 	/** Sort traces headers */
-	traces_list_t *trace_list = daos_seis_sort_traces(seis_root_object,
+	traces_metadata_t *traces_metadata = daos_seis_sort_traces(seis_root_object,
 							  number_of_keys,
 							  sort_keys, directions,
 							  number_of_window_keys,
@@ -183,7 +183,7 @@ main(int argc, char *argv[])
 	/** Open output file to write traces to */
 	FILE *fd = fopen(out_file, "w");
 	int tracl_mod = 1;
-	traces_headers_t *temp_trace = trace_list->head;
+	trace_node_t *temp_trace = traces_metadata->traces_list->head;
 
 	/** Fetch traces from linked list and write them to out_file */
 	if(temp_trace == NULL) {
@@ -216,7 +216,7 @@ main(int argc, char *argv[])
 		free(type);
 	}
 	/** Release allocated linked list */
-	daos_seis_release_traces_list(trace_list);
+	daos_seis_release_traces_metadata(traces_metadata);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

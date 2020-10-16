@@ -87,10 +87,9 @@ main(int argc, char *argv[])
 
 	gettimeofday(&tv1, NULL);
 	/** Get header values */
-	traces_list_t *trace_list = daos_seis_get_headers( seis_root_object);
+	traces_metadata_t *traces_metadata = daos_seis_get_headers(seis_root_object, NULL);
 	gettimeofday(&tv2, NULL);
-
-	traces_headers_t *temp_trace = trace_list->head;
+	trace_node_t *temp_trace = traces_metadata->traces_list->head;
 
 	Value 			val;
 	int 			i;
@@ -139,13 +138,23 @@ main(int argc, char *argv[])
 			}
 		}
 	}
+	printf("NUMBER OF ENSEMBLES  = %ld \n ", traces_metadata->ensembles_list->num_of_ensembles);
+	ensemble_node_t *ensemble= traces_metadata->ensembles_list->first_ensemble;
+	i=0;
+	while(ensemble !=  NULL){
+		printf("shot id of ensemble %d is %d ,"
+			" num of traces = %d \n",i, ensemble->ensemble->trace.fldr,
+			ensemble->number_of_traces);
+		ensemble = ensemble->next_ensemble;
+		i++;
+	}
 	/** Free allocated memory */
 	for(i = 0; i < number_of_keys; i++) {
 		free(header_keys[i]);
 	}
 	free(header_keys);
 	/** Release allocated linked list */
-	daos_seis_release_traces_list(trace_list);
+	daos_seis_release_traces_metadata(traces_metadata);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

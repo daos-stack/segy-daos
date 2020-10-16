@@ -75,15 +75,15 @@ main(int argc, char *argv[])
 
 	gettimeofday(&tv1, NULL);
 	/** Read shot traces */
-	traces_list_t *src_trace_list = daos_seis_get_shot_traces(shot_id, seis_root_object);
+	traces_metadata_t *traces_metadata = daos_seis_get_shot_traces(shot_id, seis_root_object);
 	/** Open output file to write traces to */
 	FILE *fd = fopen(out_file, "w");
 
-	traces_headers_t *temp_src = src_trace_list->head;
+	trace_node_t *temp_src = traces_metadata->traces_list->head;
 
 	/** Fetch traces from linked list and write them to out_file */
 	if (temp_src == NULL) {
-		warn("Linked list of traces is empty \n");
+//		warn("Linked list of traces is empty \n");
 		return 0;
 	} else {
 		while(temp_src != NULL){
@@ -97,7 +97,7 @@ main(int argc, char *argv[])
 	gettimeofday(&tv2, NULL);
 
 	/** Release allocated linked list */
-	daos_seis_release_traces_list(src_trace_list);
+	daos_seis_release_traces_metadata(traces_metadata);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

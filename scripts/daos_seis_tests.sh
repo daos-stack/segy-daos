@@ -30,7 +30,7 @@ function daos_seis_tests {
 	echo "Read shot traces" 
 	time $tests_program_path/read_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_segyread.su shot_id=610
 	echo "Sort traces headers"
-	time $tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=+fldr,+gx
+	time $tests_program_path/sort_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_sort.su keys=-fldr,+gx
 	echo "Window traces headers"
 	time $tests_program_path/window_traces pool=$1 container=$2 svc=$3 in=/SEIS_ROOT_OBJECT out=daos_seis_wind.su keys=tracl,fldr min=10666,609 max=12010,800 
 	echo "Change traces headers"
@@ -59,7 +59,7 @@ function su_tests {
 	echo "Window traces headers"
 	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=fldr min=610 max=610  >daos_segyread.su
 	echo "Sort traces headers"
-	time $main_program_path/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su +fldr +gx >daos_sort.su
+	time $main_program_path/daos_susort pool=$1 container=$2 svc=$3 <daos_segyread_temp.su -fldr +gx >daos_sort.su
 	echo "Window traces headers"
 	time $main_program_path/daos_suwind pool=$1 container=$2 svc=$3 <daos_segyread_temp.su key=tracl min=10666 max=12010 >daos_window.su
 	

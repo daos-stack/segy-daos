@@ -65,25 +65,6 @@ int
 check_key_value(Value target, char *key, gathers_list_t *head,
 		daos_obj_id_t trace_obj_id);
 
-/** Function responsible for preparing seismic entry with trace header data
- *  and calling object update functionality.
- *  It is called to update/insert trace header data under
- *  specific trace_header_object.
- *
- * \param[in]	tr_obj		pointer to opened trace header object
- *  				to update its header.
- * \param[in]	tr		trace struct holding all trace headers and
- * 				data array, only the trace headers is written
- * 				to the trace header object.
- * \param[in]	hdrbytes	number of bytes to be updated in trace header
- *  				object(240 bytes as defined in segy.h).
- *
- * \return      0 on success
- *		error_code otherwise
- */
-int
-trace_header_update(trace_oid_oh_t* tr_obj, trace_t *tr, int hdrbytes);
-
 /** Function responsible for updating gather_TRACE_OIDS array object.
  *  It is called mainly at the end of the parsing function and
  *  only stores the traces_hdr_oids
@@ -184,8 +165,8 @@ sort_dkeys_list(long *values, int number_of_gathers, char** unique_keys,
  */
 
 void
-Merge(trace_t *arr, int low, int mid, int high, char **sort_key,
-      int *direction, int num_of_keys);
+merge_traces(trace_t *arr, int low, int mid, int high, char **sort_key,
+	     int *direction, int num_of_keys);
 
 /** Function recursively called to split array of traces headers.
  *  It is called only while sorting headers.
@@ -204,8 +185,8 @@ Merge(trace_t *arr, int low, int mid, int high, char **sort_key,
  *
  */
 void
-MergeSort(trace_t *arr, int low, int high, char **sort_key,
-	  int *direction, int numof_keys);
+merge_sort_traces(trace_t *arr, int low, int high, char **sort_key,
+		  int *direction, int numof_keys);
 
 /** Function responsible for getting trace header value
  *
@@ -268,7 +249,7 @@ set_header_value(trace_t *trace, char *sort_key, Value *value);
  *
  */
 void
-calculate_new_header_value(traces_headers_t *current, char *key1, char *key2,
+calculate_new_header_value(trace_node_t *current, char *key1, char *key2,
 			   char *key3, double a, double b, double c, double d,
 			   double e, double f, double j, int itr,
 			   header_operation_type_t type, cwp_String type_key1,
@@ -292,13 +273,14 @@ tokenize_str(void ***str, char *sep, char *string, int type, int *number_of_keys
 
 /** Function responsible for printing the ranges of the traces headers.
  *
- *  \param[in]	headers_ranges	struct holding min/ max/ first/ last
- *  				traces ranges, array of keys,
- *  				number of keys, shot/rec/cmp coordinates,...
+ *  \param[in]	headers_ranges	pointer to header ranges struct holding
+ *  				min/ max/ first/ last traces ranges,
+ *  				array of keys, number of keys,
+ *  				shot/rec/cmp coordinates,...
  *
  */
 void
-print_headers_ranges(headers_ranges_t headers_ranges);
+print_headers_ranges(headers_ranges_t *headers_ranges);
 
 /** Fucntion responsible for storing the unique value in character array
  *  based on its type (char/long/double/int/...)
@@ -313,5 +295,49 @@ print_headers_ranges(headers_ranges_t headers_ranges);
  */
 void
 val_sprintf(char *temp, Value unique_value, char *key);
+
+/** Function responsible for creating seismic object dkeys list from array
+ *  of long unique values.
+ *  dkeys list is created by first sorting list of unique values in ascending
+ *  or descending order. (ascending order is the default), then separated by ",".
+ *
+ * \param[in]	object		pointer to opened seismic object.
+ * \param[in]	gather_keys	pointer to array of long unique values of
+ * 				specific gather object.
+ *
+ */
+void
+create_dkeys_list(seis_obj_t *object, long *gather_keys);
+
+/** Function responsible for merging array of long in ascending or descending
+ *  order.
+ *
+ *  \param[in]	gather_keys	pointer to array of long.
+ *  \param[in]	low		index of lowest element in the array.
+ *  \param[in]	mid		index of middle element.
+ *  \param[in]	high		index of last element in the array.
+ *  \param[in]	direction	integer specifying direction of sorting
+ *  				(ascending or descending)
+ *
+ */
+void
+merge(long *gather_keys, int low, int mid, int high, int direction);
+
+/** Function recursively called to split array of long
+ *  and merge it after sorting.
+ *
+ *  \param[in]	gather_keys	pointer to array of long.
+ *  \param[in]	low		index of the first element of the array,
+ *  				will be used to calculate the midpoint
+ *  				and split the array.
+ *  \param[in]	high		index of the last element of the array,
+ *  				will be used to calculate the midpoint
+ *  				and split the array.
+ *  \param[in]	direction 	direction of sorting,
+ *  				ascending(1) or descending(0).
+ *
+ */
+void
+merge_sort(long *gather_keys, int low, int high, int direction);
 
 #endif /* LSU_DAOS_SEGY_SRC_CLIENT_SEIS_DAOS_SEIS_HELPERS_H_ */

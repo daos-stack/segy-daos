@@ -194,17 +194,17 @@ main(int argc, char *argv[])
 			      c_values, d_values, j_values, NULL, NULL, type);
 	gettimeofday(&tv2, NULL);
 	/** Get traces headers */
-	traces_list_t *traces = daos_seis_get_headers(seis_root_object);
+	traces_metadata_t *traces_metadata = daos_seis_get_headers(seis_root_object, NULL);
 	/** Get traces data */
-	daos_seis_fetch_traces_data((get_dfs())->coh, &traces,get_daos_obj_mode(O_RDWR));
+	daos_seis_fetch_traces_data((get_dfs())->coh, &(traces_metadata->traces_list),get_daos_obj_mode(O_RDWR));
 	/** Open output file to write traces to */
 	FILE *fd = fopen(out_file, "w");
 
-	traces_headers_t *temp_trace = traces->head;
+	trace_node_t *temp_trace = traces_metadata->traces_list->head;
 
 	/** Fetch traces from linked list and write them to out_file */
 	if(temp_trace == NULL) {
-		warn("Linked list of traces is empty \n");
+//		warn("Linked list of traces is empty \n");
 		return 0;
 	}
 	while(temp_trace != NULL) {
@@ -225,7 +225,7 @@ main(int argc, char *argv[])
 	free(d_values);
 	free(j_values);
 	/** Release allocated linked list */
-	daos_seis_release_traces_list(traces);
+	daos_seis_release_traces_metadata(traces_metadata);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

@@ -40,8 +40,7 @@ daos_seis_close_root(seis_root_obj_t *segy_root_object)
 	rc = dfs_release(obj);
 	if (rc != 0) {
 		err("Releasing seismic root dfs object failed, error code"
-			" = %d\n",
-		    rc);
+			" = %d\n", rc);
 	}
 
 	/** Free the allocated seismic root object itself. */
@@ -84,6 +83,7 @@ daos_seis_get_number_of_gathers(seis_root_obj_t *root, char *key)
 {
 	seismic_entry_t		seismic_entry = { 0 };
 	seis_obj_t 	       *seismic_object;
+	daos_iod_t		iod;
 	int			number_of_gathers;
 	int 			daos_mode;
 	int 			rc;
@@ -107,10 +107,13 @@ daos_seis_get_number_of_gathers(seis_root_obj_t *root, char *key)
 		return rc;
 	}
 
+	prepare_iod(&iod, NULL, DS_A_NGATHERS, DAOS_IOD_SINGLE,
+		    sizeof(int), 1);
+
 	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-			      DS_D_NGATHERS, DS_A_NGATHERS,
+			      DS_D_NGATHERS,
 			      (char*)&seismic_object->number_of_gathers,
-			      sizeof(int), DAOS_IOD_SINGLE);
+			      sizeof(int), &iod);
 	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
 			 &seismic_entry, NULL);
 	if (rc != 0) {
@@ -134,14 +137,24 @@ bhed*
 daos_seis_get_binary_header(seis_root_obj_t *root)
 {
 	seismic_entry_t 	entry = { 0 };
+	daos_recx_t		*recx;
+	daos_iod_t		iod;
 	bhed 		       *bhdr;
 	int 			rc;
 	/** allocate binary header struct */
 	bhdr = malloc(sizeof(bhed));
+
+	recx = malloc(sizeof(daos_recx_t));
+	recx->rx_idx = 0;
+	recx->rx_nr = SEIS_BNYBYTES;
+
+	prepare_iod(&iod, recx, DS_A_BINARY_HEADER, DAOS_IOD_ARRAY,
+		    1, 1);
+
 	/** prepare seismic entry & fetch binary header from root object */
 	prepare_seismic_entry(&entry, root->root_obj->oid, DS_D_FILE_HEADER,
-			      DS_A_BINARY_HEADER, (char*) bhdr, SEIS_BNYBYTES,
-			      DAOS_IOD_ARRAY);
+			      (char*) bhdr, SEIS_BNYBYTES, &iod);
+
 	rc = fetch_seismic_entry(root->root_obj->oh, DAOS_TX_NONE, &entry,
 			 NULL);
 	if (rc != 0) {
@@ -149,22 +162,30 @@ daos_seis_get_binary_header(seis_root_obj_t *root)
 		    " code = %d \n", rc);
 		exit(rc);
 	}
-
+	free(recx);
 	return bhdr;
 }
 
 char*
 daos_seis_get_text_header(seis_root_obj_t *root)
 {
-	seismic_entry_t 	entry = { 0 };
+	seismic_entry_t 	entry = {0};
+	daos_recx_t		*recx;
+	daos_iod_t		iod;
 	char 		       *text_header;
 	int	 		rc;
 
 	text_header = malloc(SEIS_EBCBYTES * sizeof(char));
+	recx = malloc(sizeof(daos_recx_t));
+	recx->rx_idx = 0;
+	recx->rx_nr = SEIS_EBCBYTES;
+
+	prepare_iod(&iod, recx, DS_A_TEXT_HEADER, DAOS_IOD_ARRAY,
+		    1, 1);
+
 	/** prepare seismic entry & fetch text header from root object */
 	prepare_seismic_entry(&entry, root->root_obj->oid, DS_D_FILE_HEADER,
-			      DS_A_TEXT_HEADER, text_header, SEIS_EBCBYTES,
-		              DAOS_IOD_ARRAY);
+			      text_header, SEIS_EBCBYTES, &iod);
 	rc = fetch_seismic_entry(root->root_obj->oh, DAOS_TX_NONE, &entry,
 			 NULL);
 	if (rc != 0) {
@@ -172,14 +193,14 @@ daos_seis_get_text_header(seis_root_obj_t *root)
 		    " code = %d \n", rc);
 		exit(rc);
 	}
-
+	free(recx);
 	return text_header;
 }
 
-traces_list_t*
+traces_metadata_t*
 daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 {
-	traces_list_t 		*trace_list;
+	traces_metadata_t	*shot_metadata;
 	Value 			 min;
 	char 			*key;
 	char 			*type;
@@ -189,10 +210,10 @@ daos_seis_get_shot_traces(int shot_id, seis_root_obj_t *root)
 	strcpy(key, "fldr");
 	type = hdtype(key);
 
-	trace_list = daos_seis_wind_traces(root, &key, 1, &min, &min, &type);
+	shot_metadata = daos_seis_wind_traces(root, &key, 1, &min, &min, &type);
 
 	free(key);
-	return trace_list;
+	return shot_metadata;
 }
 
 int
@@ -261,15 +282,15 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 	int ebcdic = 1; /* ebcdic to ascii conversion flag	*/
 
 	cwp_String *key1; /* output key(s)		*/
-	key1 = (cwp_String*) malloc(SEIS__NKEYS * sizeof(cwp_String));
-	cwp_String key2[SEIS__NKEYS]; /* first input key(s)		*/
-	cwp_String type1[SEIS__NKEYS]; /* array of types for key1	*/
-	char type2[SEIS__NKEYS]; /* array of types for key2	*/
-	int ubyte[SEIS__NKEYS];
+	key1 = (cwp_String*) malloc(SEIS_NKEYS * sizeof(cwp_String));
+	cwp_String key2[SEIS_NKEYS]; /* first input key(s)		*/
+	cwp_String type1[SEIS_NKEYS]; /* array of types for key1	*/
+	char type2[SEIS_NKEYS]; /* array of types for key2	*/
+	int ubyte[SEIS_NKEYS];
 	int nkeys; /* number of keys to be computed*/
 	int n; /* counter of keys getparred	*/
 	int ikey; /* loop counter of keys 	*/
-	int index1[SEIS__NKEYS]; /* array of indexes for key1 	*/
+	int index1[SEIS_NKEYS]; /* array of indexes for key1 	*/
 
 	/* deal with number of extended text headers */
 	short nextended;
@@ -345,11 +366,16 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 	seismic_entry_t seismic_entry= {0};
 
 	if(additional == 1) {
+		daos_iod_t		iod;
+
+		prepare_iod(&iod, NULL, DS_A_NTRACES_HEADER, DAOS_IOD_SINGLE,
+			    sizeof(int), 1);
+
 		/**Fetch Number of traces Under opened Root object */
 		prepare_seismic_entry(&seismic_entry, root_obj->root_obj->oid,
-				      DS_D_FILE_HEADER, DS_A_NTRACES_HEADER,
+				      DS_D_FILE_HEADER,
 				      (char*)&root_obj->number_of_traces,
-				      sizeof(int), DAOS_IOD_SINGLE);
+				      sizeof(int), &iod);
 		rc = fetch_seismic_entry(root_obj->root_obj->oh, DAOS_TX_NONE,
 				 &seismic_entry, NULL);
 		if (rc != 0) {
@@ -372,7 +398,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 				    " code = %d \n",seismic_obj[i]->name, rc);
 				return rc;
 			}
-
+			seismic_obj[i]->dkeys_list = NULL;
 			seismic_obj[i]->gathers = malloc(sizeof(gathers_list_t));
 			seismic_obj[i]->gathers->head = NULL;
 			seismic_obj[i]->gathers->tail = NULL;
@@ -446,23 +472,36 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 
 		index++;
 	}
+	daos_iod_t	iod;
+
 //	printf("All trace data written...\n");
+	d_iov_set(&iod.iod_name, (void*) DS_A_NTRACES_HEADER,
+		  strlen(DS_A_NTRACES_HEADER));
+	iod.iod_type = DAOS_IOD_SINGLE;
+	iod.iod_size = sizeof(int);
+	iod.iod_recxs = NULL;
+	iod.iod_nr = 1;
+
 	rc = seismic_root_obj_update(root_obj, DS_D_FILE_HEADER,
-				     DS_A_NTRACES_HEADER,
 				     (char*) &(root_obj->number_of_traces),
-				     sizeof(int),DAOS_IOD_SINGLE);
+				     sizeof(int), &iod);
 	if (rc != 0) {
 		err("Updating number of traces of root seismic object failed, "
 		    "error code = %d \n",rc);
 		return rc;
 	}
-
 	for(i=0; i< root_obj->num_of_keys; i++) {
+		d_iov_set(&iod.iod_name, (void*) DS_A_NGATHERS,
+			  strlen(DS_A_NGATHERS));
+		iod.iod_type = DAOS_IOD_SINGLE;
+		iod.iod_size = sizeof(int);
+		iod.iod_recxs = NULL;
+		iod.iod_nr = 1;
+
 		rc = update_seismic_gather_object(seismic_obj[i],
 						  DS_D_NGATHERS,
-					  	  DS_A_NGATHERS,
 						  (char*)&(seismic_obj[i]->number_of_gathers),
-						  sizeof(int), DAOS_IOD_SINGLE);
+						  sizeof(int), &iod);
 		if (rc != 0) {
 			err("Adding number of gathers to <%s> gather object"
 			    " failed, error code = %d \n",root_obj->keys[i], rc);
@@ -473,7 +512,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 //	printf("Updated all gathers numbers...\n");
 
 	for(i=0; i< root_obj->num_of_keys; i++) {
-		if(additional == 1){
+		if(additional == 1) {
 			rc = trace_oids_obj_create(dfs, OC_SX,
 						   seismic_obj[i],
 						   num_of_gathers[i]);
@@ -492,7 +531,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 
 	for(i=0; i< root_obj->num_of_keys; i++) {
 		rc = update_gather_data(dfs, seismic_obj[i]->gathers, seismic_obj[i],
-					  get_dkey(seismic_obj[i]->name));
+					get_dkey(seismic_obj[i]->name));
 		if (rc != 0) {
 			err("Updating number of traces key"
 			    " failed, error code = %d \n", rc);
@@ -504,6 +543,7 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 	for(i=0; i< root_obj->num_of_keys; i++) {
 		release_gathers_list(seismic_obj[i]->gathers);
 		free(seismic_obj[i]->seis_gather_trace_oids_obj);
+		free(seismic_obj[i]->dkeys_list);
 		rc = daos_obj_close(seismic_obj[i]->oh, NULL);
 		if (rc != 0) {
 			err("Closing seismic object %s failed, "
@@ -525,14 +565,18 @@ daos_seis_parse_segy(dfs_t *dfs, dfs_obj_t *segy_root, seis_root_obj_t *root_obj
 
 }
 
-traces_list_t*
+traces_metadata_t*
 daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		      char **sort_keys, int *directions,
 		      int number_of_window_keys, char **window_keys,
 		      cwp_String *type, Value *min_keys, Value *max_keys)
 {
 	seismic_entry_t 	seismic_entry = {0};
+	daos_iod_t		iod;
+	daos_recx_t		*recx;
+	traces_metadata_t      *traces_metadata;
 	traces_list_t	       *trace_list;
+	ensembles_list_t       *ensemble_list;
 	seis_obj_t 	       *seismic_object;
 	read_traces	       *gather_traces;
 	int 		 	temp_number_of_keys;
@@ -546,11 +590,17 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 
 	seismic_object = malloc(sizeof(seis_obj_t));
 	daos_mode = get_daos_obj_mode(O_RDWR);
+	traces_metadata = malloc(sizeof(traces_metadata_t));
 	trace_list = malloc(sizeof(traces_list_t));
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
-
+	ensemble_list = malloc(sizeof(ensembles_list_t));
+	ensemble_list->first_ensemble = NULL;
+	ensemble_list->last_ensemble = NULL;
+	ensemble_list->num_of_ensembles = 0;
+	traces_metadata->traces_list = trace_list;
+	traces_metadata->ensembles_list = ensemble_list;
 
 	for(i = 0; i< root->num_of_keys; i++){
 		if(strcmp(root->keys[i], sort_keys[0]) == 0) {
@@ -577,82 +627,68 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		exit(rc);
 	}
 
+	prepare_iod(&iod, NULL, DS_A_NGATHERS, DAOS_IOD_SINGLE,
+		    sizeof(int), 1);
+
 	/**Fetch Number of Gathers Under opened seismic Gather object */
 	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-			      DS_D_NGATHERS, DS_A_NGATHERS,
+			      DS_D_NGATHERS,
 			      (char*) &seismic_object->number_of_gathers,
-			      sizeof(int), DAOS_IOD_SINGLE);
+			      sizeof(int), &iod);
 	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-			 &seismic_entry, NULL);
+			 	 &seismic_entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of gathers in <%s> seismic object failed,"
 		    " error code = %d \n", seismic_object->name, rc);
 		exit(rc);
 	}
 
-//	seismic_object->gathers = malloc(seismic_object->number_of_gathers *
-//					 sizeof(seis_gather_t));
-	seismic_object->seis_gather_trace_oids_obj =
-			malloc(seismic_object->number_of_gathers *
-			       sizeof(trace_oid_oh_t));
+	seismic_object->dkeys_list = malloc(seismic_object->number_of_gathers * sizeof(long));
 
-	/**Fetch list of dkeys under seimsic_object */
+	recx = malloc(sizeof(daos_recx_t));
+	recx->rx_idx = 0;
+	recx->rx_nr = seismic_object->number_of_gathers;
+
+	prepare_iod(&iod, recx, DS_A_DKEYS_LIST, DAOS_IOD_ARRAY,
+		    sizeof(long), 1);
+
+	/** Fetch dkeys character array */
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
+			      DS_D_DKEYS_LIST,
+			      (char*)seismic_object->dkeys_list,
+			      (sizeof(long)*seismic_object->number_of_gathers), &iod);
+	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
+			 	 &seismic_entry, NULL);
+	if (rc != 0) {
+		err("Fetching dkeys list failed, error "
+		    "code = %d \n", rc);
+		exit(rc);
+	}
+
+	/**Fetch list of dkeys under seismic_object */
 	char **unique_keys;
-	if ((seismic_object->number_of_gathers > 2)) {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 1,
-						      seismic_object->name,
-						      directions[0]);
-	} else {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 0,
-						      seismic_object->name,
-						      directions[0]);
+	unique_keys = tokenize_dkeys_list(seismic_object);
+	if(directions[0] == 0) {
+		int high = seismic_object->number_of_gathers;
+		for(i=0 ; i< high; i++, high--) {
+			char temp[200]= "";
+			strcpy(temp, unique_keys[high-1]);
+			strcpy(unique_keys[high-1], unique_keys[i]);
+			strcpy(unique_keys[i], temp);
+		}
 	}
 
 	gather_traces = malloc(seismic_object->number_of_gathers *
 			       sizeof(read_traces));
-
 	for (i = 0; i < seismic_object->number_of_gathers; i++) {
 		temp_number_of_keys = number_of_keys;
-		/**Fetch number of traces */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_NTRACES,
-				      (char*)&gather_traces[i].number_of_traces
-				      , sizeof(int), DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching number of traces failed, error"
-			    " code = %d \n", rc);
-			exit(rc);
-		}
-		trace_oid_oh_t gather_traces_oids =
-				seismic_object->seis_gather_trace_oids_obj[i];
 
-		/**Fetch trace headers object id */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_GATHER_TRACE_OIDS,
-				      (char*)&gather_traces_oids.oid,
-				      sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching traces headers object id failed, error"
-			    " code = %d \n", rc);
-			exit(rc);
-		}
-		int num_of_traces = gather_traces[i].number_of_traces;
-		/**Allocate oids array , size = number of traces */
-		daos_obj_id_t *oids = malloc(num_of_traces * sizeof(daos_obj_id_t));
-		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers_oids(root, oids,
-						       &gather_traces_oids,
-						       num_of_traces);
-		if(rc != 0) {
-			err("Fetching array of traces headers failed, error"
-			    " code = %d \n", rc);
-			exit(rc);
-		}
-		gather_traces[i].traces = malloc(num_of_traces *
+		daos_obj_id_t *oids =
+				get_gather_oids(root, seismic_object,
+						unique_keys[i],
+						&(gather_traces[i].number_of_traces));
+
+		gather_traces[i].traces = malloc(gather_traces[i].number_of_traces *
 						 sizeof(trace_t));
 
 		fetch_traces_header_read_traces(root->coh, oids,
@@ -664,7 +700,7 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		/** if secondary keys exist (number of keys is greater than 1*/
 		if (temp_number_of_keys > 0) {
 			sort_headers(&gather_traces[i], sort_keys, directions,
-					temp_number_of_keys);
+				     temp_number_of_keys);
 		}
 
 		int 	k;
@@ -679,7 +715,8 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 		 */
 		for (k = 0; k < gather_traces[i].number_of_traces; k++) {
 			add_trace_header(&(gather_traces[i].traces[k]),
-					 &gather_trace_list);
+					 &gather_trace_list, &ensemble_list, k,
+					 gather_traces[i].number_of_traces);
 		}
 		/** check array of window keys if not null
 		 *  then call window headers functionality
@@ -712,20 +749,24 @@ daos_seis_sort_traces(seis_root_obj_t *root, int number_of_keys,
 	}
 	free(unique_keys);
 	free(gather_traces);
-//	free(seismic_object->gathers);
-	free(seismic_object->seis_gather_trace_oids_obj);
+	free(seismic_object->dkeys_list);
 	free(seismic_object);
+	free(recx);
 
-	return trace_list;
+	return traces_metadata;
 }
 
-traces_list_t* 
+traces_metadata_t*
 daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys, 
 		      int number_of_keys, Value *min_keys,
 		      Value *max_keys, cwp_String *type)
 {
 	seismic_entry_t 	seismic_entry = {0};
 	traces_list_t 	       *trace_list;
+	daos_iod_t		iod;
+	daos_recx_t		*recx;
+	ensembles_list_t       *ensemble_list;
+	traces_metadata_t      *traces_metadata;
 	seis_obj_t 	       *seismic_object;
 	char 			temp[4096];
 	int 			daos_mode;
@@ -739,6 +780,13 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 	trace_list->head = NULL;
 	trace_list->tail = NULL;
 	trace_list->size = 0;
+	ensemble_list = malloc(sizeof(ensembles_list_t));
+	ensemble_list->first_ensemble = NULL;
+	ensemble_list->last_ensemble = NULL;
+	ensemble_list->num_of_ensembles = 0;
+	traces_metadata = malloc(sizeof(traces_metadata_t));
+	traces_metadata->traces_list = trace_list;
+	traces_metadata->ensembles_list = ensemble_list;
 
 	while(i < number_of_keys){
 		for(j = 0; j < root->num_of_keys; j++){
@@ -779,7 +827,6 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 	if (key_exist == 0) {
 		seismic_object->oid = root->gather_oids[0];
 		strcpy(seismic_object->name, root->keys[0]);
-
 	}
 	rc = daos_obj_open(root->coh, seismic_object->oid, daos_mode,
 			   &(seismic_object->oh), NULL);
@@ -789,87 +836,85 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 		exit(rc);
 	}
 
+	prepare_iod(&iod, NULL, DS_A_NGATHERS, DAOS_IOD_SINGLE,
+		    sizeof(int), 1);
+
 	/**Fetch Number of Gathers Under opened Gather object */
 	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-			      DS_D_NGATHERS, DS_A_NGATHERS,
+			      DS_D_NGATHERS,
 			      (char*)&seismic_object->number_of_gathers,
-			      sizeof(int), DAOS_IOD_SINGLE);
+			      sizeof(int), &iod);
 	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-			 &seismic_entry, NULL);
+				 &seismic_entry, NULL);
 	if (rc != 0) {
 		err("Fetching number of gathers failed, error "
 		    "code = %d \n", rc);
 		exit(rc);
 	}
 
-	seismic_object->seis_gather_trace_oids_obj =
-				malloc(seismic_object->number_of_gathers *
-				       sizeof(trace_oid_oh_t));
+	seismic_object->dkeys_list = malloc(seismic_object->number_of_gathers * sizeof(long));
 
-	char 		**unique_keys;
-	/** Fetch list of dkeys under seimsic_object */
-	if(seismic_object->number_of_gathers > 2) {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 1,
-						      seismic_object->name, 1);
-	} else {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 0,
-						      seismic_object->name, 1);
+	recx = malloc(sizeof(daos_recx_t));
+	recx->rx_idx = 0;
+	recx->rx_nr = seismic_object->number_of_gathers;
+
+	prepare_iod(&iod, recx, DS_A_DKEYS_LIST, DAOS_IOD_ARRAY,
+		    sizeof(long), 1);
+
+	/** Fetch dkeys character array */
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
+			      DS_D_DKEYS_LIST,
+			      (char*)seismic_object->dkeys_list,
+			      (sizeof(long)*seismic_object->number_of_gathers),
+			      &iod);
+	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
+			 	 &seismic_entry, NULL);
+	if (rc != 0) {
+		err("Fetching dkeys list failed, error "
+		    "code = %d \n", rc);
+		exit(rc);
 	}
-	/** Sort list of dkeys */
-	long 		*first_array;
-	first_array = malloc(seismic_object->number_of_gathers * sizeof(long));
-	sort_dkeys_list(first_array, seismic_object->number_of_gathers, unique_keys, 1);
 
+
+
+	/**Fetch list of dkeys under seismic_object */
+	char 		**unique_keys;
+
+	unique_keys = tokenize_dkeys_list(seismic_object);
+//	for(i=0; i<seismic_object->number_of_gathers; i++) {
+//		printf("KEY NUMBER %d IS %s \n", i, unique_keys[i]);
+//	}
 	int 		number_of_traces;
+	Value		unique_value;
  	for(i=0; i< seismic_object->number_of_gathers; i++){
-		/** Check bool and shot id number,
-		 *  if out of range --> continue.
-		 */
- 		if((key_exist == 1) &&
- 		   (first_array[i]< vtol(type[0], min_keys[0]) ||
-		    first_array[i] > vtol(type[0], max_keys[0]))) {
- 			continue;
- 		}
 
- 		/** Fetch number of traces */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_NTRACES,
-				      (char*)&number_of_traces, sizeof(int),
-				      DAOS_IOD_SINGLE);
+ 		prepare_iod(&iod, NULL, DS_A_UNIQUE_VAL, DAOS_IOD_SINGLE,
+ 			    sizeof(long), 1);
+
+ 		/** Fetch gather unique val */
+ 		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
+				      unique_keys[i],
+				      (char*)&unique_value, sizeof(long),
+				      &iod);
 		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
+					 &seismic_entry, NULL);
 		if (rc != 0) {
 			err("Fetching number of traces failed, error "
 			    "code = %d \n", rc);
 			exit(rc);
 		}
-		trace_oid_oh_t gather_traces_oids =
-				seismic_object->seis_gather_trace_oids_obj[i];
-		/** Fetch trace headers object id */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_GATHER_TRACE_OIDS,
-				      (char*)&gather_traces_oids.oid,
-				      sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching traces headers oid failed, error "
-			    "code = %d \n", rc);
-			exit(rc);
+		if((key_exist ==1) &&
+		   ((valcmp(type[0],unique_value, min_keys[0]) == -1) ||
+		    (valcmp(type[0], unique_value, max_keys[0]) == 1)) ) {
+			continue;
 		}
-		/** Allocate oids array , size = number of traces */
-		daos_obj_id_t *oids = malloc(number_of_traces * sizeof(daos_obj_id_t));
-		/** Fetch array of trace headers oids*/
-		rc = fetch_array_of_trace_headers_oids(root, oids,
-						       &gather_traces_oids,
-						       number_of_traces);
-		if(rc != 0) {
-			err("Fetching array of traces headers oids failed, error"
-			    " code = %d \n", rc);
-			exit(rc);
-		}
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
-						daos_mode,number_of_traces);
+
+		daos_obj_id_t *oids = get_gather_oids(root, seismic_object,
+						      unique_keys[i],
+						      &number_of_traces);
+
+		fetch_traces_header_traces_list(root->coh, oids, traces_metadata,
+						daos_mode, number_of_traces);
 		free(oids);
  	}
  	/** apply window on headers fetched */
@@ -884,11 +929,14 @@ daos_seis_wind_traces(seis_root_obj_t *root, char **window_keys,
 		exit(rc);
 	}
 	/** free allocated memory */
-	free(first_array);
-	free(seismic_object->seis_gather_trace_oids_obj);
+	for(i=0; i<seismic_object->number_of_gathers; i++){
+		free(unique_keys[i]);
+	}
+	free(unique_keys);
+	free(seismic_object->dkeys_list);
 	free(seismic_object);
-
-	return trace_list;
+	free(recx);
+	return traces_metadata;
 }
 
 void
@@ -898,24 +946,13 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 		      double *d, double *j, double *e, double *f,
 		      header_operation_type_t type)
 {
-	seismic_entry_t 	seismic_entry = {0};
-	trace_oid_oh_t 		gather_traces_oids;
-	daos_obj_id_t 	       *oids;
-	traces_list_t	       *trace_list;
-	seis_obj_t 	       *seismic_object;
-	int 			number_of_traces = 0;
+	traces_metadata_t      *traces_metadata;
 	int			existing_keys[num_of_keys];
 	int 			daos_mode;
-	int 			rc;
 	int 			i;
 	int			k;
 
-	seismic_object = malloc(sizeof(seis_obj_t));
 	daos_mode = get_daos_obj_mode(O_RDWR);
-	trace_list = malloc(sizeof(traces_list_t));
-	trace_list->head = NULL;
-	trace_list->tail = NULL;
-	trace_list->size = 0;
 
 	for (i = 0; i < num_of_keys; i++) {
 		existing_keys[i] = 0;
@@ -926,93 +963,11 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 			}
 		}
 	}
-
-	seismic_object->oid = root->gather_oids[0];
-	strcpy(seismic_object->name, root->keys[0]);
-
-	rc = daos_obj_open(root->coh, seismic_object->oid, daos_mode,
-			   &(seismic_object->oh), NULL);
-	if (rc != 0) {
-		err("Opening seismic object failed, error"
-		    " code = %d \n", rc);
-		return;
-	}
-
-	/** Fetch Number of Gathers Under opened Gather object */
-	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-			      DS_D_NGATHERS, DS_A_NGATHERS,
-			      (char*) &seismic_object->number_of_gathers,
-			      sizeof(int), DAOS_IOD_SINGLE);
-	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-			 &seismic_entry, NULL);
-	if (rc != 0) {
-		err("Fetching number of gathers failed, error "
-		    "code = %d \n", rc);
-		return;
-	}
-
-	char 		**unique_keys;
-	/** Fetch list of dkeys under seimsic_object */
-	if (seismic_object->number_of_gathers > 2) {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 1,
-						      seismic_object->name, 1);
-	} else {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 0,
-						      seismic_object->name, 1);
-	}
-
-	seismic_object->seis_gather_trace_oids_obj =
-			malloc(seismic_object->number_of_gathers *
-			       sizeof(trace_oid_oh_t));
-
-	for (i = 0; i < seismic_object->number_of_gathers; i++) {
-		/**Fetch number of traces */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_NTRACES,
-				      (char*) &number_of_traces, sizeof(int),
-				      DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching number of traces failed, error "
-			    "code = %d \n", rc);
-			return;
-		}
-		gather_traces_oids =
-				seismic_object->seis_gather_trace_oids_obj[i];
-
-		/** Fetch trace headers object id. */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				unique_keys[i], DS_A_GATHER_TRACE_OIDS,
-				(char*) &gather_traces_oids.oid,
-				sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching traces headers oid failed, error "
-			    "code = %d \n", rc);
-			return;
-		}
-
-		/** Allocate oids array , size = number of traces */
-		oids = malloc(number_of_traces * sizeof(daos_obj_id_t));
-		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers_oids(root, oids,
-						       &gather_traces_oids,
-						       number_of_traces);
-		if(rc != 0) {
-			err("Fetching array of traces headers oids failed,"
-			    " error code = %d \n", rc);
-			return;
-		}
-
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
-						daos_mode, number_of_traces);
-		free(oids);
-	}
+	traces_metadata = daos_seis_get_headers(root, NULL);
 	/** Set new traces headers */
-	set_traces_header(root->coh, daos_mode, &trace_list, num_of_keys,
-			  keys_1, keys_2, keys_3, a, b, c, d, e, f, j, type);
+	set_traces_header(root->coh, daos_mode, &(traces_metadata->traces_list),
+			  num_of_keys, keys_1, keys_2, keys_3, a, b, c, d, e,
+			  f, j, type);
 	/** check if the header keys was one of the already created gathers.
 	 *  if yes then the gather object should be replaced by a new object
 	 *  with the new key values.
@@ -1020,163 +975,74 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root,
 	for(i = 0; i < num_of_keys; i++) {
 		if(existing_keys[i] == 1) {
 			replace_seismic_objects(dfs, daos_mode, keys_1[i],
-						trace_list, root);
+						traces_metadata->traces_list,
+						root);
 		}
 	}
-
-	/** close opened seismic object */
-	rc = daos_obj_close(seismic_object->oh, NULL);
-	if(rc != 0) {
-		err("Closing seismic object failed, error code = %d\n", rc);
-		return;
-	}
-	/** Release traces list */
-	daos_seis_release_traces_list(trace_list);
-	/** Free allocated memory */
-	free(seismic_object->seis_gather_trace_oids_obj);
-	free(seismic_object);
+	/** Release traces metadata */
+	daos_seis_release_traces_metadata(traces_metadata);
 }
 
-headers_ranges_t
+headers_ranges_t*
 daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 			char **keys, int dim)
 {
-	seismic_entry_t 	seismic_entry = {0};
-	trace_oid_oh_t		gather_traces_oids;
-	traces_list_t 	       *trace_list;
-	daos_obj_id_t 	       *oids;
-	seis_obj_t 	       *seismic_object;
-	int 			daos_mode;
-	int 			rc;
-	int 			i;
+	traces_metadata_t      *traces_metadata;
 
-	seismic_object = malloc(sizeof(seis_obj_t));
-	daos_mode = get_daos_obj_mode(O_RDWR);
-	trace_list = malloc(sizeof(traces_list_t));
-	trace_list->head = NULL;
-	trace_list->tail = NULL;
-	trace_list->size = 0;
+	traces_metadata = daos_seis_get_headers(root, NULL);
 
-	seismic_object->oid = root->gather_oids[0];
-	strcpy(seismic_object->name, root->keys[0]);
-
-	rc = daos_obj_open(root->coh, seismic_object->oid, daos_mode,
-			   &(seismic_object->oh), NULL);
-	if (rc != 0) {
-		err("Opening seismic object failed, error"
-		    " code = %d \n", rc);
-		exit(rc);
-	}
-
-	/** Fetch Number of Gathers Under opened Gather object */
-	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-			      DS_D_NGATHERS, DS_A_NGATHERS,
-			      (char*) &seismic_object->number_of_gathers,
-			      sizeof(int), DAOS_IOD_SINGLE);
-	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-			 &seismic_entry, NULL);
-	if (rc != 0) {
-		err("Fetching number of gathers failed, error "
-		    "code = %d \n", rc);
-		exit(rc);
-	}
-
-	/** Fetch list of dkeys under seimsic_object */
-	char **unique_keys;
-	if (seismic_object->number_of_gathers > 2) {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 1,
-						      seismic_object->name, 1);
-	} else {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 0,
-						      seismic_object->name, 1);
-	}
-
-	seismic_object->seis_gather_trace_oids_obj =
-			malloc(seismic_object->number_of_gathers *
-			       sizeof(trace_oid_oh_t));
-
-	int 		num_of_traces = 0;
-	for (i = 0; i < seismic_object->number_of_gathers; i++) {
-		/** Fetch number of traces */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_NTRACES,
-				      (char*) &num_of_traces, sizeof(int),
-				      DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching number of traces failed, error "
-			    "code = %d \n", rc);
-			exit(rc);
-		}
-
-		gather_traces_oids =
-				seismic_object->seis_gather_trace_oids_obj[i];
-
-		/** Fetch trace headers object id */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_GATHER_TRACE_OIDS,
-				      (char*) &gather_traces_oids.oid,
-				      sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching traces headers oid failed, error "
-			    "code = %d \n", rc);
-			exit(rc);
-		}
-
-		/** Allocate oids array , size = number of traces */
-		oids = malloc(num_of_traces * sizeof(daos_obj_id_t));
-		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers_oids(root, oids,
-						       &gather_traces_oids,
-						       num_of_traces);
-		if(rc != 0) {
-			err("Fetching array of traces headers oids failed, "
-			    "error code = %d \n", rc);
-			exit(rc);
-		}
-
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
-						daos_mode, num_of_traces);
-		free(oids);
-	}
 	/** Get ranges of fetched headers list */
-	headers_ranges_t ranges = range_traces_headers(trace_list,
-						       number_of_keys, keys,
-						       dim);
+	headers_ranges_t *ranges = malloc(sizeof(headers_ranges_t));
+	range_traces_headers(traces_metadata->traces_list,
+			     number_of_keys, keys, dim, ranges);
 
-	/** Release traces list */
-	daos_seis_release_traces_list(trace_list);
-	/** Free allocated memory */
-	free(seismic_object->seis_gather_trace_oids_obj);
-	free(seismic_object);
-
+	/** Release traces metadata */
+	daos_seis_release_traces_metadata(traces_metadata);
 	return ranges;
 }
 
-traces_list_t*
-daos_seis_get_headers(seis_root_obj_t *root)
+traces_metadata_t*
+daos_seis_get_headers(seis_root_obj_t *root, char *key)
 {
 	seismic_entry_t 	seismic_entry = {0};
-	trace_oid_oh_t		gather_traces_oids;
-	traces_list_t 	       *trace_list;
-	daos_obj_id_t 	       *oids;
+	traces_metadata_t      *traces_metadata;
 	seis_obj_t 	       *seismic_object;
+	daos_recx_t  	       *recx;
+	daos_iod_t 		iod;
 	int 			daos_mode;
+	int 			key_exists=0;
 	int			rc;
 	int 			i;
 
 	daos_mode = get_daos_obj_mode(O_RDWR);
 	seismic_object = malloc(sizeof(seis_obj_t));
-	trace_list = malloc(sizeof(traces_list_t));
-	trace_list->head = NULL;
-	trace_list->tail = NULL;
-	trace_list->size = 0;
+	traces_metadata = malloc(sizeof(traces_metadata_t));
+	traces_metadata->traces_list = malloc(sizeof(traces_list_t));
+	traces_metadata->ensembles_list = malloc(sizeof(ensembles_list_t));
+	traces_metadata->traces_list->head = NULL;
+	traces_metadata->traces_list->tail = NULL;
+	traces_metadata->traces_list->size = 0;
+	traces_metadata->ensembles_list->first_ensemble = NULL;
+	traces_metadata->ensembles_list->last_ensemble = NULL;
+	traces_metadata->ensembles_list->num_of_ensembles = 0;
 
-	seismic_object->oid = root->gather_oids[0];
-	strcpy(seismic_object->name, root->keys[0]);
+	recx = malloc(sizeof(daos_recx_t));
+
+	if(key != NULL) {
+		for(i=0 ; i < root->num_of_keys; i++) {
+			if(strcmp(key, root->keys[i]) == 0) {
+				seismic_object->oid = root->gather_oids[i];
+				strcpy(seismic_object->name, root->keys[i]);
+				key_exists = 1;
+				break;
+			}
+		}
+	}
+
+	if(key_exists == 0) {
+		seismic_object->oid = root->gather_oids[0];
+		strcpy(seismic_object->name, root->keys[0]);
+	}
 
 	rc = daos_obj_open(root->coh, seismic_object->oid, daos_mode,
 			   &(seismic_object->oh), NULL);
@@ -1186,86 +1052,76 @@ daos_seis_get_headers(seis_root_obj_t *root)
 		exit(rc);
 	}
 
+	prepare_iod(&iod, NULL, DS_A_NGATHERS, DAOS_IOD_SINGLE,
+		    sizeof(int), 1);
+
 	/** Fetch Number of Gathers Under opened Gather object */
 	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-			      DS_D_NGATHERS, DS_A_NGATHERS,
-			      (char*) &seismic_object->number_of_gathers,
-			      sizeof(int),DAOS_IOD_SINGLE);
+			      DS_D_NGATHERS,
+			      (char*)&seismic_object->number_of_gathers,
+			      sizeof(int), &iod);
 
 	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-			 &seismic_entry, NULL);
-
-	char **unique_keys;
-
-	if (seismic_object->number_of_gathers > 2) {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 1,
-						      seismic_object->name, 1);
-	} else {
-		unique_keys = fetch_seismic_obj_dkeys(seismic_object, 0,
-						      seismic_object->name, 1);
+			 	 &seismic_entry, NULL);
+	if(rc != 0){
+		err("Fetching number of gathers failed, error "
+		    "code = %d \n", rc);
+		exit(rc);
 	}
 
-	seismic_object->seis_gather_trace_oids_obj =
-			malloc(seismic_object->number_of_gathers *
-			       sizeof(trace_oid_oh_t));
+	seismic_object->dkeys_list = malloc(seismic_object->number_of_gathers * sizeof(long));
 
-	int number_of_traces = 0;
+	recx->rx_idx = 0;
+	recx->rx_nr = seismic_object->number_of_gathers;
+
+	prepare_iod(&iod, recx, DS_A_DKEYS_LIST, DAOS_IOD_ARRAY,
+		    sizeof(long), 1);
+
+	/** Fetch dkeys character array */
+	prepare_seismic_entry(&seismic_entry, seismic_object->oid,
+			      DS_D_DKEYS_LIST,
+			      (char*)seismic_object->dkeys_list,
+			      (sizeof(long)*seismic_object->number_of_gathers),
+			      &iod);
+	rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
+			 	 &seismic_entry, NULL);
+	if (rc != 0) {
+		err("Fetching dkeys list failed, error "
+		    "code = %d \n", rc);
+		exit(rc);
+	}
+
+	/** Fetch list of dkeys under seismic_object */
+	char **unique_keys;
+	unique_keys = tokenize_dkeys_list(seismic_object);
+
+	int number_of_traces;
 	for (i = 0; i < seismic_object->number_of_gathers; i++) {
-		/** Fetch number of traces */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				      unique_keys[i], DS_A_NTRACES,
-				      (char*) &number_of_traces, sizeof(int),
-				      DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching number of traces failed, error "
-			    "code = %d \n", rc);
-			exit(rc);
-		}
-		gather_traces_oids =
-				seismic_object->seis_gather_trace_oids_obj[i];
 
-		/** Fetch trace headers object id */
-		prepare_seismic_entry(&seismic_entry, seismic_object->oid,
-				unique_keys[i], DS_A_GATHER_TRACE_OIDS,
-				(char*) &gather_traces_oids.oid,
-				sizeof(daos_obj_id_t), DAOS_IOD_SINGLE);
-		rc = fetch_seismic_entry(seismic_object->oh, DAOS_TX_NONE,
-				 &seismic_entry, NULL);
-		if (rc != 0) {
-			err("Fetching traces headers oid failed, error "
-			    "code = %d \n", rc);
-			exit(rc);
-		}
+		daos_obj_id_t *oids = get_gather_oids(root, seismic_object,
+						      unique_keys[i],
+						      &number_of_traces);
 
-		/** Allocate oids array , size = number of traces */
-		oids = malloc(number_of_traces * sizeof(daos_obj_id_t));
-		/** Fetch array of trace headers oids */
-		rc = fetch_array_of_trace_headers_oids(root, oids,
-						       &gather_traces_oids,
-						       number_of_traces);
-		if(rc != 0) {
-			err("Fetching array of traces headers oids failed, "
-			    "error code = %d \n", rc);
-			exit(rc);
-		}
-
-		fetch_traces_header_traces_list(root->coh, oids, &trace_list,
-				daos_mode, number_of_traces);
+		fetch_traces_header_traces_list(root->coh, oids,
+						traces_metadata, daos_mode,
+						number_of_traces);
 		free(oids);
 	}
 	/** Free allocated memory */
-	free(seismic_object->seis_gather_trace_oids_obj);
+	for(i=0; i<seismic_object->number_of_gathers; i++){
+		free(unique_keys[i]);
+	}
+	free(unique_keys);
+	free(seismic_object->dkeys_list);
 	free(seismic_object);
 
-	return trace_list;
+	return traces_metadata;
 }
 
 void
 daos_seis_set_data(seis_root_obj_t *root, traces_list_t *trace_list)
 {
-	traces_headers_t 	*current;
+	trace_node_t 	*current;
 	trace_oid_oh_t 		data_oids;
 	int 			 rc;
 	int 			 i;
@@ -1385,23 +1241,30 @@ daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 		root->number_of_traces++;
 		itr++;
 	}
-
+	daos_iod_t	iod;
 //	printf("All trace data written...\n");
-	rc = seismic_root_obj_update(root, DS_D_FILE_HEADER, DS_A_NTRACES_HEADER,
+
+	prepare_iod(&iod, NULL, DS_A_NTRACES_HEADER, DAOS_IOD_SINGLE,
+		    sizeof(int), 1);
+	rc = seismic_root_obj_update(root, DS_D_FILE_HEADER,
 				     (char*) &(root->number_of_traces),
-				     sizeof(int),DAOS_IOD_SINGLE);
+				     sizeof(int), &iod);
 	if (rc != 0) {
 		err("Updating number of traces of root seismic object failed, "
 		    "error code = %d \n",rc);
 		exit(rc);
 	}
 
+
 	for(i=0; i< root->num_of_keys; i++) {
+
+		prepare_iod(&iod, NULL, DS_A_NGATHERS, DAOS_IOD_SINGLE,
+			    sizeof(int), 1);
+
 		rc = update_seismic_gather_object(seismic_obj[i],
 						  DS_D_NGATHERS,
-					  	  DS_A_NGATHERS,
-						  (char*)&(seismic_obj[i]->number_of_gathers),
-						  sizeof(int), DAOS_IOD_SINGLE);
+					  	  (char*)&(seismic_obj[i]->number_of_gathers),
+						  sizeof(int), &iod);
 		if (rc != 0) {
 			err("Adding number of gathers to <%s> gather object"
 			    " failed, error code = %d \n",root->keys[i], rc);
@@ -1436,6 +1299,7 @@ daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 	for(i=0; i< root->num_of_keys; i++) {
 		release_gathers_list(seismic_obj[i]->gathers);
 		free(seismic_obj[i]->seis_gather_trace_oids_obj);
+		free(seismic_obj[i]->dkeys_list);
 		rc = daos_obj_close(seismic_obj[i]->oh, NULL);
 		if (rc != 0) {
 			err("Closing seismic object %s failed, "
@@ -1452,22 +1316,11 @@ daos_seis_parse_raw_data (dfs_t *dfs, seis_root_obj_t *root,
 }
 
 void
-daos_seis_release_traces_list(traces_list_t *trace_list)
+daos_seis_release_traces_metadata(traces_metadata_t *traces_metadata)
 {
-	traces_headers_t 	*temp;
-	traces_headers_t 	*next;
-
-	temp = trace_list->head;
-
-	while(temp != NULL ){
-		next = temp->next_trace;
-		if (temp->trace.data != NULL) {
-			free(temp->trace.data);
-		}
-		free(temp);
-		temp = next;
-	}
-	free(trace_list);
+	release_traces_list(traces_metadata->traces_list);
+	release_ensembles_list(traces_metadata->ensembles_list);
+	free(traces_metadata);
 }
 
 void
@@ -1499,14 +1352,26 @@ daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
 	/** store number of keys and array of keys under
 	 *  seperate dkeys and akeys
 	 */
-	rc = seismic_root_obj_update(*root_obj, DS_D_KEYS, DS_A_NUM_OF_KEYS,
+	daos_iod_t	iod;
+
+	d_iov_set(&iod.iod_name, (void*) DS_A_NUM_OF_KEYS,
+		  strlen(DS_A_NUM_OF_KEYS));
+	iod.iod_type = DAOS_IOD_SINGLE;
+	iod.iod_size = sizeof(int);
+	iod.iod_recxs = NULL;
+	iod.iod_nr = 1;
+
+	rc = seismic_root_obj_update(*root_obj, DS_D_KEYS,
 				     (char*)&num_of_keys, sizeof(int),
-				     DAOS_IOD_SINGLE);
+				     &iod);
 	if (rc != 0) {
 		err("Updating root object num_of_keys failed, "
 		    "error code = %d \n", rc);
 		return;
 	}
+
+	daos_recx_t	*recx;
+	recx = malloc(sizeof(daos_recx_t));
 
 	for(i = 0 ;i < num_of_keys; i++) {
 		char temp[10]="";
@@ -1514,15 +1379,26 @@ daos_seis_create_graph(dfs_t *dfs, dfs_obj_t *parent, char *name,
 		sprintf(temp, "%d", i);
 		strcpy(akey, DS_A_KEYS);
 		strcat(akey,temp);
-		rc = seismic_root_obj_update(*root_obj, DS_D_KEYS, akey,
-					     keys[i], 10 * sizeof(char),
-					     DAOS_IOD_ARRAY);
+
+		d_iov_set(&iod.iod_name, (void*) akey,
+			  strlen(akey));
+		iod.iod_type = DAOS_IOD_ARRAY;
+		iod.iod_size = 1;
+		iod.iod_nr = 1;
+		recx->rx_idx = 0;
+		recx->rx_nr = KEY_LENGTH * sizeof(char);
+		iod.iod_recxs = recx;
+
+		rc = seismic_root_obj_update(*root_obj, DS_D_KEYS,
+					     keys[i], KEY_LENGTH * sizeof(char),
+					     &iod);
 		if (rc != 0) {
 			err("Updating root object <%s> key failed, "
 			    "error code = %d \n",keys[i], rc);
 			return;
 		}
 	}
+	free(recx);
 }
 
 void
@@ -1531,7 +1407,7 @@ daos_seis_fetch_traces_data(daos_handle_t coh, traces_list_t **head_traces,
 {
 	daos_array_iod_t 	iod;
 	seismic_entry_t 	seismic_entry = {0};
-	traces_headers_t       *current;
+	trace_node_t	       *current;
 	trace_oid_oh_t 		trace_data_obj;
 	daos_obj_id_t		hdr_obj_id;
 	daos_range_t 		rg;
