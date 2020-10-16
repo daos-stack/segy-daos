@@ -114,7 +114,7 @@ main(int argc, char *argv[])
 	seis_root_obj_t *seis_root_object = daos_seis_open_root_path(get_dfs(),in_file);
 	gettimeofday(&tv1, NULL);
 	/** Range headers */
-	headers_ranges_t ranges = daos_seis_range_headers(seis_root_object, number_of_keys, range_keys, dim);
+	headers_ranges_t *ranges = daos_seis_range_headers(seis_root_object, number_of_keys, range_keys, dim);
 	gettimeofday(&tv2, NULL);
 	/** Print headers ranges */
 	print_headers_ranges(ranges);
@@ -123,6 +123,7 @@ main(int argc, char *argv[])
 		free(range_keys[k]);
 	}
 	free(range_keys);
+	free(ranges);
 	/** Close opened root seismic object */
 	daos_seis_close_root(seis_root_object);
 

@@ -11,41 +11,21 @@ seismic_obj_update(daos_handle_t oh, daos_handle_t th, seismic_entry_t entry)
 {
 
 	d_sg_list_t 		sgl;
-	daos_recx_t 		recx;
-	daos_iod_t 		iod;
 	daos_key_t 		dkey;
 	d_iov_t 		sg_iovs;
 	int 			rc;
 
 	d_iov_set(&dkey, (void*) entry.dkey_name, strlen(entry.dkey_name));
-	d_iov_set(&iod.iod_name, (void*) entry.akey_name,
-		  strlen(entry.akey_name));
-
-	if (entry.iod_type == DAOS_IOD_SINGLE) {
-		recx.rx_nr = 1;
-		iod.iod_size = entry.size;
-	} else if (entry.iod_type == DAOS_IOD_ARRAY) {
-		recx.rx_nr = entry.size;
-		iod.iod_size = 1;
-	}
-
-	iod.iod_nr = 1;
-	recx.rx_idx = 0;
-	iod.iod_recxs = &recx;
-	iod.iod_type = entry.iod_type;
-
 	d_iov_set(&sg_iovs, entry.data, entry.size);
-
 	sgl.sg_nr = 1;
 	sgl.sg_nr_out = 0;
 	sgl.sg_iovs = &sg_iovs;
 
-	rc = daos_obj_update(oh, th, 0, &dkey, 1, &iod, &sgl, NULL);
+	rc = daos_obj_update(oh, th, 0, &dkey, 1, entry.iod, &sgl, NULL);
 	if (rc != 0) {
 		err("Updating daos object failed, error code = %d\n", rc);
 		return rc;
 	}
-
 	return rc;
 }
 
@@ -499,7 +479,7 @@ tokenize_str(void ***str, char *sep, char *string, int type,
 }
 
 void
-print_headers_ranges(headers_ranges_t headers_ranges)
+print_headers_ranges(headers_ranges_t *headers_ranges)
 {
 	cwp_String 	key;
 	cwp_String 	type;
@@ -512,119 +492,118 @@ print_headers_ranges(headers_ranges_t headers_ranges)
 	int 		kmax;
 	int 		i;
 
-	if (headers_ranges.number_of_keys == 0) {
+	if (headers_ranges->number_of_keys == 0) {
 		kmax = SEIS_NKEYS;
 	} else {
-		kmax = headers_ranges.number_of_keys;
+		kmax = headers_ranges->number_of_keys;
 	}
 
-	printf("%d traces: \n", headers_ranges.ntr);
+	printf("%d traces: \n", headers_ranges->ntr);
 
 	for (i = 0; i < kmax; i++) {
-		get_header_value(*headers_ranges.trmin,
-				 headers_ranges.keys[i], &valmin);
-		get_header_value(*headers_ranges.trmax,
-				 headers_ranges.keys[i], &valmax);
-		get_header_value(*headers_ranges.trfirst,
-				 headers_ranges.keys[i], &valfirst);
-		get_header_value(*headers_ranges.trlast,
-				 headers_ranges.keys[i], &vallast);
-		dvalmin = vtod(hdtype(headers_ranges.keys[i]), valmin);
-		dvalmax = vtod(hdtype(headers_ranges.keys[i]), valmax);
+		get_header_value(*headers_ranges->trmin,
+				 headers_ranges->keys[i], &valmin);
+		get_header_value(*headers_ranges->trmax,
+				 headers_ranges->keys[i], &valmax);
+		get_header_value(*headers_ranges->trfirst,
+				 headers_ranges->keys[i], &valfirst);
+		get_header_value(*headers_ranges->trlast,
+				 headers_ranges->keys[i], &vallast);
+		dvalmin = vtod(hdtype(headers_ranges->keys[i]), valmin);
+		dvalmax = vtod(hdtype(headers_ranges->keys[i]), valmax);
 		if (dvalmin || dvalmax) {
 			if (dvalmin < dvalmax) {
-				printf("%s ", headers_ranges.keys[i]);
-				printfval(hdtype(headers_ranges.keys[i]),
+				printf("%s ", headers_ranges->keys[i]);
+				printfval(hdtype(headers_ranges->keys[i]),
 					  valmin);
 				printf(" ");
-				printfval(hdtype(headers_ranges.keys[i]),
+				printfval(hdtype(headers_ranges->keys[i]),
 					  valmax);
 				printf(" (");
-				printfval(hdtype(headers_ranges.keys[i]),
+				printfval(hdtype(headers_ranges->keys[i]),
 					  valfirst);
 				printf(" - ");
-				printfval(hdtype(headers_ranges.keys[i]),
+				printfval(hdtype(headers_ranges->keys[i]),
 					  vallast);
 				printf(")");
 			} else {
-				printf("%s ", headers_ranges.keys[i]);
-				printfval(hdtype(headers_ranges.keys[i]),
+				printf("%s ", headers_ranges->keys[i]);
+				printfval(hdtype(headers_ranges->keys[i]),
 					  valmin);
 			}
 			printf("\n");
 		}
 	}
 
-	if (headers_ranges.number_of_keys == 0) {
-		if ((headers_ranges.north_shot[1] != 0.0) ||
-		    (headers_ranges.south_shot[1] != 0.0) ||
-		    (headers_ranges.east_shot[0] != 0.0) ||
-		    (headers_ranges.west_shot[0] != 0.0)) {
+	if (headers_ranges->number_of_keys == 0) {
+		if ((headers_ranges->north_shot[1] != 0.0) ||
+		    (headers_ranges->south_shot[1] != 0.0) ||
+		    (headers_ranges->east_shot[0] != 0.0) ||
+		    (headers_ranges->west_shot[0] != 0.0)) {
 			printf("\nShot coordinate limits:\n" "\tNorth(%g,%g)"
 			       " South(%g,%g) East(%g,%g) West(%g,%g)\n",
-			       headers_ranges.north_shot[0],
-			       headers_ranges.north_shot[1],
-			       headers_ranges.south_shot[0],
-			       headers_ranges.south_shot[1],
-			       headers_ranges.east_shot[0],
-			       headers_ranges.east_shot[1],
-			       headers_ranges.west_shot[0],
-			       headers_ranges.west_shot[1]);
+			       headers_ranges->north_shot[0],
+			       headers_ranges->north_shot[1],
+			       headers_ranges->south_shot[0],
+			       headers_ranges->south_shot[1],
+			       headers_ranges->east_shot[0],
+			       headers_ranges->east_shot[1],
+			       headers_ranges->west_shot[0],
+			       headers_ranges->west_shot[1]);
 		}
-		if ((headers_ranges.north_rec[1] != 0.0) ||
-		    (headers_ranges.south_rec[1] != 0.0) ||
-		    (headers_ranges.east_rec[0] != 0.0) ||
-		    (headers_ranges.west_rec[0] != 0.0)) {
+		if ((headers_ranges->north_rec[1] != 0.0) ||
+		    (headers_ranges->south_rec[1] != 0.0) ||
+		    (headers_ranges->east_rec[0] != 0.0) ||
+		    (headers_ranges->west_rec[0] != 0.0)) {
 			printf("\nReceiver coordinate limits:\n"
 			       "\tNorth(%g,%g) South(%g,%g) East(%g,%g)"
-			       " West(%g,%g)\n", headers_ranges.north_rec[0],
-			       headers_ranges.north_rec[1],
-			       headers_ranges.south_rec[0],
-			       headers_ranges.south_rec[1],
-			       headers_ranges.east_rec[0],
-			       headers_ranges.east_rec[1],
-			       headers_ranges.west_rec[0],
-			       headers_ranges.west_rec[1]);
+			       " West(%g,%g)\n", headers_ranges->north_rec[0],
+			       headers_ranges->north_rec[1],
+			       headers_ranges->south_rec[0],
+			       headers_ranges->south_rec[1],
+			       headers_ranges->east_rec[0],
+			       headers_ranges->east_rec[1],
+			       headers_ranges->west_rec[0],
+			       headers_ranges->west_rec[1]);
 		}
-		if ((headers_ranges.north_cmp[1] != 0.0) ||
-		    (headers_ranges.south_cmp[1] != 0.0) ||
-		    (headers_ranges.east_cmp[0] != 0.0) ||
-		    (headers_ranges.west_cmp[0] != 0.0)) {
+		if ((headers_ranges->north_cmp[1] != 0.0) ||
+		    (headers_ranges->south_cmp[1] != 0.0) ||
+		    (headers_ranges->east_cmp[0] != 0.0) ||
+		    (headers_ranges->west_cmp[0] != 0.0)) {
 			printf("\nMidpoint coordinate limits:\n"
 			       "\tNorth(%g,%g) South(%g,%g) East(%g,%g)"
-			       " West(%g,%g)\n", headers_ranges.north_cmp[0],
-			       headers_ranges.north_cmp[1],
-			       headers_ranges.south_cmp[0],
-			       headers_ranges.south_cmp[1],
-			       headers_ranges.east_cmp[0],
-			       headers_ranges.east_cmp[1],
-			       headers_ranges.west_cmp[0],
-			       headers_ranges.west_cmp[1]);
+			       " West(%g,%g)\n", headers_ranges->north_cmp[0],
+			       headers_ranges->north_cmp[1],
+			       headers_ranges->south_cmp[0],
+			       headers_ranges->south_cmp[1],
+			       headers_ranges->east_cmp[0],
+			       headers_ranges->east_cmp[1],
+			       headers_ranges->west_cmp[0],
+			       headers_ranges->west_cmp[1]);
 		}
 	}
 
-	if (headers_ranges.dim != 0) {
-		if (headers_ranges.dim == 1) {
+	if (headers_ranges->dim != 0) {
+		if (headers_ranges->dim == 1) {
 			printf("\n2D line: \n");
 			printf("Min CMP interval = %g ft\n",
-			       headers_ranges.dmin);
+			       headers_ranges->dmin);
 			printf("Max CMP interval = %g ft\n",
-			       headers_ranges.dmax);
+			       headers_ranges->dmax);
 			printf("Line length = %g miles (using avg CMP"
-			       " interval of %g ft)\n",	headers_ranges.davg *
-			       headers_ranges.ntr / 5280, headers_ranges.davg);
-		} else if (headers_ranges.dim == 2) {
+			       " interval of %g ft)\n",	headers_ranges->davg *
+			       headers_ranges->ntr / 5280, headers_ranges->davg);
+		} else if (headers_ranges->dim == 2) {
 			printf("ddim line: \n");
 			printf("Min CMP interval = %g m\n",
-			       headers_ranges.dmin);
+			       headers_ranges->dmin);
 			printf("Max CMP interval = %g m\n",
-			       headers_ranges.dmax);
+			       headers_ranges->dmax);
 			printf("Line length = %g km (using avg CMP interval"
-			       " of %g m)\n", headers_ranges.davg *
-			       headers_ranges.ntr / 1000, headers_ranges.davg);
+			       " of %g m)\n", headers_ranges->davg *
+			       headers_ranges->ntr / 1000, headers_ranges->davg);
 		}
 	}
-
 	return;
 }
 
@@ -680,21 +659,10 @@ create_dkeys_list(seis_obj_t *object, long *gather_keys) {
 
 	merge_sort(gather_keys, 0, object->number_of_gathers - 1, 1);
 
-	object->dkeys_list = malloc((object->number_of_gathers * sizeof(long)) +
-				    (object->number_of_gathers - 1));
+	object->dkeys_list = malloc(object->number_of_gathers * sizeof(long));
 
-	char temp_key[200] = "";
-	sprintf(temp_key, "%ld", gather_keys[0]);
-	strcpy(object->dkeys_list, temp_key);
-	strcat(object->dkeys_list, ",");
-	for(z = 1; z < object->number_of_gathers; z++) {
-		char temp_key[200] = "";
-		sprintf(temp_key, "%ld", gather_keys[z]);
-		strcat(object->dkeys_list, temp_key);
-		if(z == (object->number_of_gathers - 1)) {
-			break;
-		}
-		strcat(object->dkeys_list, ",");
+	for(z = 0; z < object->number_of_gathers; z++) {
+		object->dkeys_list[z] = gather_keys[z];
 	}
 }
 

@@ -222,14 +222,14 @@ daos_seis_set_headers(dfs_t *dfs, seis_root_obj_t *root, int num_of_keys,
  * \param[in]	dim		dim seismic flag (0 -> not dim)
  * 				(1 -> coord in ft) (2 -> coord in m)
  *
- * \return      headers ranges struct holding:
- * 			number of traces
- * 			key min max (first - last).
- * 			north-south-east-west limits of	shot/receiver/midpoint.
- * 			midpoint interval and
- * 			line length if dim.
+ * \return      pointer to header ranges struct holding:
+ * 				number of traces
+ * 				key min max (first - last).
+ * 				north-south-east-west limits of	shot/receiver/midpoint.
+ * 				midpoint interval and
+ * 				line length if dim.
  */
-headers_ranges_t
+headers_ranges_t*
 daos_seis_range_headers(seis_root_obj_t *root, int number_of_keys,
 			char **keys, int dim);
 

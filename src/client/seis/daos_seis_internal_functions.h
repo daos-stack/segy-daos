@@ -104,9 +104,8 @@ seismic_root_obj_create(dfs_t *dfs, seis_root_obj_t **obj,
  * 		error_code otherwise
  */
 int
-seismic_root_obj_update(seis_root_obj_t* root_obj, char* dkey_name,
-		      char* akey_name , char* databuf, int nbytes,
-		      daos_iod_type_t iod_type);
+seismic_root_obj_update(seis_root_obj_t *root_obj, char *dkey_name,
+		        char *databuf, int size, daos_iod_t *iod);
 
 /** Function responsible for merging two traces lists by making tail
  *  of one list points to the head of the other.
@@ -272,10 +271,9 @@ trace_obj_create(dfs_t* dfs, trace_obj_t **trace_hdr_obj, int index,
  *
  */
 void
-prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid,
-		      char *dkey, char *akey, char *data,int size,
-		      daos_iod_type_t iod_type);
-
+prepare_seismic_entry(seismic_entry_t *entry, daos_obj_id_t oid,
+		      char *dkey, char *data, int size,
+		      daos_iod_t *iod);
 /** Function responsible for updating any gather object.
  *
  * \param[in]	seis_obj 	pointer to opened seismic object to be updated.
@@ -295,8 +293,7 @@ prepare_seismic_entry(struct seismic_entry *entry, daos_obj_id_t oid,
  */
 int
 update_seismic_gather_object(seis_obj_t *gather_obj, char *dkey_name,
-			     char *akey_name, char *data, int nbytes,
-			     daos_iod_type_t type);
+			     char *data, int size, daos_iod_t *iod);
 
 /** Function responsible for linking each trace to the seismic object gathers.
  *  It is called once while creating the trace header & data objects.
@@ -478,14 +475,13 @@ replace_seismic_objects(dfs_t *dfs, int daos_mode, char *key,
  *  \param[in]	number_of_keys	number of range keys.
  *  \param[in]	keys		array of strings containing range keys.
  *  \param[in]	dim		dim seismic flag.
- *
- *  \return	after finding headers ranges,
- *  		return a struct of all key headers ranges'.
+ *  \param[in]	headers_ranges	pointer to previously allocated header
+ *  				ranges struct.
  *
  */
-headers_ranges_t
+void
 range_traces_headers(traces_list_t *trace_list, int number_of_keys,
-		     char **keys, int dim);
+		     char **keys, int dim, headers_ranges_t *headers_ranges);
 
 /** Function responsible for fetching array of traces headers object ids
  *
@@ -682,4 +678,23 @@ daos_obj_id_t *
 get_gather_oids(seis_root_obj_t *root, seis_obj_t *seismic_object,
 		char *dkey_name, int *number_of_traces);
 
+/** Function responsible for preparing iod descriptor before updating
+ *  or fetching seismic entry.
+ *
+ *  \param[in]	iod			Pointer to io descriptor.
+ *  \param[in]	recx			Array of record extents in case of accessing
+ *  					DAOS_IOD_ARRAY. otherwise set to NULL
+ *  \param[in]	akey			string holding the akey of entry accessed
+ *  \param[in]	type			Type of value accessed.
+ *  					DAOS_IOD_SINGLE/ DAOS_IOD_ARRAY/
+ *  					DAOS_IOD_NONE.
+ *  \param[in]	record_size		size of single value or record size
+ *  					in case of DAOS_IOD_ARRAY.
+ *  \param[in]	num_of_recx_entries	number of record extents.
+ *  					set to 1 in case of DAOS_IOD_SINGLE.
+ */
+void
+prepare_iod(daos_iod_t *iod, daos_recx_t *recx, char *akey,
+	    daos_iod_type_t type, daos_size_t record_size,
+	    int num_of_recx_entries);
 #endif /* LSU_SRC_CLIENT_SEIS_DAOS_SEIS_INTERNAL_FUNCTIONS_H_ */

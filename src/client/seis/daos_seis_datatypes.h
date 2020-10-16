@@ -39,6 +39,7 @@
 #define	SEIS_EBCBYTES 3200
 #define	SEIS_BNYBYTES 400
 #define SEIS_MAX_KEY_LENGTH 2000
+#define KEY_LENGTH 10
 
 struct stat *seismic_stat;
 
@@ -104,7 +105,7 @@ typedef struct seis_obj {
 	gathers_list_t 		*gathers;
 	/** pointer to array of trace_oids objects*/
 	trace_oid_oh_t 		*seis_gather_trace_oids_obj;
-	char			*dkeys_list;
+	long			*dkeys_list;
 }seis_obj_t;
 
 /** struct that is instantiated to fetch or write data under seismic object */
@@ -112,7 +113,7 @@ typedef struct seismic_entry {
 	/** dkey name */
 	char 		*dkey_name;
 	/** akey name */
-	char 		*akey_name;
+//	char 		*akey_name;
 	/** daos object id of the seimsic object holding the data to be written or fetched */
 	daos_obj_id_t	oid;
 	/** character array which holds address of data that will be fetched or to be written */
@@ -120,7 +121,8 @@ typedef struct seismic_entry {
 	/** size of data to be written or fetched */
 	int		size;
 	/** Type of the value accessed by an io descriptor*/
-	daos_iod_type_t		iod_type;
+//	daos_recx_t 		*recx;
+	daos_iod_t 		*iod;
 }seismic_entry_t;
 
 /** struct holding trace header fields , id of the array object holding trace data, and array of trace data.

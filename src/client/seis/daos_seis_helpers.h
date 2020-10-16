@@ -273,13 +273,14 @@ tokenize_str(void ***str, char *sep, char *string, int type, int *number_of_keys
 
 /** Function responsible for printing the ranges of the traces headers.
  *
- *  \param[in]	headers_ranges	struct holding min/ max/ first/ last
- *  				traces ranges, array of keys,
- *  				number of keys, shot/rec/cmp coordinates,...
+ *  \param[in]	headers_ranges	pointer to header ranges struct holding
+ *  				min/ max/ first/ last traces ranges,
+ *  				array of keys, number of keys,
+ *  				shot/rec/cmp coordinates,...
  *
  */
 void
-print_headers_ranges(headers_ranges_t headers_ranges);
+print_headers_ranges(headers_ranges_t *headers_ranges);
 
 /** Fucntion responsible for storing the unique value in character array
  *  based on its type (char/long/double/int/...)
