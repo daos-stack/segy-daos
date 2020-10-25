@@ -22,9 +22,9 @@ export LD_LIBRARY_PATH=/usr/lib:/home/daos/daos/build/src/common:/home/daos/daos
 * Create a pool using dmg pool create command.
 * run ./scripts/run_tests.sh <pool_uuid> <container_uuid> <ranklist> that will mount the segy to dfs, use the counterpart seismic unix to generate the output, copy it back to the posix system and compare it with the original output.
 
-# DAOS-Segy mapping
+# DAOS-SEIS mapping
 
-* DAOS_Segy mapping target is to convert seismic data stored in segy files back to a [native graph format](https://wiki.hpdd.intel.com/display/DC/DAOS-SEGY+Mapping) through utilizing the DAOS API and object storage. 
+* DAOS_SEIS mapping target is to convert seismic data stored in segy files back to a [native graph format](https://wiki.hpdd.intel.com/display/DC/DAOS-SEGY+Mapping) through utilizing the DAOS API and object storage. 
 * This will help get rid of segy files(widely used in seismic processing) constraints by directly accessing the required data(traces) saving the time wasted in passing through all data stored.
 
 ## Prepare tests
