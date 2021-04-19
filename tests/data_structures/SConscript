@@ -1,0 +1,6 @@
+Import('env')
+
+print("Calling Program('DATA_STRUCTURES_TEST')")
+libraries = ['$LIBS', 'data_structures', 'cmocka']
+libraries_path = ['../../../build/src_build/data_structures']
+env.Program('linked_list_test','linked_list_test.c',LIBS=libraries, LIBPATH=libraries_path)

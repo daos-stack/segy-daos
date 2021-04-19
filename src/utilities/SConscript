@@ -1,0 +1,9 @@
+Import('env')
+
+print("Calling Program('Utilities')")
+libraries = ['$LIBS']
+
+if GetOption('mpi'):
+	env.SharedLibrary('utilities',['timer.c','cmd.c','string_helpers.c','mutex.c'],LIBS=libraries, variant_dir='../../build/src_build/utilities')
+else:
+	env.SharedLibrary('utilities',['timer.c','cmd.c','string_helpers.c'],LIBS=libraries, variant_dir='../../build/src_build/utilities')

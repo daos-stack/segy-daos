@@ -1,0 +1,6 @@
+Import('env')
+
+print("Calling Program('Seismic sources')")
+libraries = ['$LIBS','data_structures', 'datatypes']
+libraries_path = ['../../../build/src_build/data_types', '../../../build/src_build/data_structures']
+env.SharedLibrary('seismic_sources',['seismic_sources.c','segy.c', 'list.c', 'raw.c'],LIBS=libraries,LIBPATH=libraries_path, variant_dir='../../build/src_build/seismic_sources')

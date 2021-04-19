@@ -1,0 +1,8 @@
+Import('env')
+
+print("Calling Program('Daos primitives tests')")
+libraries = ['$LIBS', 'daos_primitives', 'cmocka', 'daos_common', 'daos', 'uuid', 'dfs']
+libraries_path = ['../../../build/src_build/daos_primitives']
+env.Program('daos_object_test','object_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('daos_array_object_test','array_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('dfs_helpers_test','dfs_helpers_test.c',LIBS=libraries, LIBPATH=libraries_path)

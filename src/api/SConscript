@@ -1,0 +1,12 @@
+Import('env')
+
+print("Calling Program('Seismic graph api')")
+libraries = ['$LIBS', 'data_structures', 'datatypes','seismic_sources','daos_primitives', 
+'graph_objects', 'daos_common', 'daos', 'uuid', 'dfs']
+libraries_path = ['../../../build/src_build/data_structures', '../../../build/src_build/data_types',
+ '../../../build/src_build/seismic_sources','../../../build/src_build/daos_primitives','../../../build/src_build/graph_objects']
+
+if GetOption('mpi'):
+	env.SharedLibrary('dsg_api',['seismic_graph_api.c', 'seismic_graph_api_mpi_version/mpi_seismic_api.c'],LIBS=libraries, LIBPATH=libraries_path)
+else:
+	env.SharedLibrary('dsg_api',['seismic_graph_api.c', 'seismic_graph_api_serial_version/serial_seismic_api.c'],LIBS=libraries, LIBPATH=libraries_path)

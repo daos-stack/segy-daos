@@ -1,0 +1,8 @@
+Import('env')
+
+print("Calling Program('Data types tests')")
+libraries = ['$LIBS', 'data_structures', 'datatypes', 'cmocka']
+libraries_path = ['../../../build/src_build/data_types', '../../../build/src_build/data_structures']
+env.Program('generic_value_test','generic_value_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('trace_test','trace_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('ensemble_test','ensemble_test.c',LIBS=libraries, LIBPATH=libraries_path)

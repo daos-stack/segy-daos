@@ -1,0 +1,9 @@
+Import('env')
+
+print("Calling Program('Operations tests')")
+libraries = ['$LIBS', 'data_structures', 'datatypes', 'operations', 'cmocka']
+libraries_path = ['../../../build/src_build/data_types', '../../../build/src_build/data_structures', '../../../build/src_build/operations']
+env.Program('calculate_header_test','calculate_header_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('sort_test','sort_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('window_test','window_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS='-g')
+env.Program('range_test','range_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS=['-g'])

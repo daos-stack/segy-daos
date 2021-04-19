@@ -1,0 +1,23 @@
+Import('env')
+
+print("Calling Program('DAOS SEIS MAINS')")
+
+libraries = ['$LIBS', 'dsg_api', 'data_structures', 'datatypes', 'operations','seismic_sources', 'utilities', 
+'daos_primitives', 'graph_objects', 'daos_common', 'daos', 'uuid', 'dfs']
+libraries_path = ['../../build/src_build/api','../../build/src_build/data_structures', 
+'../../build/src_build/data_types', '../../build/src_build/seismic_sources',
+'../../build/src_build/utilities','../../build/src_build/daos_primitives',
+'../../build/src_build/graph_objects', '../../build/src_build/operations']
+env.Program('daos_seis_file_mount','daos_seis_file_mount.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_parse_segy_file','daos_seis_parse_segy_file.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_wind_headers','daos_seis_wind_headers.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_sort_headers','daos_seis_sort_headers.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_get_traces_count','daos_seis_get_traces_count.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_get_headers','daos_seis_get_headers.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_range_headers','daos_seis_range_headers.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_set_headers','daos_seis_set_headers.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_change_headers','daos_seis_change_headers.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_parse_additional_file','daos_seis_parse_additional_file.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_add_headers','daos_seis_add_headers.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_read_traces','daos_seis_read_traces.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')
+env.Program('daos_seis_update_traces_data','daos_seis_update_traces_data.c',LIBS=libraries, LIBPATH=libraries_path, variant_dir='../build/mains_build')

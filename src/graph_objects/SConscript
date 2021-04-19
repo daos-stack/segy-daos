@@ -1,0 +1,8 @@
+Import('env')
+
+print("Calling Program('Graph Objects')")
+libraries = ['$LIBS']+ ['datatypes','seismic_sources','operations', 'utilities']
+libraries_path = ['../../../build/src_build/data_types', '../../../build/src_build/seismic_sources',
+ '../../../build/src_build/operations','../../../build/src_build/utilities']
+env.SharedLibrary('graph_objects',['trace_hdr.c', 'trace_data.c', 'traces_array.c', 'root.c',
+ 'gather.c', 'complex_gather.c'],LIBS=libraries, LIBPATH=libraries_path, variant_dir='../../build/src_build/graph_objects')

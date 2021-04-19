@@ -1,0 +1,10 @@
+Import('env')
+
+print("Calling Program('Graph objects tests')")
+libraries = ['$LIBS', 'data_structures', 'datatypes','seismic_sources', 'cmocka', 'daos_primitives', 'graph_objects', 'daos_common', 'daos', 'uuid', 'dfs']
+libraries_path = ['../../../build/src_build/data_structures', '../../../build/src_build/data_types', '../../../build/src_build/seismic_sources','../../../build/src_build/daos_primitives','../../../build/src_build/graph_objects']
+env.Program('trace_hdr_test','trace_hdr_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('trace_data_test','trace_data_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('traces_array_test','traces_array_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('root_test','root_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('gather_test','gather_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS=['-g'])

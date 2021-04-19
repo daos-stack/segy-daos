@@ -1,0 +1,31 @@
+Import('env')
+
+print("Calling Program('Seismic Graph API tests')")
+libraries = ['$LIBS', 'dsg_api', 'data_structures', 'datatypes','seismic_sources', 'utilities', 
+'cmocka', 'daos_primitives', 'graph_objects', 'operations', 'daos_common', 'daos', 'uuid', 'dfs']
+libraries_path = ['../../../build/src_build/api','../../../build/src_build/data_structures', 
+'../../../build/src_build/data_types', '../../../build/src_build/seismic_sources',
+'../../../build/src_build/utilities','../../../build/src_build/daos_primitives','../../../build/src_build/graph_objects',
+'../../../build/src_build/operations']
+env.Program('create_graph','create_graph_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('open_graph','open_graph_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('update_num_of_traces','update_num_of_traces_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('fetch_binary_text_headers','fetch_binary_and_text_headers_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('get_num_of_gathers_test','get_num_of_gathers_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('parse_segy_test','parse_segy_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS=['-g'])
+env.Program('window_headers_and_return_list_test','window_headers_and_return_list_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('parse_linked_list_test','parse_linked_list_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS=['-g'])
+env.Program('window_headers_and_dump_in_graph_test','window_headers_and_dump_in_graph_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('set_headers_test','set_headers_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS = ['-g'])
+env.Program('get_custom_headers_test','get_custom_headers_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS=['-g'])
+env.Program('parse_raw_test','parse_raw_test.c',LIBS=libraries, LIBPATH=libraries_path, CCFLAGS=['-g'])
+env.Program('sort_traces_test','sort_traces_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('get_unique_values_list_test','get_unique_values_list_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('set_traces_data_test','set_traces_data_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('range_headers_test','range_headers_test.c',LIBS=libraries, LIBPATH=libraries_path)
+
+if GetOption('mpi'):
+	env.Program('window_headers_mpi_version_and_return_list_test','window_headers_mpi_version_and_return_list_test.c',LIBS=libraries, LIBPATH=libraries_path)
+	env.Program('window_headers_mpi_version_and_dump_in_graph_test','window_headers_mpi_version_and_dump_in_graph_test.c',LIBS=libraries, LIBPATH=libraries_path)
+	env.Program('sort_traces_mpi_version_test','sort_traces_mpi_version_test.c',LIBS=libraries, LIBPATH=libraries_path)
+	env.Program('parse_linked_list_mpi_version_test','parse_linked_list_mpi_version_test.c',LIBS=libraries, LIBPATH=libraries_path)

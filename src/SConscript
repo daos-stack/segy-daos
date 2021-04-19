@@ -1,0 +1,12 @@
+Import('env')
+
+print("Calling Program('Building DSG Source modules')")
+
+env.SConscript(dirs=['utilities'], exports='env', variant_dir='../build/src_build/utilities', duplicate=0)
+env.SConscript(dirs=['operations'], exports='env', variant_dir='../build/src_build/operations', duplicate=0)
+env.SConscript(dirs=['data_structures'], exports='env', variant_dir='../build/src_build/data_structures', duplicate=0)
+env.SConscript(dirs=['data_types'], exports='env', variant_dir='../build/src_build/data_types', duplicate=0)
+env.SConscript(dirs=['daos_primitives'], exports='env', variant_dir='../build/src_build/daos_primitives', duplicate=0)
+env.SConscript(dirs=['graph_objects'], exports='env', variant_dir='../build/src_build/graph_objects', duplicate=0)
+env.SConscript(dirs=['seismic_sources'], exports='env', variant_dir='../build/src_build/seismic_sources', duplicate=0)
+env.SConscript(dirs=['api'], exports='env', variant_dir='../build/src_build/api', duplicate=0)

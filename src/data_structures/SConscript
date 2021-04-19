@@ -1,0 +1,5 @@
+Import('env')
+
+print("Calling Program('DATA_STRUCTURES')")
+libraries = ['$LIBS']
+env.SharedLibrary('data_structures','doubly_linked_list.c',LIBS=libraries, variant_dir='../../build/src_build/data_structures')

@@ -1,17 +1,24 @@
 import os
 
 env = Environment(ENV=os.environ)
-env.AppendUnique(CPPDEFINES='SUXDR')
-env.Append( CCFLAGS=["-fPIC"] )
-env.SConscript(dirs=['src/dfs_helper'], exports='env',variant_dir='build/dfs_helper_build')
-env.SConscript(dirs=['src/cwp'], exports='env',variant_dir='build/cwp_build')
-env.SConscript(dirs=['src/par'], exports='env',variant_dir='build/par_build')
-env.SConscript(dirs=['src/su'], exports='env',variant_dir='build/su_build')
-env.SConscript(dirs=['src/client/seis'], exports='env',variant_dir='build/client/seis_build')
-env.AppendUnique(CPPPATH=[Dir('build/cwp_build/include')])
-env.AppendUnique(CPPPATH=[Dir('build/par_build/include')])
-env.AppendUnique(CPPPATH=[Dir('build/su_build/include')])
-env.AppendUnique(CPPPATH=[Dir('build/dfs_helper_build')])
-env.AppendUnique(CPPPATH=[Dir('build/client/seis_build')])
-env.SConscript(dirs=['src/tests'], exports='env',variant_dir='build/tests_build')
-env.SConscript(dirs=['src/main'], exports='env',variant_dir='build/main_build')
+
+AddOption('--mpi',
+          dest='mpi',
+          type='int',
+          nargs=1,
+          action='store',
+          metavar='MPI',
+          help='specify using mpi')
+
+
+env.Append(MPI = GetOption('mpi'))
+
+if GetOption('mpi'):
+	env = Environment(CC = 'mpicc', CPPDEFINES={'MPI_BUILD' : '${1}'},  ENV=os.environ)
+
+env.SConscript(dirs=['src'], exports='env', duplicate=0)
+env.SConscript(dirs=['tests'], exports='env', duplicate=0)
+env.SConscript(dirs=['mains'], exports='env',variant_dir='./build/mains_build', duplicate=0)
+
+
+

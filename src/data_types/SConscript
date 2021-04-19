@@ -1,0 +1,8 @@
+Import('env')
+
+print("Calling Program('Datatypes')")
+libraries = ['$LIBS', 'm']
+libraries = libraries + ['data_structures']
+libraries_path = ['../../../build/src_build/data_structures']
+
+env.SharedLibrary('datatypes',['generic_value.c', 'trace.c', 'ensemble.c'],LIBS=libraries, LIBPATH=libraries_path, variant_dir='../../build/src_build/data_types')

@@ -1,0 +1,5 @@
+Import('env')
+
+print("Calling Program('OPERATIONS')")
+libraries = ['$LIBS', 'm']
+env.SharedLibrary('operations',['general_operations.c','sort.c','calculate_header.c', 'window.c', 'range.c'],LIBS=libraries, variant_dir='../../build/src_build/operations')

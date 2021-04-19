@@ -1,0 +1,7 @@
+Import('env')
+
+print("Calling Program('Seismic Sources tests')")
+libraries = ['$LIBS', 'data_structures', 'datatypes','seismic_sources', 'cmocka', 'daos_primitives', 'daos_common', 'daos', 'uuid', 'dfs']
+libraries_path = ['../../../build/src_build/data_types', '../../../build/src_build/data_structures', '../../../build/src_build/seismic_sources','../../../build/src_build/daos_primitives']
+env.Program('segy_test','segy_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('list_test','list_test.c',LIBS=libraries, LIBPATH=libraries_path)

@@ -1,0 +1,11 @@
+Import('env')
+
+print("Calling Program('TIMER')")
+libraries = ['$LIBS', 'utilities', 'cmocka']
+libraries_path = ['../../../build/src_build/utilities']
+env.Program('timer_test','timer_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('string_helpers_test','string_helpers_test.c',LIBS=libraries, LIBPATH=libraries_path)
+env.Program('cmd_test','cmd_test.c',LIBS=libraries, LIBPATH=libraries_path)
+
+if GetOption('mpi'):
+	env.Program('mutex_test','mutex_test.c',LIBS=libraries, LIBPATH=libraries_path)
